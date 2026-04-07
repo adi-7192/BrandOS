@@ -15,13 +15,14 @@ function ComplianceItem({ label, value, pass }) {
 export default function Output() {
   const navigate = useNavigate();
   const { state } = useLocation();
-  const [activeTab, setActiveTab] = useState('linkedin');
+  const [activeTab, setActiveTab] = useState(state?.activeTab || 'linkedin');
   const [content, setContent] = useState({
     linkedin: state?.output?.linkedin || '',
     blog: state?.output?.blog || '',
   });
   const [instruction, setInstruction] = useState('');
   const [iterating, setIterating] = useState(false);
+  const [saveState, setSaveState] = useState({ saving: false, message: '' });
 
   const brief = state?.brief || {};
 
@@ -54,6 +55,27 @@ export default function Output() {
     } finally {
       setIterating(false);
       setInstruction('');
+    }
+  };
+
+  const handleSaveDraft = async () => {
+    if (!brief.brandId) {
+      setSaveState({ saving: false, message: 'This draft cannot be saved because the brand context is missing.' });
+      return;
+    }
+
+    setSaveState({ saving: true, message: '' });
+    try {
+      const res = await api.post('/generate/save-draft', {
+        brandId: brief.brandId,
+        inboxCardId: brief.sourceCardIds?.length === 1 ? brief.sourceCardIds[0] : null,
+        format: activeTab,
+        content: content[activeTab],
+        instruction: instruction || null,
+      });
+      setSaveState({ saving: false, message: `Saved version ${res.data.version}.` });
+    } catch {
+      setSaveState({ saving: false, message: 'Failed to save draft. Please try again.' });
     }
   };
 
@@ -141,7 +163,9 @@ export default function Output() {
 
         {/* Export row */}
         <div className="flex flex-wrap gap-2 mb-6">
-          <Button variant="secondary" className="text-sm" onClick={() => {}}>Save draft</Button>
+          <Button variant="secondary" className="text-sm" onClick={handleSaveDraft} disabled={saveState.saving}>
+            {saveState.saving ? 'Saving…' : 'Save draft'}
+          </Button>
           <Button variant="secondary" className="text-sm" onClick={() => copyToClipboard(content[activeTab])}>Copy to clipboard</Button>
           {activeTab === 'blog' && (
             <Button variant="secondary" className="text-sm" onClick={() => {}}>Copy markdown</Button>
@@ -153,6 +177,7 @@ export default function Output() {
             <span className="absolute -top-2 -right-2 text-[10px] bg-gray-900 text-white px-1.5 py-0.5 rounded-full">Coming V2</span>
           </div>
         </div>
+        {saveState.message && <p className="mb-4 text-sm text-brand-muted">{saveState.message}</p>}
 
         {/* Format switch */}
         <div className="border-t border-gray-200 pt-4">

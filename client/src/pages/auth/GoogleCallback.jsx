@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { getPostAuthRoute } from '../../lib/auth-flow';
 
 export default function GoogleCallback() {
   const navigate = useNavigate();
@@ -21,7 +22,7 @@ export default function GoogleCallback() {
     }
 
     handleGoogleToken(token).then((user) => {
-      navigate(user.onboardingComplete ? '/dashboard' : '/onboarding/team', { replace: true });
+      navigate(getPostAuthRoute(user), { replace: true });
     }).catch(() => {
       navigate('/signin?error=google_failed', { replace: true });
     });

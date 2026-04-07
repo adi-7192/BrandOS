@@ -7,6 +7,7 @@ import onboardingRouter from './routes/onboarding.js';
 import brandsRouter from './routes/brands.js';
 import inboxRouter from './routes/inbox.js';
 import generateRouter from './routes/generate.js';
+import dashboardRouter from './routes/dashboard.js';
 import { errorHandler } from './middleware/errorHandler.js';
 
 const app = express();
@@ -20,6 +21,7 @@ app.use('/api/onboarding', onboardingRouter);
 app.use('/api/brands', brandsRouter);
 app.use('/api/inbox', inboxRouter);
 app.use('/api/generate', generateRouter);
+app.use('/api/dashboard', dashboardRouter);
 
 app.use(errorHandler);
 

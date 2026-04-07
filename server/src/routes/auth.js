@@ -144,6 +144,35 @@ router.get('/me', authenticate, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// PATCH /api/auth/profile
+router.patch('/profile', authenticate, async (req, res, next) => {
+  try {
+    const { companyName } = req.body;
+
+    if (!companyName?.trim()) {
+      return res.status(400).json({ message: 'Company name is required.' });
+    }
+
+    const { rows } = await pool.query(
+      `UPDATE users
+       SET company_name = $1,
+           updated_at = NOW()
+       WHERE id = $2
+       RETURNING *`,
+      [companyName.trim(), req.user.id]
+    );
+
+    await pool.query(
+      `UPDATE workspaces
+       SET company_name = $1
+       WHERE user_id = $2`,
+      [companyName.trim(), req.user.id]
+    );
+
+    res.json({ user: formatUser(rows[0]) });
+  } catch (err) { next(err); }
+});
+
 function formatUser(u) {
   return {
     id: u.id,

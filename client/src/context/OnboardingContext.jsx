@@ -33,6 +33,7 @@ const initialState = {
   contentGoal: '',
   publishingFrequency: '',
   voiceFormality: null,
+  campaignCoreWhy: '',
   // S5b / kit cards
   kitCards: null,
   // S6

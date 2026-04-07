@@ -3,11 +3,14 @@ import { AuthProvider } from './context/AuthContext';
 import { OnboardingProvider } from './context/OnboardingContext';
 import { BrandProvider } from './context/BrandContext';
 import ProtectedRoute from './components/layout/ProtectedRoute';
+import LandingPage from './pages/marketing/LandingPage';
 
 // Auth
 import SignUp from './pages/auth/SignUp';
 import SignIn from './pages/auth/SignIn';
 import GoogleCallback from './pages/auth/GoogleCallback';
+import ForgotPassword from './pages/auth/ForgotPassword';
+import CompleteProfile from './pages/auth/CompleteProfile';
 
 // Onboarding
 import S1Team from './pages/onboarding/S1Team';
@@ -41,10 +44,12 @@ export default function App() {
         <OnboardingProvider>
           <Routes>
             {/* Public */}
-            <Route path="/" element={<Navigate to="/signin" replace />} />
+            <Route path="/" element={<LandingPage />} />
             <Route path="/signup" element={<SignUp />} />
             <Route path="/signin" element={<SignIn />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/auth/callback" element={<GoogleCallback />} />
+            <Route path="/auth/complete-profile" element={<ProtectedRoute><CompleteProfile /></ProtectedRoute>} />
 
             {/* Onboarding */}
             <Route path="/onboarding/team" element={<ProtectedRoute><S1Team /></ProtectedRoute>} />

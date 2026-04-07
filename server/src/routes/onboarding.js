@@ -20,11 +20,26 @@ router.post('/extract-kit', async (req, res, next) => {
 // Persists final approved kit cards to DB
 router.post('/save-kit', async (req, res, next) => {
   try {
-    const { brandName, primaryMarket, brandLanguage, kitCards, ...kitParams } = req.body;
+    const { brandName, primaryMarket, brandLanguage, kitCards, role, team, brandCount, ...kitParams } = req.body;
 
     // Get or create workspace
     const wsResult = await pool.query('SELECT * FROM workspaces WHERE user_id = $1', [req.user.id]);
-    const workspace = wsResult.rows[0];
+    let workspace = wsResult.rows[0];
+    if (!workspace) {
+      const createdWorkspace = await pool.query(
+        'INSERT INTO workspaces (user_id, company_name) SELECT id, company_name FROM users WHERE id = $1 RETURNING *',
+        [req.user.id]
+      );
+      workspace = createdWorkspace.rows[0];
+    }
+
+    // Persist Phase 1 user context now that onboarding is being finalised
+    await pool.query(
+      `UPDATE users
+       SET role = $1, team = $2, brand_count = $3, onboarding_complete = TRUE
+       WHERE id = $4`,
+      [role || null, team || null, brandCount || null, req.user.id]
+    );
 
     // Create brand
     const brandResult = await pool.query(
@@ -40,9 +55,10 @@ router.post('/save-kit', async (req, res, next) => {
         brand_id, voice_adjectives, vocabulary, restricted_words,
         channel_rules_linkedin, channel_rules_blog, content_goal,
         publishing_frequency, audience_type, buyer_seniority,
-        funnel_stage, tone_shift, proof_style, content_role,
-        formality_level, past_content_examples, website_url
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)`,
+        age_range, industry_sector, industry_target, funnel_stage,
+        tone_shift, proof_style, content_role, formality_level,
+        campaign_core_why, past_content_examples, website_url
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)`,
       [
         brand.id,
         kitCards.voiceAdjectives,
@@ -54,18 +70,19 @@ router.post('/save-kit', async (req, res, next) => {
         kitParams.publishingFrequency,
         kitParams.audienceType,
         kitParams.buyerSeniority,
+        kitParams.ageRange,
+        kitParams.industrySector,
+        kitParams.industryTarget,
         kitParams.funnelStage,
         kitParams.toneShift,
         kitParams.proofStyle,
         kitParams.contentRole,
         kitParams.voiceFormality,
+        kitParams.campaignCoreWhy,
         kitParams.pastContentExamples,
         kitParams.websiteUrl,
       ]
     );
-
-    // Mark onboarding complete
-    await pool.query('UPDATE users SET onboarding_complete = TRUE WHERE id = $1', [req.user.id]);
 
     res.json({ brandId: brand.id });
   } catch (err) { next(err); }

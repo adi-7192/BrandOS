@@ -1,18 +1,23 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useOnboarding } from '../../context/OnboardingContext';
+import { useAuth } from '../../context/AuthContext';
 import OnboardingShell from '../../components/layout/OnboardingShell';
 import KitProgressBar from '../../components/layout/KitProgressBar';
 import Button from '../../components/ui/Button';
 import api from '../../services/api';
+import { buildOnboardingSavePayload } from '../../lib/onboarding-flow';
 
 const REGENERATE_CHIPS = ['Tone too formal', 'Tone too casual', 'Wrong vocabulary', 'Too long', 'Too short', 'Weak opening', 'CTA missing'];
 
 export default function S6ConfidenceTest() {
   const navigate = useNavigate();
   const ob = useOnboarding();
+  const { refreshUser } = useAuth();
   const [samplePost, setSamplePost] = useState('');
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
   const [reaction, setReaction] = useState(null); // 'positive' | 'mixed' | 'negative'
   const [regenerateCount, setRegenerateCount] = useState(0);
   const [selectedChips, setSelectedChips] = useState([]);
@@ -39,7 +44,19 @@ export default function S6ConfidenceTest() {
     generate();
   }, []);
 
-  const handleApprove = () => navigate('/onboarding/kit-live');
+  const handleApprove = async () => {
+    setSaveError('');
+    setSaving(true);
+    try {
+      await api.post('/onboarding/save-kit', buildOnboardingSavePayload(ob));
+      await refreshUser();
+      navigate('/onboarding/kit-live');
+    } catch (err) {
+      setSaveError(err.response?.data?.message || 'Failed to complete onboarding. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const approveEnabled = reaction === 'positive' || (reaction === 'mixed' && regenerateCount > 0);
 
@@ -137,13 +154,14 @@ export default function S6ConfidenceTest() {
             </Button>
             <Button
               variant="primary"
-              disabled={!approveEnabled}
+              disabled={!approveEnabled || saving}
               onClick={handleApprove}
               className="flex-1"
             >
-              Approve and continue →
+              {saving ? 'Finalising setup…' : 'Approve and continue →'}
             </Button>
           </div>
+          {saveError && <p className="mt-3 text-sm text-red-500">{saveError}</p>}
         </>
       )}
     </OnboardingShell>

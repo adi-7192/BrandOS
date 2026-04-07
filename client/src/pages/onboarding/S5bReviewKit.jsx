@@ -41,11 +41,11 @@ function KitCard({ title, badge, children, onApprove, approved, reviewed, onOpen
 
 export default function S5bReviewKit() {
   const navigate = useNavigate();
-  const { kitCards, brandName, s4aSkipped, update } = useOnboarding();
+  const { kitCards, brandName, s4aSkipped, campaignCoreWhy, update } = useOnboarding();
   const [approved, setApproved] = useState({ voice: false, vocab: false, restricted: false, channel: false });
   const [reviewed, setReviewed] = useState({ voice: false, vocab: false, restricted: false, channel: false });
-  const [addCoreWhy, setAddCoreWhy] = useState(false);
-  const [coreWhy, setCoreWhy] = useState('');
+  const [addCoreWhy, setAddCoreWhy] = useState(Boolean(campaignCoreWhy));
+  const [coreWhy, setCoreWhy] = useState(campaignCoreWhy || '');
 
   const defaultCards = {
     voiceAdjectives: ['Authentic', 'Confident', 'Approachable'],
@@ -123,7 +123,18 @@ export default function S5bReviewKit() {
       {/* Campaign core why toggle */}
       <div className={`rounded-xl border-2 border-dashed p-4 mb-5 ${addCoreWhy ? 'border-gray-400' : 'border-gray-200'}`}>
         <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-700">
-          <input type="checkbox" checked={addCoreWhy} onChange={e => setAddCoreWhy(e.target.checked)} className="rounded" />
+          <input
+            type="checkbox"
+            checked={addCoreWhy}
+            onChange={e => {
+              setAddCoreWhy(e.target.checked);
+              if (!e.target.checked) {
+                setCoreWhy('');
+                update({ campaignCoreWhy: '' });
+              }
+            }}
+            className="rounded"
+          />
           Add campaign core why
           <span className="ml-1 text-xs text-gray-400">Optional</span>
         </label>
@@ -132,7 +143,10 @@ export default function S5bReviewKit() {
             <textarea
               rows={2}
               value={coreWhy}
-              onChange={e => setCoreWhy(e.target.value)}
+              onChange={e => {
+                setCoreWhy(e.target.value);
+                update({ campaignCoreWhy: e.target.value });
+              }}
               placeholder="e.g. This is not a sale — it's a cultural moment."
               className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm placeholder-gray-400 focus:border-gray-900 focus:outline-none"
             />

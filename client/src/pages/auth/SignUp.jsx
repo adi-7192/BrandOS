@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import Input from '../../components/ui/Input';
 import Button from '../../components/ui/Button';
+import { getPostAuthRoute } from '../../lib/auth-flow';
 
 const GOOGLE_AUTH_URL = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000'}/api/auth/google`;
 
@@ -20,8 +21,8 @@ export default function SignUp() {
     setError('');
     setLoading(true);
     try {
-      await signUp(form);
-      navigate('/onboarding/team');
+      const user = await signUp(form);
+      navigate(getPostAuthRoute(user));
     } catch (err) {
       setError(err.response?.data?.message || 'Sign-up failed. Please try again.');
     } finally {
@@ -37,10 +38,6 @@ export default function SignUp() {
           <p className="mt-1 text-sm text-gray-500">Enterprise content generation, calibrated to your brands.</p>
         </div>
 
-        {/* SSO primary */}
-        <Button variant="secondary" className="w-full mb-3">
-          Continue with SSO — Okta · OneLogin · SAML 2.0
-        </Button>
         <Button variant="secondary" className="w-full mb-5" onClick={() => { window.location.href = GOOGLE_AUTH_URL; }}>
           Continue with Google Workspace
         </Button>

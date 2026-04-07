@@ -34,8 +34,8 @@ export default function S7KitLive() {
       </div>
 
       <div className="flex flex-col gap-3">
-        <Button variant="primary" className="w-full" onClick={() => navigate('/inbox')}>
-          Start generating content
+        <Button variant="primary" className="w-full" onClick={() => navigate('/dashboard')}>
+          Go to dashboard
         </Button>
         <button onClick={() => navigate('/onboarding/brand-name')} className="text-sm text-center text-gray-500 hover:underline">
           Add another brand

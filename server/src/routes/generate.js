@@ -31,6 +31,7 @@ router.post('/brief', async (req, res, next) => {
 
     res.json({
       brief: {
+        brandId: merged.brand_id,
         brandName: merged.brand_name,
         voiceAdjectives: merged.voice_adjectives,
         language: merged.language,
@@ -41,6 +42,7 @@ router.post('/brief', async (req, res, next) => {
         keyMessage: merged.extracted?.keyMessage,
         restrictedWords: merged.restricted_words,
         lowConfidence,
+        sourceCardIds: cardIds,
       },
     });
   } catch (err) { next(err); }

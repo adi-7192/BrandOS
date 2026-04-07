@@ -7,12 +7,17 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const refreshUser = async () => {
+    const res = await api.get('/auth/me');
+    setUser(res.data.user);
+    return res.data.user;
+  };
+
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
       api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      api.get('/auth/me')
-        .then(res => setUser(res.data.user))
+      refreshUser()
         .catch(() => localStorage.removeItem('token'))
         .finally(() => setLoading(false));
     } else {
@@ -41,7 +46,11 @@ export function AuthProvider({ children }) {
   const handleGoogleToken = async (token) => {
     localStorage.setItem('token', token);
     api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-    const res = await api.get('/auth/me');
+    return refreshUser();
+  };
+
+  const updateProfile = async (data) => {
+    const res = await api.patch('/auth/profile', data);
     setUser(res.data.user);
     return res.data.user;
   };
@@ -53,7 +62,7 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, signIn, signUp, signOut, handleGoogleToken }}>
+    <AuthContext.Provider value={{ user, loading, signIn, signUp, signOut, handleGoogleToken, refreshUser, updateProfile }}>
       {children}
     </AuthContext.Provider>
   );

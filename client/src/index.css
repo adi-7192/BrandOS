@@ -1,15 +1,109 @@
+@import url('https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700;800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --brand-bg: #f7f9fc;
+    --brand-surface: #ffffff;
+    --brand-surface-subtle: #eef2f7;
+    --brand-text: #111827;
+    --brand-text-muted: #667085;
+    --brand-border: #d7dfea;
+    --brand-primary: #2563eb;
+    --brand-primary-hover: #1d4ed8;
+    --brand-primary-soft: #dbeafe;
+    --brand-accent: #8fb4ff;
+    --brand-success: #178a5b;
+    --brand-warning: #c97a10;
+    --brand-danger: #d14343;
+    --brand-shadow: 0 20px 60px rgba(15, 23, 42, 0.08);
+    --brand-shadow-sm: 0 12px 30px rgba(15, 23, 42, 0.05);
+  }
+
+  @keyframes dashboard-enter {
+    from {
+      opacity: 0;
+      transform: translate3d(0, 18px, 0);
+    }
+
+    to {
+      opacity: 1;
+      transform: translate3d(0, 0, 0);
+    }
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
   body {
-    @apply text-gray-900 bg-white antialiased;
-    font-family: 'Inter', system-ui, sans-serif;
+    @apply antialiased;
+    background: var(--brand-bg);
+    color: var(--brand-text);
+    font-family: 'Jost', system-ui, sans-serif;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: 'Playfair Display', Georgia, serif;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
   }
 }
 
 @layer utilities {
+  .bg-brand {
+    background: var(--brand-bg);
+  }
+
+  .bg-brand-surface {
+    background: var(--brand-surface);
+  }
+
+  .bg-brand-surface-subtle {
+    background: var(--brand-surface-subtle);
+  }
+
+  .text-brand {
+    color: var(--brand-text);
+  }
+
+  .text-brand-muted {
+    color: var(--brand-text-muted);
+  }
+
+  .border-brand {
+    border-color: var(--brand-border);
+  }
+
+  .shadow-brand {
+    box-shadow: var(--brand-shadow);
+  }
+
+  .shadow-brand-sm {
+    box-shadow: var(--brand-shadow-sm);
+  }
+
+  .font-brand-heading {
+    font-family: 'Playfair Display', Georgia, serif;
+  }
+
+  .animate-dashboard-enter {
+    animation: dashboard-enter 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+    will-change: transform, opacity;
+  }
+
   .chip {
     @apply inline-flex items-center px-3 py-1 rounded-full text-sm font-medium;
   }
@@ -27,5 +121,11 @@
   }
   .chip-amber {
     @apply chip bg-amber-100 text-amber-700;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-dashboard-enter {
+    animation: none;
   }
 }

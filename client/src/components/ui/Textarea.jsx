@@ -17,7 +17,7 @@ export default function Textarea({ label, tooltip, error, required, className = 
       )}
       <textarea
         rows={4}
-        className={`w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm placeholder-gray-400 focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900 resize-y ${error ? 'border-red-400' : ''} ${className}`}
+        className={`w-full resize-y rounded-lg border border-[var(--brand-border)] bg-[var(--brand-surface)] px-3 py-2.5 text-sm text-[var(--brand-text)] placeholder-[var(--brand-text-muted)] focus:border-[var(--brand-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary-soft)] ${error ? 'border-red-400' : ''} ${className}`}
         {...props}
       />
       {error && <p className="text-xs text-red-500">{error}</p>}

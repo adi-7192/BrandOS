@@ -11,6 +11,7 @@ router.get('/', async (req, res, next) => {
     const ws = await getWorkspace(req.user.id);
     const { rows } = await pool.query(
       `SELECT b.*, k.voice_adjectives, k.vocabulary, k.restricted_words, k.content_goal,
+              k.audience_type,
               k.publishing_frequency, k.version as kit_version
        FROM brands b
        LEFT JOIN brand_kits k ON k.brand_id = b.id AND k.is_active = TRUE
@@ -28,6 +29,7 @@ router.get('/:id', async (req, res, next) => {
     const { rows } = await pool.query(
       `SELECT b.*, k.voice_adjectives, k.vocabulary, k.restricted_words,
               k.channel_rules_linkedin, k.channel_rules_blog, k.content_goal,
+              k.audience_type,
               k.publishing_frequency, k.version as kit_version
        FROM brands b
        LEFT JOIN brand_kits k ON k.brand_id = b.id AND k.is_active = TRUE
@@ -58,6 +60,7 @@ function formatBrand(row) {
       restrictedWords: row.restricted_words || [],
       contentGoal: row.content_goal,
       publishingFrequency: row.publishing_frequency,
+      audienceType: row.audience_type,
       channelRulesLinkedin: row.channel_rules_linkedin,
       channelRulesBlog: row.channel_rules_blog,
     },
