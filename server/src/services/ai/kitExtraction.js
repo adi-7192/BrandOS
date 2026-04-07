@@ -1,4 +1,4 @@
-import anthropic, { MODEL } from './client.js';
+import { callAI } from './client.js';
 
 /**
  * Extract brand kit cards from seed content using Claude.
@@ -53,14 +53,7 @@ ${websiteUrl ? `Website URL (assume content was read): ${websiteUrl}` : ''}
 
 ${pastContentExamples ? `Past content examples:\n${pastContentExamples}` : 'No past content examples provided.'}`;
 
-  const msg = await anthropic.messages.create({
-    model: MODEL,
-    max_tokens: 800,
-    system: systemPrompt,
-    messages: [{ role: 'user', content: userMessage }],
-  });
-
-  const raw = msg.content[0].text.trim();
+  const raw = await callAI(systemPrompt, userMessage, 800);
 
   try {
     return JSON.parse(raw);

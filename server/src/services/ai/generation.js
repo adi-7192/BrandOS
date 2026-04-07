@@ -1,4 +1,4 @@
-import anthropic, { MODEL } from './client.js';
+import { callAI } from './client.js';
 
 /**
  * Generate a confidence test sample post using kit + brief context.
@@ -21,14 +21,7 @@ Requirements:
 - Max 2 hashtags
 - Write in ${brandLanguage || 'English'}`;
 
-  const msg = await anthropic.messages.create({
-    model: MODEL,
-    max_tokens: 400,
-    system: systemPrompt,
-    messages: [{ role: 'user', content: userMessage }],
-  });
-
-  return msg.content[0].text.trim();
+  return await callAI(systemPrompt, userMessage, 400);
 }
 
 /**
@@ -75,14 +68,7 @@ Return ONLY a JSON object:
   "blog": "full blog post text"
 }`;
 
-  const msg = await anthropic.messages.create({
-    model: MODEL,
-    max_tokens: 2000,
-    system: systemPrompt,
-    messages: [{ role: 'user', content: userMessage }],
-  });
-
-  const raw = msg.content[0].text.trim();
+  const raw = await callAI(systemPrompt, userMessage, 2000);
   try {
     return JSON.parse(raw);
   } catch {
@@ -118,14 +104,7 @@ Apply the instruction while keeping the brand voice. Return ONLY a JSON object:
   "blog": "updated blog post"
 }`;
 
-  const msg = await anthropic.messages.create({
-    model: MODEL,
-    max_tokens: 2000,
-    system: systemPrompt,
-    messages: [{ role: 'user', content: userMessage }],
-  });
-
-  const raw = msg.content[0].text.trim();
+  const raw = await callAI(systemPrompt, userMessage, 2000);
   try {
     return JSON.parse(raw);
   } catch {

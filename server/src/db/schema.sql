@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS users (
   last_name TEXT NOT NULL,
   email TEXT UNIQUE NOT NULL,
   password_hash TEXT,
+  google_id TEXT UNIQUE,
   company_name TEXT NOT NULL,
   role TEXT,
   team TEXT,
@@ -17,6 +18,16 @@ CREATE TABLE IF NOT EXISTS users (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Idempotent: add google_id to existing installs
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'users' AND column_name = 'google_id'
+  ) THEN
+    ALTER TABLE users ADD COLUMN google_id TEXT UNIQUE;
+  END IF;
+END $$;
 
 -- Workspaces
 CREATE TABLE IF NOT EXISTS workspaces (

@@ -12,6 +12,89 @@ const sign = (user) => jwt.sign(
   { expiresIn: '7d' }
 );
 
+// ─── Google OAuth ───────────────────────────────────────────────────────────
+
+// GET /api/auth/google  → redirect to Google consent screen
+router.get('/google', (_req, res) => {
+  const params = new URLSearchParams({
+    client_id: process.env.GOOGLE_CLIENT_ID,
+    redirect_uri: process.env.GOOGLE_REDIRECT_URI,
+    response_type: 'code',
+    scope: 'openid email profile',
+    access_type: 'offline',
+    prompt: 'select_account',
+  });
+  res.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params}`);
+});
+
+// GET /api/auth/google/callback  → exchange code, upsert user, issue JWT
+router.get('/google/callback', async (req, res, next) => {
+  try {
+    const { code, error } = req.query;
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+
+    if (error || !code) {
+      return res.redirect(`${frontendUrl}/signin?error=google_cancelled`);
+    }
+
+    // Exchange code for tokens
+    const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        code,
+        client_id: process.env.GOOGLE_CLIENT_ID,
+        client_secret: process.env.GOOGLE_CLIENT_SECRET,
+        redirect_uri: process.env.GOOGLE_REDIRECT_URI,
+        grant_type: 'authorization_code',
+      }),
+    });
+    const tokenData = await tokenRes.json();
+    if (!tokenData.access_token) {
+      return res.redirect(`${frontendUrl}/signin?error=google_token_failed`);
+    }
+
+    // Fetch Google profile
+    const profileRes = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+      headers: { Authorization: `Bearer ${tokenData.access_token}` },
+    });
+    const profile = await profileRes.json();
+    if (!profile.email) {
+      return res.redirect(`${frontendUrl}/signin?error=google_no_email`);
+    }
+
+    const companyName = profile.hd || profile.email.split('@')[1] || 'My Company';
+
+    // Upsert: find by google_id or email, create if neither exists
+    const { rows } = await pool.query(
+      `INSERT INTO users (first_name, last_name, email, google_id, company_name)
+       VALUES ($1, $2, $3, $4, $5)
+       ON CONFLICT (email) DO UPDATE
+         SET google_id = EXCLUDED.google_id,
+             first_name = COALESCE(NULLIF(users.first_name, ''), EXCLUDED.first_name),
+             last_name  = COALESCE(NULLIF(users.last_name,  ''), EXCLUDED.last_name)
+       RETURNING *`,
+      [
+        profile.given_name || profile.name?.split(' ')[0] || '',
+        profile.family_name || profile.name?.split(' ').slice(1).join(' ') || '',
+        profile.email.toLowerCase(),
+        profile.id,
+        companyName,
+      ]
+    );
+    const user = rows[0];
+
+    // Create workspace if this is the first time
+    const wsCheck = await pool.query('SELECT id FROM workspaces WHERE user_id = $1', [user.id]);
+    if (wsCheck.rowCount === 0) {
+      await pool.query('INSERT INTO workspaces (user_id, company_name) VALUES ($1, $2)', [user.id, companyName]);
+    }
+
+    const token = sign(user);
+    res.redirect(`${frontendUrl}/auth/callback?token=${token}`);
+  } catch (err) { next(err); }
+});
+
 // POST /api/auth/signup
 router.post('/signup', async (req, res, next) => {
   try {
