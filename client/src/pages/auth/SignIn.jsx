@@ -5,7 +5,7 @@ import Input from '../../components/ui/Input';
 import Button from '../../components/ui/Button';
 import { getPostAuthRoute } from '../../lib/auth-flow';
 
-const GOOGLE_AUTH_URL = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000'}/api/auth/google`;
+const GOOGLE_AUTH_URL = '/api/auth/google';
 
 export default function SignIn() {
   const navigate = useNavigate();
