@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import pool from '../db/pool.js';
 import { authenticate } from '../middleware/auth.js';
 import { getIntentState } from '../services/intentSignals.js';
+import { getFrontendUrl, getGoogleRedirectUri } from '../lib/public-url.js';
 
 const router = Router();
 
@@ -16,10 +17,10 @@ const sign = (user) => jwt.sign(
 // ─── Google OAuth ───────────────────────────────────────────────────────────
 
 // GET /api/auth/google  → redirect to Google consent screen
-router.get('/google', (_req, res) => {
+router.get('/google', (req, res) => {
   const params = new URLSearchParams({
     client_id: process.env.GOOGLE_CLIENT_ID,
-    redirect_uri: process.env.GOOGLE_REDIRECT_URI,
+    redirect_uri: getGoogleRedirectUri(req),
     response_type: 'code',
     scope: 'openid email profile',
     access_type: 'offline',
@@ -32,7 +33,8 @@ router.get('/google', (_req, res) => {
 router.get('/google/callback', async (req, res, next) => {
   try {
     const { code, error } = req.query;
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const frontendUrl = getFrontendUrl(req);
+    const googleRedirectUri = getGoogleRedirectUri(req);
 
     if (error || !code) {
       return res.redirect(`${frontendUrl}/signin?error=google_cancelled`);
@@ -46,7 +48,7 @@ router.get('/google/callback', async (req, res, next) => {
         code,
         client_id: process.env.GOOGLE_CLIENT_ID,
         client_secret: process.env.GOOGLE_CLIENT_SECRET,
-        redirect_uri: process.env.GOOGLE_REDIRECT_URI,
+        redirect_uri: googleRedirectUri,
         grant_type: 'authorization_code',
       }),
     });
