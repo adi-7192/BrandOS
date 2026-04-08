@@ -1,11 +1,25 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY  // service role key bypasses RLS for server-side uploads
-);
-
 const BUCKET = process.env.SUPABASE_STORAGE_BUCKET || 'brand-guidelines';
+
+export function getSupabaseStorageClient({
+  supabaseUrl = process.env.SUPABASE_URL,
+  serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY,
+  create = createClient,
+} = {}) {
+  if (!supabaseUrl) {
+    throw new Error('Missing SUPABASE_URL for storage uploads.');
+  }
+
+  if (!serviceRoleKey) {
+    throw new Error('Missing SUPABASE_SERVICE_ROLE_KEY for storage uploads.');
+  }
+
+  return create(
+    supabaseUrl,
+    serviceRoleKey // service role key bypasses RLS for server-side uploads
+  );
+}
 
 /**
  * Upload a brand guideline file (PDF or DOCX) to Supabase Storage.
@@ -17,6 +31,7 @@ const BUCKET = process.env.SUPABASE_STORAGE_BUCKET || 'brand-guidelines';
  * @param {string} mimetype - e.g. 'application/pdf'
  */
 export async function uploadBrandGuideline({ buffer, filename, brandId, resourceKey, mimetype }) {
+  const supabase = getSupabaseStorageClient();
   const ext = filename.split('.').pop();
   const namespace = resourceKey || brandId || 'brand-guidelines';
   const safeFilename = String(filename || 'guideline')
@@ -43,6 +58,7 @@ export async function uploadBrandGuideline({ buffer, filename, brandId, resource
  * @param {string} path - The storage path returned at upload time
  */
 export async function deleteBrandGuideline(path) {
+  const supabase = getSupabaseStorageClient();
   const { error } = await supabase.storage.from(BUCKET).remove([path]);
   if (error) throw new Error(`Supabase Storage delete failed: ${error.message}`);
 }
