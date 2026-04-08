@@ -70,8 +70,8 @@ router.get('/google/callback', async (req, res, next) => {
 
     // Upsert: find by google_id or email, create if neither exists
     const { rows } = await pool.query(
-      `INSERT INTO users (first_name, last_name, email, google_id, company_name)
-       VALUES ($1, $2, $3, $4, $5)
+      `INSERT INTO users (first_name, last_name, email, google_id, company_name, workspace_profile_completed)
+       VALUES ($1, $2, $3, $4, $5, FALSE)
        ON CONFLICT (email) DO UPDATE
          SET google_id = EXCLUDED.google_id,
              first_name = COALESCE(NULLIF(users.first_name, ''), EXCLUDED.first_name),
@@ -111,8 +111,8 @@ router.post('/signup', async (req, res, next) => {
 
     const passwordHash = await bcrypt.hash(password, 12);
     const { rows } = await pool.query(
-      `INSERT INTO users (first_name, last_name, email, company_name, password_hash)
-       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+      `INSERT INTO users (first_name, last_name, email, company_name, password_hash, workspace_profile_completed)
+       VALUES ($1, $2, $3, $4, $5, TRUE) RETURNING *`,
       [firstName, lastName, email.toLowerCase(), companyName, passwordHash]
     );
     const user = rows[0];
@@ -159,6 +159,7 @@ router.patch('/profile', authenticate, async (req, res, next) => {
     const { rows } = await pool.query(
       `UPDATE users
        SET company_name = $1,
+           workspace_profile_completed = TRUE,
            updated_at = NOW()
        WHERE id = $2
        RETURNING *`,
@@ -183,6 +184,7 @@ async function formatUser(u) {
     lastName: u.last_name,
     email: u.email,
     companyName: u.company_name,
+    workspaceProfileCompleted: Boolean(u.workspace_profile_completed),
     onboardingComplete: u.onboarding_complete,
     intentState: await getIntentState(u.id),
   };

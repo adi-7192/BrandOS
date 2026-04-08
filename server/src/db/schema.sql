@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS users (
   role TEXT,
   team TEXT,
   brand_count TEXT,
+  workspace_profile_completed BOOLEAN DEFAULT FALSE,
   preferred_inbox_view TEXT DEFAULT 'updates',
   include_original_email BOOLEAN DEFAULT TRUE,
   forwarding_enabled BOOLEAN DEFAULT TRUE,
@@ -36,6 +37,13 @@ DO $$ BEGIN
 END $$;
 
 DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'users' AND column_name = 'workspace_profile_completed'
+  ) THEN
+    ALTER TABLE users ADD COLUMN workspace_profile_completed BOOLEAN DEFAULT FALSE;
+  END IF;
+
   IF NOT EXISTS (
     SELECT 1 FROM information_schema.columns
     WHERE table_name = 'users' AND column_name = 'preferred_inbox_view'
@@ -78,6 +86,11 @@ DO $$ BEGIN
     ALTER TABLE users ADD COLUMN preferred_output_length TEXT DEFAULT 'standard';
   END IF;
 END $$;
+
+UPDATE users
+SET workspace_profile_completed = TRUE
+WHERE workspace_profile_completed IS DISTINCT FROM TRUE
+  AND (password_hash IS NOT NULL OR onboarding_complete = TRUE);
 
 -- Workspaces
 CREATE TABLE IF NOT EXISTS workspaces (

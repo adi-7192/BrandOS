@@ -1,5 +1,5 @@
 export function needsWorkspaceProfileCompletion(user) {
-  return !user?.companyName;
+  return !user?.workspaceProfileCompleted;
 }
 
 export function getPostAuthRoute(user) {
