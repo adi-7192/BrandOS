@@ -65,6 +65,8 @@ export function buildKitExtractionUserMessage(params) {
   const {
     brandName,
     websiteUrl,
+    websiteUrls,
+    websiteSummary,
     pastContentExamples,
     guidelineTextExcerpt,
     audienceType,
@@ -100,7 +102,9 @@ Content role: ${contentRole || 'Not specified'}
 Formality level: ${voiceFormality ?? 'Balanced'}
 Publishing frequency: ${publishingFrequency || 'Weekly'}
 
-${websiteUrl ? `Website URL (assume content was read): ${websiteUrl}` : ''}
+${websiteUrl ? `Primary website URL: ${websiteUrl}` : ''}
+${websiteUrls?.length ? `Seed website URLs:\n${websiteUrls.join('\n')}` : ''}
+${websiteSummary ? `${websiteSummary}` : 'No website content summary available.'}
 
 ${pastContentExamples ? `Past content examples:\n${pastContentExamples}` : 'No past content examples provided.'}
 

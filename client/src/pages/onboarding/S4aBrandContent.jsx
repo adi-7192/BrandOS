@@ -8,9 +8,40 @@ import Button from '../../components/ui/Button';
 
 export default function S4aBrandContent() {
   const navigate = useNavigate();
-  const { brandName, websiteUrl, pastContentExamples, brandGuidelinesFile, update } = useOnboarding();
+  const {
+    brandName,
+    websiteUrl,
+    websiteUrls,
+    pastContentExamples,
+    brandGuidelinesFile,
+    update,
+  } = useOnboarding();
 
   const handleFileChange = (e) => update({ brandGuidelinesFile: e.target.files[0] || null });
+  const seedUrls = [websiteUrl, ...(websiteUrls || [])];
+
+  const handleWebsiteUrlChange = (index, value) => {
+    if (index === 0) {
+      update({ websiteUrl: value });
+      return;
+    }
+
+    const next = [...(websiteUrls || [])];
+    next[index - 1] = value;
+    update({ websiteUrls: next });
+  };
+
+  const addWebsiteUrl = () => update({ websiteUrls: [...(websiteUrls || []), ''] });
+  const removeWebsiteUrl = (index) => {
+    if (index === 0) {
+      update({ websiteUrl: '' });
+      return;
+    }
+
+    const next = [...(websiteUrls || [])];
+    next.splice(index - 1, 1);
+    update({ websiteUrls: next });
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -33,14 +64,41 @@ export default function S4aBrandContent() {
       <p className="text-sm text-gray-500 mb-8">All optional — but the more you provide, the more accurate the kit.</p>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-        <Input
-          label="Website URL"
-          type="url"
-          placeholder="https://bhvmarais.com"
-          value={websiteUrl}
-          onChange={e => update({ websiteUrl: e.target.value })}
-          tooltip="The AI reads your site to understand how this brand writes — structure, tone, and vocabulary come from what's already live."
-        />
+        <div className="flex flex-col gap-3">
+          <label className="flex items-center gap-1 text-sm font-medium text-gray-700">
+            Website URL
+            <span className="ml-1 text-gray-400 text-xs">(Start with one. Add more only if you want to guide the crawl.)</span>
+          </label>
+          {seedUrls.map((value, index) => (
+            <div key={index} className="flex items-center gap-2">
+              <Input
+                type="url"
+                placeholder={index === 0 ? 'https://brand.com' : 'https://brand.com/about'}
+                value={value}
+                onChange={e => handleWebsiteUrlChange(index, e.target.value)}
+                tooltip={index === 0
+                  ? 'BrandOS will scan relevant pages automatically from this URL to understand products, positioning, and brand language.'
+                  : 'Optional extra URL. Use this only if there is a specific section you want BrandOS to prioritize.'}
+              />
+              {seedUrls.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => removeWebsiteUrl(index)}
+                  className="shrink-0 rounded-lg border border-[var(--brand-border)] px-3 py-2 text-sm text-[var(--brand-text-muted)] transition-colors hover:text-[var(--brand-text)]"
+                >
+                  Remove
+                </button>
+              )}
+            </div>
+          ))}
+          <button
+            type="button"
+            onClick={addWebsiteUrl}
+            className="w-fit text-sm font-medium text-[var(--brand-primary)] transition-colors hover:text-[var(--brand-primary-hover)]"
+          >
+            + Add another URL
+          </button>
+        </div>
         <Textarea
           label="Past content examples"
           placeholder="Paste a past campaign, LinkedIn post, blog excerpt, or any copy that already sounds like this brand…"

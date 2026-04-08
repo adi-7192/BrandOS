@@ -7,6 +7,7 @@ test('buildExtractKitRequest returns JSON payload when no guideline file is pres
   const request = buildExtractKitRequest({
     brandName: 'BHV Marais',
     websiteUrl: 'https://example.com',
+    websiteUrls: ['https://example.com', 'https://example.com/about'],
     pastContentExamples: 'Example',
     brandGuidelinesFile: null,
     audienceType: 'Urban creatives',
@@ -16,6 +17,7 @@ test('buildExtractKitRequest returns JSON payload when no guideline file is pres
   assert.deepEqual(request.config, undefined);
   assert.equal(request.data.brandName, 'BHV Marais');
   assert.equal(request.data.websiteUrl, 'https://example.com');
+  assert.deepEqual(request.data.websiteUrls, ['https://example.com', 'https://example.com/about']);
   assert.equal(request.data.audienceType, 'Urban creatives');
 });
 
@@ -26,7 +28,8 @@ test('buildExtractKitRequest returns multipart payload when a guideline file is 
 
   const request = buildExtractKitRequest({
     brandName: 'BHV Marais',
-    websiteUrl: '',
+    websiteUrl: 'https://example.com',
+    websiteUrls: ['https://example.com', 'https://example.com/about'],
     pastContentExamples: 'Example',
     brandGuidelinesFile: file,
     audienceType: 'Urban creatives',
@@ -36,6 +39,8 @@ test('buildExtractKitRequest returns multipart payload when a guideline file is 
   assert.equal(request.config.headers['Content-Type'], 'multipart/form-data');
   assert.equal(request.data instanceof FormData, true);
   assert.equal(request.data.get('brandName'), 'BHV Marais');
+  assert.equal(request.data.get('websiteUrl'), 'https://example.com');
+  assert.equal(request.data.get('websiteUrls'), JSON.stringify(['https://example.com', 'https://example.com/about']));
   assert.equal(request.data.get('pastContentExamples'), 'Example');
   assert.equal(request.data.get('audienceType'), 'Urban creatives');
   assert.equal(request.data.get('brandGuidelinesFile').name, 'brand-guide.docx');

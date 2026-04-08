@@ -16,6 +16,8 @@ const initialState = {
   contentTypesInterest: [],
   // S4a
   websiteUrl: '',
+  websiteUrls: [],
+  websiteSummary: '',
   pastContentExamples: '',
   brandGuidelinesFile: null,
   guidelineFileUrl: '',

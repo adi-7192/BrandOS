@@ -1,7 +1,13 @@
 export function buildExtractKitRequest(state) {
+  const websiteUrls = [...new Set(
+    [state.websiteUrl, ...(state.websiteUrls || [])]
+      .map((value) => String(value || '').trim())
+      .filter(Boolean)
+  )];
   const payload = {
     brandName: state.brandName,
     websiteUrl: state.websiteUrl,
+    websiteUrls,
     pastContentExamples: state.pastContentExamples,
     audienceType: state.audienceType,
     buyerSeniority: state.buyerSeniority,
@@ -27,7 +33,7 @@ export function buildExtractKitRequest(state) {
   const formData = new FormData();
   Object.entries(payload).forEach(([key, value]) => {
     if (value !== undefined && value !== null) {
-      formData.append(key, String(value));
+      formData.append(key, Array.isArray(value) ? JSON.stringify(value) : String(value));
     }
   });
   formData.append('brandGuidelinesFile', state.brandGuidelinesFile);

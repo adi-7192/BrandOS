@@ -9,6 +9,8 @@ export function buildOnboardingSavePayload(state) {
     primaryMarket: state.primaryMarket,
     brandLanguage: state.brandLanguage,
     websiteUrl: state.websiteUrl,
+    websiteUrls: state.websiteUrls,
+    websiteSummary: state.websiteSummary,
     pastContentExamples: state.pastContentExamples,
     guidelineFileUrl: state.guidelineFileUrl,
     guidelineFileName: state.guidelineFileName,

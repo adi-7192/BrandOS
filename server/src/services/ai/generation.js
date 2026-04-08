@@ -136,6 +136,7 @@ Vocabulary to use: ${kit.vocabulary?.join(', ')}
 NEVER use these words: ${kit.restrictedWords?.join(', ')}
 Brand-specific LinkedIn rule: ${kit.channelRules?.linkedin || 'Hook in line 1 · Max 3 hashtags · No em dashes'}
 Brand-specific blog rule: ${kit.channelRules?.blog || 'Use subheadings and a clear closing'}
+Website evidence summary: ${kit.websiteSummary || 'No website evidence summary available'}
 Guideline excerpt: ${kit.guidelineTextExcerpt || 'No uploaded guideline excerpt available'}
 
 LinkedIn requirements:

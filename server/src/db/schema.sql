@@ -141,6 +141,8 @@ CREATE TABLE IF NOT EXISTS brand_kits (
   campaign_core_why TEXT,
   past_content_examples TEXT,
   website_url TEXT,
+  website_urls TEXT[] DEFAULT '{}',
+  website_summary TEXT,
   guideline_file_url TEXT,
   guideline_file_name TEXT,
   guideline_storage_path TEXT,
@@ -151,6 +153,18 @@ CREATE TABLE IF NOT EXISTS brand_kits (
 );
 
 DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'brand_kits' AND column_name = 'website_urls'
+  ) THEN
+    ALTER TABLE brand_kits ADD COLUMN website_urls TEXT[] DEFAULT '{}';
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'brand_kits' AND column_name = 'website_summary'
+  ) THEN
+    ALTER TABLE brand_kits ADD COLUMN website_summary TEXT;
+  END IF;
   IF NOT EXISTS (
     SELECT 1 FROM information_schema.columns
     WHERE table_name = 'brand_kits' AND column_name = 'guideline_file_url'

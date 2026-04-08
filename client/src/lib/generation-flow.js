@@ -72,6 +72,8 @@ export function buildManualBriefFromBrand(brand) {
       campaignCoreWhy: kit.campaignCoreWhy || '',
       pastContentExamples: kit.pastContentExamples || '',
       websiteUrl: kit.websiteUrl || '',
+      websiteUrls: kit.websiteUrls || [],
+      websiteSummary: kit.websiteSummary || '',
       guidelineFileUrl: kit.guidelineFileUrl || '',
       guidelineFileName: kit.guidelineFileName || '',
       guidelineStoragePath: kit.guidelineStoragePath || '',

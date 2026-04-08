@@ -7,7 +7,7 @@ import api from '../../services/api';
 import { buildExtractKitRequest } from '../../lib/onboarding-extraction';
 
 const STEPS = [
-  'Reading website content',
+  'Scanning website sources',
   'Identifying brand voice patterns',
   'Extracting vocabulary and tone',
   'Mapping audience signals',
@@ -35,6 +35,9 @@ export default function S5aGenerating() {
         const res = await api.post('/onboarding/extract-kit', request.data, request.config);
         ob.update({
           kitCards: res.data.kitCards,
+          websiteUrl: res.data.website?.seedUrls?.[0] || ob.websiteUrl,
+          websiteUrls: (res.data.website?.seedUrls || []).slice(1),
+          websiteSummary: res.data.website?.summary || '',
           guidelineFileUrl: res.data.guideline?.fileUrl || '',
           guidelineFileName: res.data.guideline?.fileName || '',
           guidelineStoragePath: res.data.guideline?.storagePath || '',

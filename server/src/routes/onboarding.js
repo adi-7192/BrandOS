@@ -5,6 +5,7 @@ import { authenticate } from '../middleware/auth.js';
 import { extractBrandKit } from '../services/ai/kitExtraction.js';
 import { generateConfidenceSample } from '../services/ai/generation.js';
 import { extractGuidelineText } from '../services/extraction/guidelineText.js';
+import { crawlWebsiteSources, normalizeSeedUrls, parseWebsiteUrlsInput } from '../services/extraction/websiteSource.js';
 import { uploadBrandGuideline } from '../services/storage/supabaseStorage.js';
 
 const router = Router();
@@ -21,6 +22,27 @@ router.post('/extract-kit', upload.single('brandGuidelinesFile'), async (req, re
     const params = { ...req.body };
     let guideline = null;
     let warning = '';
+
+    params.websiteUrls = normalizeSeedUrls({
+      websiteUrl: params.websiteUrl,
+      websiteUrls: parseWebsiteUrlsInput(params.websiteUrls),
+    });
+    params.websiteUrl = params.websiteUrls[0] || params.websiteUrl || '';
+
+    if (params.websiteUrls.length > 0) {
+      try {
+        const websiteSources = await crawlWebsiteSources({
+          websiteUrl: params.websiteUrl,
+          websiteUrls: params.websiteUrls,
+        });
+        params.websiteUrls = websiteSources.seedUrls;
+        params.websiteUrl = websiteSources.seedUrls[0] || params.websiteUrl || '';
+        params.websiteSummary = websiteSources.summary;
+      } catch (err) {
+        warning = 'We could not read the website URLs you provided, so BrandOS continued with the rest of your inputs.';
+        console.warn('Website crawl failed during onboarding extract-kit:', err.message);
+      }
+    }
 
     if (req.file) {
       try {
@@ -51,7 +73,15 @@ router.post('/extract-kit', upload.single('brandGuidelinesFile'), async (req, re
     }
 
     const kitCards = await extractBrandKit(params);
-    res.json({ kitCards, guideline, warning });
+    res.json({
+      kitCards,
+      website: {
+        seedUrls: params.websiteUrls,
+        summary: params.websiteSummary || '',
+      },
+      guideline,
+      warning,
+    });
   } catch (err) { next(err); }
 });
 
@@ -109,9 +139,9 @@ router.post('/save-kit', async (req, res, next) => {
         publishing_frequency, audience_type, buyer_seniority,
         age_range, industry_sector, industry_target, funnel_stage,
         tone_shift, proof_style, content_role, formality_level,
-        campaign_core_why, past_content_examples, website_url,
+        campaign_core_why, past_content_examples, website_url, website_urls, website_summary,
         guideline_file_url, guideline_file_name, guideline_storage_path, guideline_text_excerpt
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25)`,
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27)`,
       [
         brand.id,
         kitCards.voiceAdjectives,
@@ -134,6 +164,8 @@ router.post('/save-kit', async (req, res, next) => {
         kitParams.campaignCoreWhy,
         kitParams.pastContentExamples,
         kitParams.websiteUrl,
+        Array.isArray(kitParams.websiteUrls) ? kitParams.websiteUrls : parseWebsiteUrlsInput(kitParams.websiteUrls),
+        kitParams.websiteSummary || null,
         guidelineFileUrl,
         guidelineFileName,
         guidelineStoragePath,
