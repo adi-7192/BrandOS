@@ -6,16 +6,31 @@ const OUTPUT_PROMPTS = [
   { questionKey: 'expansion_intent', threshold: 8 },
 ];
 
+function isMissingRelationError(err) {
+  return err?.code === '42P01';
+}
+
+async function safeIntentQuery(query, fallbackRows = []) {
+  try {
+    return await pool.query(query.text, query.values);
+  } catch (err) {
+    if (isMissingRelationError(err)) {
+      return { rows: fallbackRows };
+    }
+    throw err;
+  }
+}
+
 export async function getIntentState(userId) {
   const [signals, dismissals, countResult] = await Promise.all([
-    pool.query(
-      'SELECT moment, question_key FROM intent_signals WHERE user_id = $1',
-      [userId]
-    ),
-    pool.query(
-      'SELECT moment, question_key FROM intent_prompt_dismissals WHERE user_id = $1',
-      [userId]
-    ),
+    safeIntentQuery({
+      text: 'SELECT moment, question_key FROM intent_signals WHERE user_id = $1',
+      values: [userId],
+    }),
+    safeIntentQuery({
+      text: 'SELECT moment, question_key FROM intent_prompt_dismissals WHERE user_id = $1',
+      values: [userId],
+    }),
     pool.query(
       `SELECT COUNT(d.id) AS draft_count
        FROM drafts d
@@ -46,31 +61,43 @@ export async function getIntentState(userId) {
 }
 
 export async function recordIntentSignal({ userId, moment, questionKey, answer, contentPieceCount }) {
-  await pool.query(
-    `INSERT INTO intent_signals (user_id, moment, question_key, answer, content_piece_count)
-     VALUES ($1, $2, $3, $4, $5)
-     ON CONFLICT (user_id, moment, question_key) DO UPDATE
-       SET answer = EXCLUDED.answer,
-           content_piece_count = EXCLUDED.content_piece_count,
-           created_at = NOW()`,
-    [userId, moment, questionKey, answer, contentPieceCount || null]
-  );
-
-  if (questionKey === 'expansion_intent' && answer === 'Enterprise-wide rollout consideration') {
+  try {
     await pool.query(
-      `INSERT INTO expansion_leads (user_id)
-       VALUES ($1)
-       ON CONFLICT (user_id) DO NOTHING`,
-      [userId]
+      `INSERT INTO intent_signals (user_id, moment, question_key, answer, content_piece_count)
+       VALUES ($1, $2, $3, $4, $5)
+       ON CONFLICT (user_id, moment, question_key) DO UPDATE
+         SET answer = EXCLUDED.answer,
+             content_piece_count = EXCLUDED.content_piece_count,
+             created_at = NOW()`,
+      [userId, moment, questionKey, answer, contentPieceCount || null]
     );
+
+    if (questionKey === 'expansion_intent' && answer === 'Enterprise-wide rollout consideration') {
+      await pool.query(
+        `INSERT INTO expansion_leads (user_id)
+         VALUES ($1)
+         ON CONFLICT (user_id) DO NOTHING`,
+        [userId]
+      );
+    }
+  } catch (err) {
+    if (!isMissingRelationError(err)) {
+      throw err;
+    }
   }
 }
 
 export async function dismissIntentPrompt({ userId, moment, questionKey, contentPieceCount }) {
-  await pool.query(
-    `INSERT INTO intent_prompt_dismissals (user_id, moment, question_key, content_piece_count)
-     VALUES ($1, $2, $3, $4)
-     ON CONFLICT (user_id, moment, question_key) DO NOTHING`,
-    [userId, moment, questionKey, contentPieceCount || null]
-  );
+  try {
+    await pool.query(
+      `INSERT INTO intent_prompt_dismissals (user_id, moment, question_key, content_piece_count)
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT (user_id, moment, question_key) DO NOTHING`,
+      [userId, moment, questionKey, contentPieceCount || null]
+    );
+  } catch (err) {
+    if (!isMissingRelationError(err)) {
+      throw err;
+    }
+  }
 }
