@@ -1,7 +1,4 @@
 import mammoth from 'mammoth';
-import * as pdfParseModule from 'pdf-parse';
-
-const pdfParse = pdfParseModule.default || pdfParseModule;
 
 export function normalizeGuidelineText(raw) {
   return String(raw || '')
@@ -24,6 +21,8 @@ async function defaultExtractDocx(buffer) {
 }
 
 async function defaultExtractPdf(buffer) {
+  const pdfParseModule = await import('pdf-parse');
+  const pdfParse = pdfParseModule.default || pdfParseModule;
   const result = await pdfParse(buffer);
   return result.text;
 }
