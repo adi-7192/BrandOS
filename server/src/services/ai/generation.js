@@ -54,6 +54,34 @@ export async function generateContent({ brief, sections }) {
   return data;
 }
 
+export async function generatePreviewSuggestions({ brief }) {
+  const kit = brief.kit || {};
+  const systemPrompt = buildSystemPrompt({ brandName: brief.brandName, kit, brandLanguage: brief.language });
+  const userMessage = buildPreviewSuggestionUserMessage({ brief });
+  const raw = await callAI(systemPrompt, userMessage, 900);
+
+  const fallback = buildPreviewSuggestionFallback(brief);
+  const { data, usedFallback } = parseStructuredJson(raw, {
+    fallback,
+    validate: (value) => (
+      typeof value?.linkedin?.hook === 'string' &&
+      typeof value?.linkedin?.body === 'string' &&
+      typeof value?.linkedin?.closing === 'string' &&
+      typeof value?.linkedin?.hashtags === 'string' &&
+      typeof value?.blog?.headline === 'string' &&
+      typeof value?.blog?.opening === 'string' &&
+      typeof value?.blog?.body === 'string' &&
+      typeof value?.blog?.closing === 'string'
+    ),
+  });
+
+  if (usedFallback) {
+    console.warn('Preview suggestion generation returned invalid JSON. Falling back to heuristic preview suggestions.');
+  }
+
+  return data;
+}
+
 /**
  * Iterate on existing content with a natural language instruction.
  * Re-injects full brand kit to prevent drift.
@@ -158,6 +186,76 @@ Return ONLY a JSON object:
   "linkedin": "full linkedin post text",
   "blog": "full blog post text"
 }`;
+} 
+
+export function buildPreviewSuggestionUserMessage({ brief, format }) {
+  const requestedFormat = format === 'linkedin'
+    ? 'LinkedIn post'
+    : format === 'blog'
+      ? 'Blog post'
+      : 'LinkedIn post and blog post';
+  const formatRequirements = format === 'linkedin'
+    ? `LinkedIn structure:
+- "hook": one opening line that earns attention
+- "body": 2-4 short sentences that develop the key message
+- "closing": one CTA or takeaway line
+- "hashtags": 2-3 relevant hashtags`
+    : format === 'blog'
+      ? `Blog structure:
+- "headline": one clear title
+- "opening": 1-2 opening sentences
+- "body": 3-5 sentence summary of the main argument
+- "closing": one concise closing takeaway`
+      : `LinkedIn structure:
+- "hook": one opening line that earns attention
+- "body": 2-4 short sentences that develop the key message
+- "closing": one CTA or takeaway line
+- "hashtags": 2-3 relevant hashtags
+
+Blog structure:
+- "headline": one clear title
+- "opening": 1-2 opening sentences
+- "body": 3-5 sentence summary of the main argument
+- "closing": one concise closing takeaway`;
+
+  return `Draft preview sections for a ${requestedFormat} for ${brief.brandName}.
+
+Campaign: ${brief.campaignName || ''}
+Campaign type: ${brief.campaignType || ''}
+Audience: ${brief.audienceType || brief.audience || ''}
+Tone shift: ${brief.toneShift || 'Keep baseline'}
+Content goal: ${brief.contentGoal || ''}
+Key message: ${brief.keyMessage || ''}
+Language: ${brief.language || 'English'}
+Proof style: ${brief.proofStyle || brief.kit?.proofStyle || 'Brand default'}
+Content role: ${brief.contentRole || brief.kit?.contentRole || 'Standard campaign content'}
+Brand voice: ${brief.kit?.voiceAdjectives?.join(', ') || ''}
+Vocabulary to use: ${brief.kit?.vocabulary?.join(', ') || ''}
+Restricted words to avoid: ${brief.kit?.restrictedWords?.join(', ') || 'none'}
+LinkedIn rule: ${brief.kit?.channelRules?.linkedin || 'Hook in line 1'}
+Blog rule: ${brief.kit?.channelRules?.blog || 'Use subheadings'}
+Website evidence summary: ${brief.kit?.websiteSummary || 'No website evidence summary available'}
+Guideline excerpt: ${brief.kit?.guidelineTextExcerpt || 'No uploaded guideline excerpt available'}
+
+Write suggestions that help a marketer review and tweak quickly. Do not leave fields blank.
+
+${formatRequirements}
+
+Return ONLY a JSON object:
+{
+  "linkedin": {
+    "hook": "opening line suggestion",
+    "body": "main body suggestion",
+    "closing": "closing suggestion",
+    "hashtags": "#tag1 #tag2 #tag3"
+  },
+  "blog": {
+    "headline": "draft headline",
+    "opening": "draft opening",
+    "body": "draft body summary",
+    "closing": "draft closing"
+  }
+}`;
 }
 
 export function buildConfidenceUserMessage({
@@ -209,4 +307,31 @@ Requirements:
 - Strong hook in line 1
 - Max 2 hashtags
 - Write in ${brandLanguage || 'English'}`;
+}
+
+function buildPreviewSuggestionFallback(brief) {
+  const brandSlug = String(brief.brandName || 'brand')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '')
+    .slice(0, 18);
+  const campaignName = brief.campaignName || brief.campaignType || 'your next campaign';
+  const keyMessage = brief.keyMessage || 'Share the core message clearly and credibly.';
+  const audience = brief.audienceType || brief.audience || 'the right audience';
+  const goal = brief.contentGoal || 'move the campaign forward';
+
+  return {
+    linkedin: {
+      hook: `${campaignName} starts with a clearer reason to care.`,
+      body: `${keyMessage} This matters for ${audience}, and the post should make that value obvious without overexplaining.`,
+      closing: `Use this post to ${goal.toLowerCase()}.`,
+      hashtags: `#${brandSlug || 'brand'} #marketing #content`,
+    },
+    blog: {
+      headline: campaignName,
+      opening: `${keyMessage} This draft should quickly orient readers to why the campaign matters now.`,
+      body: `Explain the main idea, add proof or product context, and connect it back to ${audience}.`,
+      closing: `Close by reinforcing the takeaway and helping the reader understand the next step.`,
+    },
+  };
 }

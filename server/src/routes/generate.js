@@ -2,7 +2,7 @@ import { Router } from 'express';
 import pool from '../db/pool.js';
 import { authenticate } from '../middleware/auth.js';
 import { buildCanonicalBrief } from '../services/ai/briefBuilder.js';
-import { generateContent, iterateContent } from '../services/ai/generation.js';
+import { generateContent, generatePreviewSuggestions, iterateContent } from '../services/ai/generation.js';
 import { mapGenerationSessionRow } from '../services/generationSessions.js';
 
 const router = Router();
@@ -189,6 +189,16 @@ router.post('/create', async (req, res, next) => {
     const { brief, sections } = req.body;
     const output = await generateContent({ brief, sections });
     res.json({ output });
+  } catch (err) { next(err); }
+});
+
+// POST /api/generate/preview
+// Draft editable preview sections from the confirmed brief
+router.post('/preview', async (req, res, next) => {
+  try {
+    const { brief } = req.body;
+    const sections = await generatePreviewSuggestions({ brief });
+    res.json({ sections });
   } catch (err) { next(err); }
 });
 

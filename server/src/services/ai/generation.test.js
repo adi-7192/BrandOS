@@ -1,7 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { buildConfidenceUserMessage, buildGenerationUserMessage } from './generation.js';
+import {
+  buildConfidenceUserMessage,
+  buildGenerationUserMessage,
+  buildPreviewSuggestionUserMessage,
+} from './generation.js';
 
 test('buildConfidenceUserMessage creates an initial confidence sample prompt', () => {
   const message = buildConfidenceUserMessage({
@@ -88,4 +92,35 @@ test('buildGenerationUserMessage includes brand memory fields beyond voice and r
   assert.match(message, /Brand-specific LinkedIn rule: Hook in line 1 · Keep it punchy/);
   assert.match(message, /Brand-specific blog rule: Use subheadings and examples/);
   assert.match(message, /Guideline excerpt: Use neighbourhood-first language\. Avoid promotional hype\./);
+});
+
+test('buildPreviewSuggestionUserMessage asks the model to prefill editable preview sections from the brief', () => {
+  const message = buildPreviewSuggestionUserMessage({
+    brief: {
+      brandName: 'Moodway',
+      campaignName: 'Virtual Try-On Launch',
+      campaignType: 'Product launch',
+      audienceType: 'E-commerce teams',
+      contentGoal: 'Drive demo interest',
+      keyMessage: 'Shoppers can try styles before they buy.',
+      language: 'English',
+      kit: {
+        voiceAdjectives: ['Clear', 'Confident'],
+        vocabulary: ['virtual try-on', 'conversion lift'],
+        restrictedWords: ['guaranteed'],
+        channelRules: {
+          linkedin: 'Lead with the shopper problem',
+          blog: 'Use a clear promise in the headline',
+        },
+      },
+    },
+    format: 'linkedin',
+  });
+
+  assert.match(message, /Draft preview sections for a LinkedIn post for Moodway\./);
+  assert.match(message, /Campaign: Virtual Try-On Launch/);
+  assert.match(message, /Audience: E-commerce teams/);
+  assert.match(message, /Key message: Shoppers can try styles before they buy\./);
+  assert.match(message, /Return ONLY a JSON object/);
+  assert.match(message, /"hook": "opening line suggestion"/);
 });

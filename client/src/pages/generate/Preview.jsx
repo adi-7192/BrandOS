@@ -4,13 +4,15 @@ import TopNav from '../../components/layout/TopNav';
 import Button from '../../components/ui/Button';
 import api from '../../services/api';
 import {
+  createInitialPreviewSections,
+  hasPreviewContent,
+  mergePreviewSuggestions,
+} from '../../lib/generation-flow';
+import {
   buildGenerationSessionPayload,
   buildSessionQuery,
   buildSessionRoute,
 } from '../../lib/generation-session';
-
-const LINKEDIN_SECTIONS = ['Hook', 'Body', 'Closing', 'Hashtags'];
-const BLOG_SECTIONS = ['Headline', 'Opening', 'Body', 'Closing'];
 
 function EditableSection({ label, content, onChange }) {
   return (
@@ -36,12 +38,10 @@ export default function Preview() {
   const [sessionId, setSessionId] = useState(sessionIdParam || state?.sessionId || '');
   const [brief, setBrief] = useState(state?.brief || null);
   const [activeFormat, setActiveFormat] = useState(state?.activeTab || 'linkedin');
-  const [sections, setSections] = useState({
-    linkedin: { hook: '', body: '', closing: '', hashtags: '#brand #content #marketing' },
-    blog: { headline: '', opening: '', body: '', closing: '' },
-  });
+  const [sections, setSections] = useState(createInitialPreviewSections());
   const [loading, setLoading] = useState(true);
   const [autosaveState, setAutosaveState] = useState('idle');
+  const [suggestionsState, setSuggestionsState] = useState('idle');
   const initialSnapshotRef = useRef('');
   const lastSavedSnapshotRef = useRef('');
 
@@ -67,22 +67,17 @@ export default function Preview() {
 
           setSessionId(session.id);
           setBrief(session.briefPayload || null);
-          setSections({
-            linkedin: { hook: '', body: '', closing: '', hashtags: '#brand #content #marketing', ...(session.previewPayload?.linkedin || {}) },
-            blog: { headline: '', opening: '', body: '', closing: '', ...(session.previewPayload?.blog || {}) },
-          });
+          const hydratedSections = mergePreviewSuggestions(createInitialPreviewSections(), session.previewPayload || {});
+          setSections(hydratedSections);
           setActiveFormat(session.activeTab || 'linkedin');
-          const snapshot = buildPreviewSnapshot(session.previewPayload || {}, session.activeTab || 'linkedin');
+          const snapshot = buildPreviewSnapshot(hydratedSections, session.activeTab || 'linkedin');
           initialSnapshotRef.current = snapshot;
           lastSavedSnapshotRef.current = snapshot;
           return;
         }
 
         setBrief(state?.brief || null);
-        const initialSections = state?.sections || {
-          linkedin: { hook: '', body: '', closing: '', hashtags: '#brand #content #marketing' },
-          blog: { headline: '', opening: '', body: '', closing: '' },
-        };
+        const initialSections = mergePreviewSuggestions(createInitialPreviewSections(), state?.sections || {});
         setSections(initialSections);
         setActiveFormat(state?.activeTab || 'linkedin');
         const snapshot = buildPreviewSnapshot(initialSections, state?.activeTab || 'linkedin');
@@ -96,8 +91,41 @@ export default function Preview() {
     loadPreview();
   }, [navigate, sessionIdParam, state]);
 
+  useEffect(() => {
+    if (loading || !brief?.brandId) return undefined;
+    if (hasPreviewContent(sections, 'linkedin') || hasPreviewContent(sections, 'blog')) return undefined;
+
+    hydrateSuggestions({ mode: 'merge' }).catch(() => {});
+    return undefined;
+  }, [brief?.brandId, loading]);
+
   const updateSection = (format, key, val) => {
     setSections(s => ({ ...s, [format]: { ...s[format], [key]: val } }));
+  };
+
+  const hydrateSuggestions = async ({ mode = 'merge' } = {}) => {
+    if (!brief) return;
+
+    setSuggestionsState('loading');
+    try {
+      const res = await api.post('/generate/preview', { brief });
+      const incomingSections = res.data.sections || createInitialPreviewSections();
+
+      const nextSections = mode === 'replace-active'
+        ? {
+            ...sections,
+            [activeFormat]: {
+              ...createInitialPreviewSections()[activeFormat],
+              ...(incomingSections[activeFormat] || {}),
+            },
+          }
+        : mergePreviewSuggestions(sections, incomingSections);
+
+      setSections(nextSections);
+      setSuggestionsState('ready');
+    } catch {
+      setSuggestionsState('error');
+    }
   };
 
   const persistSession = async ({ nextStep, nextActiveTab } = {}) => {
@@ -172,7 +200,31 @@ export default function Preview() {
         </div>
 
         <div className="bg-white rounded-xl border border-gray-200 p-5 mb-4">
-          <p className="text-xs text-gray-400 mb-4">Click any section to edit before generating.</p>
+          <div className="mb-4 flex items-start justify-between gap-4">
+            <div>
+              <p className="text-sm font-medium text-gray-900">AI drafted these sections from your brief.</p>
+              <p className="mt-1 text-xs text-gray-400">Review and tweak only if needed. You should not have to write this from scratch.</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => hydrateSuggestions({ mode: 'replace-active' })}
+              disabled={suggestionsState === 'loading'}
+              className="rounded-lg border border-gray-200 px-3 py-2 text-xs font-medium text-gray-600 transition hover:border-gray-300 hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {suggestionsState === 'loading'
+                ? 'Refreshing…'
+                : activeFormat === 'linkedin'
+                  ? 'Refresh LinkedIn draft'
+                  : 'Refresh blog draft'}
+            </button>
+          </div>
+
+          {suggestionsState === 'loading' && !hasPreviewContent(sections, activeFormat) && (
+            <p className="mb-4 text-sm text-blue-600">Drafting suggestions from your campaign brief…</p>
+          )}
+          {suggestionsState === 'error' && (
+            <p className="mb-4 text-sm text-amber-600">We could not draft suggestions this time. You can still edit manually or try refreshing again.</p>
+          )}
 
           {activeFormat === 'linkedin' && (
             <>

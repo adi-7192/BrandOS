@@ -11,6 +11,38 @@ export function buildConfirmedBrief(brief, overrides) {
   };
 }
 
+export function createInitialPreviewSections() {
+  return {
+    linkedin: { hook: '', body: '', closing: '', hashtags: '#brand #content #marketing' },
+    blog: { headline: '', opening: '', body: '', closing: '' },
+  };
+}
+
+export function mergePreviewSuggestions(currentSections, suggestedSections) {
+  const current = currentSections || createInitialPreviewSections();
+  const suggested = suggestedSections || {};
+
+  return {
+    linkedin: mergeSection(current.linkedin, suggested.linkedin, {
+      hook: '',
+      body: '',
+      closing: '',
+      hashtags: '#brand #content #marketing',
+    }),
+    blog: mergeSection(current.blog, suggested.blog, {
+      headline: '',
+      opening: '',
+      body: '',
+      closing: '',
+    }),
+  };
+}
+
+export function hasPreviewContent(sections, format) {
+  const values = Object.values(sections?.[format] || {});
+  return values.some((value) => String(value || '').trim());
+}
+
 export function buildGeneratingContext(brief) {
   return {
     voice: brief.kit?.voiceAdjectives?.join(', ') || 'Professional, clear, engaging',
@@ -89,4 +121,24 @@ export function isManualBriefReady(brief) {
     brief?.keyMessage?.trim() &&
     brief?.contentGoal?.trim()
   );
+}
+
+function mergeSection(currentSection = {}, suggestedSection = {}, defaults = {}) {
+  const merged = {};
+
+  for (const [key, defaultValue] of Object.entries(defaults)) {
+    const currentValue = normalizeSectionValue(currentSection[key], defaultValue);
+    const suggestedValue = normalizeSectionValue(suggestedSection[key], defaultValue);
+    merged[key] = currentValue || suggestedValue || defaultValue;
+  }
+
+  return merged;
+}
+
+function normalizeSectionValue(value, fallback = '') {
+  const nextValue = String(value || '').trim();
+  if (!nextValue) return '';
+
+  const fallbackValue = String(fallback || '').trim();
+  return nextValue === fallbackValue ? '' : nextValue;
 }

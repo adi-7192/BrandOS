@@ -5,6 +5,7 @@ import {
   buildConfirmedBrief,
   buildGeneratingContext,
   buildManualBriefFromBrand,
+  mergePreviewSuggestions,
   isManualBriefReady,
 } from './generation-flow.js';
 
@@ -170,4 +171,52 @@ test('isManualBriefReady only requires campaign-specific fields when brand defau
     }),
     false
   );
+});
+
+test('mergePreviewSuggestions fills blank preview sections without overwriting user edits', () => {
+  const merged = mergePreviewSuggestions(
+    {
+      linkedin: {
+        hook: '',
+        body: 'User body',
+        closing: '',
+        hashtags: '',
+      },
+      blog: {
+        headline: '',
+        opening: '',
+        body: '',
+        closing: '',
+      },
+    },
+    {
+      linkedin: {
+        hook: 'AI hook',
+        body: 'AI body',
+        closing: 'AI closing',
+        hashtags: '#moodway #retail',
+      },
+      blog: {
+        headline: 'AI headline',
+        opening: 'AI opening',
+        body: 'AI blog body',
+        closing: 'AI blog closing',
+      },
+    }
+  );
+
+  assert.deepEqual(merged, {
+    linkedin: {
+      hook: 'AI hook',
+      body: 'User body',
+      closing: 'AI closing',
+      hashtags: '#moodway #retail',
+    },
+    blog: {
+      headline: 'AI headline',
+      opening: 'AI opening',
+      body: 'AI blog body',
+      closing: 'AI blog closing',
+    },
+  });
 });
