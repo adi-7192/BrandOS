@@ -1,0 +1,40 @@
+export function buildExtractKitRequest(state) {
+  const payload = {
+    brandName: state.brandName,
+    websiteUrl: state.websiteUrl,
+    pastContentExamples: state.pastContentExamples,
+    audienceType: state.audienceType,
+    buyerSeniority: state.buyerSeniority,
+    ageRange: state.ageRange,
+    industrySector: state.industrySector,
+    industryTarget: state.industryTarget,
+    campaignType: state.campaignType,
+    funnelStage: state.funnelStage,
+    toneShift: state.toneShift,
+    proofStyle: state.proofStyle,
+    contentRole: state.contentRole,
+    contentGoal: state.contentGoal,
+    publishingFrequency: state.publishingFrequency,
+    voiceFormality: state.voiceFormality,
+    brandLanguage: state.brandLanguage,
+    primaryMarket: state.primaryMarket,
+  };
+
+  if (!state.brandGuidelinesFile) {
+    return { data: payload, config: undefined, isMultipart: false };
+  }
+
+  const formData = new FormData();
+  Object.entries(payload).forEach(([key, value]) => {
+    if (value !== undefined && value !== null) {
+      formData.append(key, String(value));
+    }
+  });
+  formData.append('brandGuidelinesFile', state.brandGuidelinesFile);
+
+  return {
+    data: formData,
+    config: { headers: { 'Content-Type': 'multipart/form-data' } },
+    isMultipart: true,
+  };
+}

@@ -141,10 +141,41 @@ CREATE TABLE IF NOT EXISTS brand_kits (
   campaign_core_why TEXT,
   past_content_examples TEXT,
   website_url TEXT,
+  guideline_file_url TEXT,
+  guideline_file_name TEXT,
+  guideline_storage_path TEXT,
+  guideline_text_excerpt TEXT,
   version INTEGER DEFAULT 1,
   is_active BOOLEAN DEFAULT TRUE,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'brand_kits' AND column_name = 'guideline_file_url'
+  ) THEN
+    ALTER TABLE brand_kits ADD COLUMN guideline_file_url TEXT;
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'brand_kits' AND column_name = 'guideline_file_name'
+  ) THEN
+    ALTER TABLE brand_kits ADD COLUMN guideline_file_name TEXT;
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'brand_kits' AND column_name = 'guideline_storage_path'
+  ) THEN
+    ALTER TABLE brand_kits ADD COLUMN guideline_storage_path TEXT;
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'brand_kits' AND column_name = 'guideline_text_excerpt'
+  ) THEN
+    ALTER TABLE brand_kits ADD COLUMN guideline_text_excerpt TEXT;
+  END IF;
+END $$;
 
 -- Inbox cards
 CREATE TABLE IF NOT EXISTS inbox_cards (

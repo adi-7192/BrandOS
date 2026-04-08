@@ -25,6 +25,7 @@ router.post('/brief', async (req, res, next) => {
               k.tone_shift, k.proof_style, k.content_role,
               k.content_goal, k.publishing_frequency, k.formality_level,
               k.campaign_core_why, k.past_content_examples, k.website_url,
+              k.guideline_file_url, k.guideline_file_name, k.guideline_storage_path, k.guideline_text_excerpt,
               k.version
        FROM inbox_cards ic
        JOIN brands b ON b.id = ic.brand_id

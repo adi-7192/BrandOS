@@ -16,9 +16,14 @@ const BUCKET = process.env.SUPABASE_STORAGE_BUCKET || 'brand-guidelines';
  * @param {string} brandId - Used to namespace the file path
  * @param {string} mimetype - e.g. 'application/pdf'
  */
-export async function uploadBrandGuideline({ buffer, filename, brandId, mimetype }) {
+export async function uploadBrandGuideline({ buffer, filename, brandId, resourceKey, mimetype }) {
   const ext = filename.split('.').pop();
-  const path = `${brandId}/${Date.now()}.${ext}`;
+  const namespace = resourceKey || brandId || 'brand-guidelines';
+  const safeFilename = String(filename || 'guideline')
+    .replace(/\.[^.]+$/, '')
+    .replace(/[^a-z0-9-_]+/gi, '-')
+    .toLowerCase();
+  const path = `${namespace}/${Date.now()}-${safeFilename}.${ext}`;
 
   const { error } = await supabase.storage
     .from(BUCKET)
@@ -30,7 +35,7 @@ export async function uploadBrandGuideline({ buffer, filename, brandId, mimetype
   if (error) throw new Error(`Supabase Storage upload failed: ${error.message}`);
 
   const { data } = supabase.storage.from(BUCKET).getPublicUrl(path);
-  return data.publicUrl;
+  return { publicUrl: data.publicUrl, path };
 }
 
 /**

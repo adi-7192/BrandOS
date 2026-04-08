@@ -51,6 +51,10 @@ export function buildCanonicalBrief(cards, sourceCardIds = []) {
     campaignCoreWhy: merged.campaign_core_why || '',
     pastContentExamples: merged.past_content_examples || '',
     websiteUrl: merged.website_url || '',
+    guidelineFileUrl: merged.guideline_file_url || '',
+    guidelineFileName: merged.guideline_file_name || '',
+    guidelineStoragePath: merged.guideline_storage_path || '',
+    guidelineTextExcerpt: merged.guideline_text_excerpt || '',
   };
 
   return {

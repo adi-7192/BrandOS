@@ -74,6 +74,15 @@ export function buildBrandDetailSections(brand) {
         items: [kit.contentGoal, kit.publishingFrequency].filter(Boolean),
         empty: 'Strategy details have not been added yet.',
       },
+      {
+        title: 'Guidelines applied',
+        tone: 'neutral',
+        items: [
+          kit.guidelineFileName ? `File: ${kit.guidelineFileName}` : null,
+          kit.guidelineTextExcerpt || null,
+        ].filter(Boolean),
+        empty: 'No uploaded guideline document has been applied yet.',
+      },
     ],
   };
 }

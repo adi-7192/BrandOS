@@ -47,7 +47,7 @@ export default function BrandEditor() {
               </p>
             </div>
             <button
-              onClick={() => navigate('/inbox')}
+              onClick={() => navigate(`/generate/brief?brandId=${brand.id}`, { state: { mode: 'manual', brand } })}
               className="inline-flex items-center justify-center rounded-xl bg-[var(--brand-primary)] px-5 py-3 text-sm font-medium text-white shadow-[0_12px_24px_rgba(37,99,235,0.18)] transition-colors hover:bg-[var(--brand-primary-hover)]"
             >
               Generate content

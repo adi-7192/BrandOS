@@ -1,33 +1,7 @@
 import { callAI } from './client.js';
 import { parseStructuredJson } from './structuredOutput.js';
 
-/**
- * Extract brand kit cards from seed content using Claude.
- * Returns: { voiceAdjectives, vocabulary, restrictedWords, channelRules }
- */
-export async function extractBrandKit(params) {
-  const {
-    brandName,
-    websiteUrl,
-    pastContentExamples,
-    audienceType,
-    buyerSeniority,
-    ageRange,
-    industrySector,
-    industryTarget,
-    campaignType,
-    funnelStage,
-    contentGoal,
-    publishingFrequency,
-    brandLanguage,
-    primaryMarket,
-    toneShift,
-    proofStyle,
-    contentRole,
-    voiceFormality,
-  } = params;
-
-  const systemPrompt = `You are an expert brand strategist extracting a brand voice kit from seed content.
+const SYSTEM_PROMPT = `You are an expert brand strategist extracting a brand voice kit from seed content.
 Extract the following from the provided inputs and return a JSON object only — no preamble.
 
 Return exactly this structure:
@@ -45,32 +19,19 @@ Rules:
 - Voice adjectives must be genuinely distinctive — not generic (e.g. not "professional", "quality")
 - Vocabulary comes from patterns in the seed content, not invented
 - Restricted words are words that clash with this brand's positioning
-- Channel rules must include word limits appropriate for publishing frequency: ${publishingFrequency || 'Weekly'}
+- Channel rules must include word limits appropriate for publishing frequency
+- If there is an uploaded guideline excerpt, treat it as a high-authority source of explicit rules
 - Audience, campaign type, funnel stage, proof style, and role in the sales cycle should influence how specific the rules feel
 - If formality is provided, reflect it in the voice and channel rules
 - Respond ONLY with the JSON object. No markdown fences.`;
 
-  const userMessage = `Brand: ${brandName}
-Market: ${primaryMarket || 'Not specified'}
-Language: ${brandLanguage || 'English'}
-Audience: ${audienceType || 'Not specified'} — ${buyerSeniority || ''}
-Age range: ${ageRange || 'Not specified'}
-Industry sector: ${industrySector || 'Not specified'}
-Target industry: ${industryTarget || 'Not specified'}
-Campaign type: ${campaignType || 'Not specified'}
-Funnel stage: ${funnelStage || 'Not specified'}
-Content goal: ${contentGoal || 'Not specified'}
-Tone shift: ${toneShift || 'Keep baseline'}
-Proof style: ${proofStyle || 'Not specified'}
-Content role: ${contentRole || 'Not specified'}
-Formality level: ${voiceFormality ?? 'Balanced'}
-Publishing frequency: ${publishingFrequency || 'Weekly'}
-
-${websiteUrl ? `Website URL (assume content was read): ${websiteUrl}` : ''}
-
-${pastContentExamples ? `Past content examples:\n${pastContentExamples}` : 'No past content examples provided.'}`;
-
-  const raw = await callAI(systemPrompt, userMessage, 800);
+/**
+ * Extract brand kit cards from seed content using Claude.
+ * Returns: { voiceAdjectives, vocabulary, restrictedWords, channelRules }
+ */
+export async function extractBrandKit(params) {
+  const userMessage = buildKitExtractionUserMessage(params);
+  const raw = await callAI(SYSTEM_PROMPT, userMessage, 800);
   const fallback = {
     voiceAdjectives: ['Authentic', 'Confident', 'Approachable'],
     vocabulary: ['innovation', 'community', 'experience', 'craft', 'quality'],
@@ -98,4 +59,50 @@ ${pastContentExamples ? `Past content examples:\n${pastContentExamples}` : 'No p
   }
 
   return data;
+}
+
+export function buildKitExtractionUserMessage(params) {
+  const {
+    brandName,
+    websiteUrl,
+    pastContentExamples,
+    guidelineTextExcerpt,
+    audienceType,
+    buyerSeniority,
+    ageRange,
+    industrySector,
+    industryTarget,
+    campaignType,
+    funnelStage,
+    contentGoal,
+    publishingFrequency,
+    brandLanguage,
+    primaryMarket,
+    toneShift,
+    proofStyle,
+    contentRole,
+    voiceFormality,
+  } = params;
+
+  return `Brand: ${brandName}
+Market: ${primaryMarket || 'Not specified'}
+Language: ${brandLanguage || 'English'}
+Audience: ${audienceType || 'Not specified'} — ${buyerSeniority || ''}
+Age range: ${ageRange || 'Not specified'}
+Industry sector: ${industrySector || 'Not specified'}
+Target industry: ${industryTarget || 'Not specified'}
+Campaign type: ${campaignType || 'Not specified'}
+Funnel stage: ${funnelStage || 'Not specified'}
+Content goal: ${contentGoal || 'Not specified'}
+Tone shift: ${toneShift || 'Keep baseline'}
+Proof style: ${proofStyle || 'Not specified'}
+Content role: ${contentRole || 'Not specified'}
+Formality level: ${voiceFormality ?? 'Balanced'}
+Publishing frequency: ${publishingFrequency || 'Weekly'}
+
+${websiteUrl ? `Website URL (assume content was read): ${websiteUrl}` : ''}
+
+${pastContentExamples ? `Past content examples:\n${pastContentExamples}` : 'No past content examples provided.'}
+
+${guidelineTextExcerpt ? `Uploaded brand guideline excerpt:\n${guidelineTextExcerpt}` : 'No uploaded brand guideline excerpt provided.'}`;
 }

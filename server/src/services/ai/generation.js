@@ -38,42 +38,7 @@ export async function generateConfidenceSample({
 export async function generateContent({ brief, sections }) {
   const kit = brief.kit || {};
   const systemPrompt = buildSystemPrompt({ brandName: brief.brandName, kit, brandLanguage: brief.language });
-
-  const wordTarget = getWordTarget(brief.publishingFrequency);
-
-  const userMessage = `Generate content for ${brief.brandName}.
-
-Campaign: ${brief.campaignName || ''}
-Campaign type: ${brief.campaignType || ''}
-Audience: ${brief.audienceType || brief.audience || ''}
-Tone shift: ${brief.toneShift || 'Keep baseline'}
-Funnel stage: ${brief.funnelStage || ''}
-Content goal: ${brief.contentGoal || ''}
-Key message (anchor for both formats): "${brief.keyMessage || ''}"
-
-Brand voice: ${kit.voiceAdjectives?.join(', ')}
-Vocabulary to use: ${kit.vocabulary?.join(', ')}
-NEVER use these words: ${kit.restrictedWords?.join(', ')}
-
-LinkedIn requirements:
-- Max 220 words
-- Hook in line 1 (attention-grabbing, no em dashes)
-- Max 3 hashtags at the end
-- Write in ${brief.language || 'English'}
-${sections?.linkedin?.hook ? `- Use this hook: ${sections.linkedin.hook}` : ''}
-
-Blog requirements:
-- Target ${wordTarget} words
-- Use subheadings
-- End with a question if goal is thought leadership
-- Write in ${brief.language || 'English'}
-${sections?.blog?.headline ? `- Use this headline: ${sections.blog.headline}` : ''}
-
-Return ONLY a JSON object:
-{
-  "linkedin": "full linkedin post text",
-  "blog": "full blog post text"
-}`;
+  const userMessage = buildGenerationUserMessage({ brief, sections });
 
   const raw = await callAI(systemPrompt, userMessage, 2000);
   const fallback = { linkedin: String(raw || '').trim(), blog: '' };
@@ -146,6 +111,52 @@ Never explain your process. Return only the requested content.`;
 function getWordTarget(frequency) {
   const map = { 'Daily': 400, '2–3 times per week': 500, 'Weekly': 700, 'Bi-weekly': 800, 'Monthly or less': 1000 };
   return map[frequency] || 700;
+}
+
+export function buildGenerationUserMessage({ brief, sections }) {
+  const kit = brief.kit || {};
+  const wordTarget = getWordTarget(brief.publishingFrequency);
+
+  return `Generate content for ${brief.brandName}.
+
+Campaign: ${brief.campaignName || ''}
+Campaign type: ${brief.campaignType || ''}
+Audience: ${brief.audienceType || brief.audience || ''}
+Tone shift: ${brief.toneShift || 'Keep baseline'}
+Funnel stage: ${brief.funnelStage || ''}
+Content goal: ${brief.contentGoal || ''}
+Proof style: ${brief.proofStyle || 'Match the brand default'}
+Content role: ${brief.contentRole || 'Standard campaign content'}
+Voice formality (1 informal - 5 formal): ${brief.voiceFormality ?? 'Use the brand default'}
+Campaign core why: ${brief.campaignCoreWhy || ''}
+Key message (anchor for both formats): "${brief.keyMessage || ''}"
+
+Brand voice: ${kit.voiceAdjectives?.join(', ')}
+Vocabulary to use: ${kit.vocabulary?.join(', ')}
+NEVER use these words: ${kit.restrictedWords?.join(', ')}
+Brand-specific LinkedIn rule: ${kit.channelRules?.linkedin || 'Hook in line 1 · Max 3 hashtags · No em dashes'}
+Brand-specific blog rule: ${kit.channelRules?.blog || 'Use subheadings and a clear closing'}
+Guideline excerpt: ${kit.guidelineTextExcerpt || 'No uploaded guideline excerpt available'}
+
+LinkedIn requirements:
+- Max 220 words
+- Hook in line 1 (attention-grabbing, no em dashes)
+- Max 3 hashtags at the end
+- Write in ${brief.language || 'English'}
+${sections?.linkedin?.hook ? `- Use this hook: ${sections.linkedin.hook}` : ''}
+
+Blog requirements:
+- Target ${wordTarget} words
+- Use subheadings
+- End with a question if goal is thought leadership
+- Write in ${brief.language || 'English'}
+${sections?.blog?.headline ? `- Use this headline: ${sections.blog.headline}` : ''}
+
+Return ONLY a JSON object:
+{
+  "linkedin": "full linkedin post text",
+  "blog": "full blog post text"
+}`;
 }
 
 export function buildConfidenceUserMessage({

@@ -39,6 +39,10 @@ test('buildCanonicalBrief merges extracted fields with active kit context', () =
       campaign_core_why: 'Build anticipation for the series.',
       past_content_examples: 'Example',
       website_url: 'https://example.com',
+      guideline_file_url: 'https://cdn.example.com/brand-guide.pdf',
+      guideline_file_name: 'brand-guide.pdf',
+      guideline_storage_path: 'brand-1/brand-guide.pdf',
+      guideline_text_excerpt: 'Use neighbourhood-first language.',
       version: 2,
     },
   ], ['card-1']);
@@ -89,6 +93,10 @@ test('buildCanonicalBrief merges extracted fields with active kit context', () =
       campaignCoreWhy: 'Build anticipation for the series.',
       pastContentExamples: 'Example',
       websiteUrl: 'https://example.com',
+      guidelineFileUrl: 'https://cdn.example.com/brand-guide.pdf',
+      guidelineFileName: 'brand-guide.pdf',
+      guidelineStoragePath: 'brand-1/brand-guide.pdf',
+      guidelineTextExcerpt: 'Use neighbourhood-first language.',
     },
   });
 });

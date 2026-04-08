@@ -18,6 +18,10 @@ const initialState = {
   websiteUrl: '',
   pastContentExamples: '',
   brandGuidelinesFile: null,
+  guidelineFileUrl: '',
+  guidelineFileName: '',
+  guidelineStoragePath: '',
+  guidelineTextExcerpt: '',
   s4aSkipped: false,
   // S4b
   audienceType: '',

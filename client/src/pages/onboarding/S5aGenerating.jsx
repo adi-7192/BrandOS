@@ -4,6 +4,7 @@ import { useOnboarding } from '../../context/OnboardingContext';
 import OnboardingShell from '../../components/layout/OnboardingShell';
 import KitProgressBar from '../../components/layout/KitProgressBar';
 import api from '../../services/api';
+import { buildExtractKitRequest } from '../../lib/onboarding-extraction';
 
 const STEPS = [
   'Reading website content',
@@ -30,27 +31,18 @@ export default function S5aGenerating() {
     // Trigger real extraction in background
     const runExtraction = async () => {
       try {
-        const res = await api.post('/onboarding/extract-kit', {
-          brandName: ob.brandName,
-          websiteUrl: ob.websiteUrl,
-          pastContentExamples: ob.pastContentExamples,
-          audienceType: ob.audienceType,
-          buyerSeniority: ob.buyerSeniority,
-          ageRange: ob.ageRange,
-          industrySector: ob.industrySector,
-          industryTarget: ob.industryTarget,
-          campaignType: ob.campaignType,
-          funnelStage: ob.funnelStage,
-          toneShift: ob.toneShift,
-          proofStyle: ob.proofStyle,
-          contentRole: ob.contentRole,
-          contentGoal: ob.contentGoal,
-          publishingFrequency: ob.publishingFrequency,
-          voiceFormality: ob.voiceFormality,
-          brandLanguage: ob.brandLanguage,
-          primaryMarket: ob.primaryMarket,
+        const request = buildExtractKitRequest(ob);
+        const res = await api.post('/onboarding/extract-kit', request.data, request.config);
+        ob.update({
+          kitCards: res.data.kitCards,
+          guidelineFileUrl: res.data.guideline?.fileUrl || '',
+          guidelineFileName: res.data.guideline?.fileName || '',
+          guidelineStoragePath: res.data.guideline?.storagePath || '',
+          guidelineTextExcerpt: res.data.guideline?.textExcerpt || '',
         });
-        ob.update({ kitCards: res.data.kitCards });
+        if (res.data.warning) {
+          setError(res.data.warning);
+        }
       } catch (err) {
         setError('Kit extraction failed. You can still review default cards.');
       }

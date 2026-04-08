@@ -11,8 +11,13 @@ router.get('/', async (req, res, next) => {
     const ws = await getWorkspace(req.user.id);
     const { rows } = await pool.query(
       `SELECT b.*, k.voice_adjectives, k.vocabulary, k.restricted_words, k.content_goal,
-              k.audience_type,
-              k.publishing_frequency, k.version as kit_version
+              k.audience_type, k.buyer_seniority, k.age_range,
+              k.industry_sector, k.industry_target, k.funnel_stage,
+              k.tone_shift, k.proof_style, k.content_role,
+              k.publishing_frequency, k.formality_level, k.campaign_core_why,
+              k.past_content_examples, k.website_url,
+              k.guideline_file_url, k.guideline_file_name, k.guideline_storage_path, k.guideline_text_excerpt,
+              k.version as kit_version
        FROM brands b
        LEFT JOIN brand_kits k ON k.brand_id = b.id AND k.is_active = TRUE
        WHERE b.workspace_id = $1
@@ -29,8 +34,13 @@ router.get('/:id', async (req, res, next) => {
     const { rows } = await pool.query(
       `SELECT b.*, k.voice_adjectives, k.vocabulary, k.restricted_words,
               k.channel_rules_linkedin, k.channel_rules_blog, k.content_goal,
-              k.audience_type,
-              k.publishing_frequency, k.version as kit_version
+              k.audience_type, k.buyer_seniority, k.age_range,
+              k.industry_sector, k.industry_target, k.funnel_stage,
+              k.tone_shift, k.proof_style, k.content_role,
+              k.publishing_frequency, k.formality_level, k.campaign_core_why,
+              k.past_content_examples, k.website_url,
+              k.guideline_file_url, k.guideline_file_name, k.guideline_storage_path, k.guideline_text_excerpt,
+              k.version as kit_version
        FROM brands b
        LEFT JOIN brand_kits k ON k.brand_id = b.id AND k.is_active = TRUE
        WHERE b.id = $1`,
@@ -61,6 +71,22 @@ function formatBrand(row) {
       contentGoal: row.content_goal,
       publishingFrequency: row.publishing_frequency,
       audienceType: row.audience_type,
+      buyerSeniority: row.buyer_seniority,
+      ageRange: row.age_range,
+      industrySector: row.industry_sector,
+      industryTarget: row.industry_target,
+      funnelStage: row.funnel_stage,
+      toneShift: row.tone_shift,
+      proofStyle: row.proof_style,
+      contentRole: row.content_role,
+      voiceFormality: row.formality_level,
+      campaignCoreWhy: row.campaign_core_why,
+      pastContentExamples: row.past_content_examples,
+      websiteUrl: row.website_url,
+      guidelineFileUrl: row.guideline_file_url,
+      guidelineFileName: row.guideline_file_name,
+      guidelineStoragePath: row.guideline_storage_path,
+      guidelineTextExcerpt: row.guideline_text_excerpt,
       channelRulesLinkedin: row.channel_rules_linkedin,
       channelRulesBlog: row.channel_rules_blog,
     },

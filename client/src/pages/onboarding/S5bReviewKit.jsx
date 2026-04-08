@@ -47,7 +47,15 @@ function KitCard({ title, badge, children, onApprove, approved, reviewed, onOpen
 
 export default function S5bReviewKit() {
   const navigate = useNavigate();
-  const { kitCards, brandName, s4aSkipped, campaignCoreWhy, update } = useOnboarding();
+  const {
+    kitCards,
+    brandName,
+    s4aSkipped,
+    campaignCoreWhy,
+    guidelineFileName,
+    guidelineTextExcerpt,
+    update,
+  } = useOnboarding();
   const [approved, setApproved] = useState({ voice: false, vocab: false, restricted: false, channel: false });
   const [reviewed, setReviewed] = useState({ voice: false, vocab: false, restricted: false, channel: false });
   const [addCoreWhy, setAddCoreWhy] = useState(Boolean(campaignCoreWhy));
@@ -87,6 +95,15 @@ export default function S5bReviewKit() {
       {lowConfidence && (
         <div className="mb-4 rounded-lg bg-amber-50 border border-amber-200 p-3 text-sm text-amber-700">
           Low confidence — more input recommended. Add website or past content examples for a more accurate kit.
+        </div>
+      )}
+
+      {guidelineFileName && (
+        <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-700">
+          <p className="font-medium">Guidelines applied from {guidelineFileName}</p>
+          {guidelineTextExcerpt && (
+            <p className="mt-1 text-blue-800/80">{guidelineTextExcerpt}</p>
+          )}
         </div>
       )}
 
