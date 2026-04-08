@@ -1,7 +1,13 @@
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import TopNav from '../../components/layout/TopNav';
 import Button from '../../components/ui/Button';
+import api from '../../services/api';
+import {
+  buildGenerationSessionPayload,
+  buildSessionQuery,
+  buildSessionRoute,
+} from '../../lib/generation-session';
 
 const LINKEDIN_SECTIONS = ['Hook', 'Body', 'Closing', 'Hashtags'];
 const BLOG_SECTIONS = ['Headline', 'Opening', 'Body', 'Closing'];
@@ -24,19 +30,123 @@ function EditableSection({ label, content, onChange }) {
 
 export default function Preview() {
   const navigate = useNavigate();
-  const { state } = useLocation();
-  const [activeFormat, setActiveFormat] = useState('linkedin');
+  const location = useLocation();
+  const { state, search, pathname } = location;
+  const sessionIdParam = new URLSearchParams(search).get('sessionId');
+  const [sessionId, setSessionId] = useState(sessionIdParam || state?.sessionId || '');
+  const [brief, setBrief] = useState(state?.brief || null);
+  const [activeFormat, setActiveFormat] = useState(state?.activeTab || 'linkedin');
   const [sections, setSections] = useState({
     linkedin: { hook: '', body: '', closing: '', hashtags: '#brand #content #marketing' },
     blog: { headline: '', opening: '', body: '', closing: '' },
   });
+  const [loading, setLoading] = useState(true);
+  const [autosaveState, setAutosaveState] = useState('idle');
+  const initialSnapshotRef = useRef('');
+  const lastSavedSnapshotRef = useRef('');
+
+  useEffect(() => {
+    const loadPreview = async () => {
+      try {
+        if (sessionIdParam) {
+          const res = await api.get(`/generate/sessions/${sessionIdParam}`);
+          const session = res.data.session;
+          if (session.currentStep && session.currentStep !== 'preview') {
+            navigate(buildSessionRoute(session), {
+              replace: true,
+              state: {
+                sessionId: session.id,
+                brief: session.briefPayload,
+                sections: session.previewPayload,
+                output: session.outputPayload,
+                activeTab: session.activeTab,
+              },
+            });
+            return;
+          }
+
+          setSessionId(session.id);
+          setBrief(session.briefPayload || null);
+          setSections({
+            linkedin: { hook: '', body: '', closing: '', hashtags: '#brand #content #marketing', ...(session.previewPayload?.linkedin || {}) },
+            blog: { headline: '', opening: '', body: '', closing: '', ...(session.previewPayload?.blog || {}) },
+          });
+          setActiveFormat(session.activeTab || 'linkedin');
+          const snapshot = buildPreviewSnapshot(session.previewPayload || {}, session.activeTab || 'linkedin');
+          initialSnapshotRef.current = snapshot;
+          lastSavedSnapshotRef.current = snapshot;
+          return;
+        }
+
+        setBrief(state?.brief || null);
+        const initialSections = state?.sections || {
+          linkedin: { hook: '', body: '', closing: '', hashtags: '#brand #content #marketing' },
+          blog: { headline: '', opening: '', body: '', closing: '' },
+        };
+        setSections(initialSections);
+        setActiveFormat(state?.activeTab || 'linkedin');
+        const snapshot = buildPreviewSnapshot(initialSections, state?.activeTab || 'linkedin');
+        initialSnapshotRef.current = snapshot;
+        lastSavedSnapshotRef.current = snapshot;
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadPreview();
+  }, [navigate, sessionIdParam, state]);
 
   const updateSection = (format, key, val) => {
     setSections(s => ({ ...s, [format]: { ...s[format], [key]: val } }));
   };
 
-  const handleGenerate = () => {
-    navigate('/generate/creating', { state: { brief: state?.brief, sections } });
+  const persistSession = async ({ nextStep, nextActiveTab } = {}) => {
+    const payload = buildGenerationSessionPayload({
+      brief,
+      sections,
+      output: {},
+      currentStep: nextStep || 'preview',
+      activeTab: nextActiveTab || activeFormat,
+      lastInstruction: '',
+    });
+
+    setAutosaveState('saving');
+    const res = sessionId
+      ? await api.patch(`/generate/sessions/${sessionId}`, payload)
+      : await api.post('/generate/sessions', payload);
+
+    const persisted = res.data.session;
+    setSessionId(persisted.id);
+    lastSavedSnapshotRef.current = buildPreviewSnapshot(sections, nextActiveTab || activeFormat);
+    setAutosaveState('saved');
+
+    if (!sessionId) {
+      navigate(`${pathname}${buildSessionQuery(persisted.id)}`, {
+        replace: true,
+        state: { brief, sections, sessionId: persisted.id, activeTab: nextActiveTab || activeFormat },
+      });
+    }
+
+    return persisted;
+  };
+
+  useEffect(() => {
+    if (loading || !brief?.brandId) return undefined;
+
+    const snapshot = buildPreviewSnapshot(sections, activeFormat);
+    if (snapshot === lastSavedSnapshotRef.current) return undefined;
+    if (!sessionId && snapshot === initialSnapshotRef.current) return undefined;
+
+    const timer = setTimeout(() => {
+      persistSession().catch(() => setAutosaveState('error'));
+    }, 700);
+
+    return () => clearTimeout(timer);
+  }, [activeFormat, brief, loading, sections, sessionId]);
+
+  const handleGenerate = async () => {
+    const persisted = await persistSession({ nextStep: 'creating' });
+    navigate(`/generate/creating${buildSessionQuery(persisted.id)}`, { state: { brief, sections, sessionId: persisted.id } });
   };
 
   return (
@@ -83,12 +193,28 @@ export default function Preview() {
         </div>
 
         <div className="flex items-center gap-3">
-          <button onClick={() => navigate('/generate/brief')} className="text-sm text-gray-500 hover:underline">← Back to brief</button>
+          <button onClick={() => navigate(`/generate/brief${buildSessionQuery(sessionId)}`, { state: { brief, sessionId } })} className="text-sm text-gray-500 hover:underline">← Back to brief</button>
           <Button variant="primary" onClick={handleGenerate} className="flex-1">
             Looks good — generate full content →
           </Button>
         </div>
+        {autosaveState !== 'idle' && (
+          <p className="mt-3 text-xs text-slate-400">
+            {autosaveState === 'saving'
+              ? 'Saving…'
+              : autosaveState === 'saved'
+                ? 'Saved just now'
+                : 'We could not save this progress yet.'}
+          </p>
+        )}
       </div>
     </div>
   );
+}
+
+function buildPreviewSnapshot(sections, activeFormat) {
+  return JSON.stringify({
+    sections,
+    activeFormat,
+  });
 }

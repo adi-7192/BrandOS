@@ -12,8 +12,9 @@ router.get('/summary', async (req, res, next) => {
     if (!workspace) {
       return res.json({
         summary: {
-          counts: { brands: 0, pendingBriefs: 0, recentDrafts: 0 },
+          counts: { brands: 0, pendingBriefs: 0, recentDrafts: 0, inProgressSessions: 0 },
           pendingBriefs: [],
+          recentSessions: [],
           recentDrafts: [],
           brands: [],
           setup: {
@@ -26,7 +27,7 @@ router.get('/summary', async (req, res, next) => {
       });
     }
 
-    const [brands, pendingBriefs, recentDrafts, counts] = await Promise.all([
+    const [brands, pendingBriefs, recentSessions, recentDrafts, counts] = await Promise.all([
       pool.query(
         `SELECT b.id, b.name, b.market, b.language, b.updated_at,
                 COALESCE(k.voice_adjectives, '{}') AS voice_adjectives,
@@ -50,6 +51,16 @@ router.get('/summary', async (req, res, next) => {
         [workspace.id]
       ),
       pool.query(
+        `SELECT gs.id, gs.brand_id, gs.session_title, gs.current_step, gs.source, gs.updated_at,
+                b.name AS brand_name, b.language
+         FROM generation_sessions gs
+         JOIN brands b ON b.id = gs.brand_id
+         WHERE gs.user_id = $1 AND gs.status = 'in_progress'
+         ORDER BY gs.updated_at DESC
+         LIMIT 5`,
+        [req.user.id]
+      ),
+      pool.query(
         `SELECT d.id, d.brand_id, d.inbox_card_id, d.format, d.content, d.version_number, d.created_at,
                 b.name AS brand_name, b.language
          FROM drafts d
@@ -70,6 +81,11 @@ router.get('/summary', async (req, res, next) => {
             ) AS pending_count,
             (
               SELECT COUNT(*)
+              FROM generation_sessions gs
+              WHERE gs.user_id = $1 AND gs.status = 'in_progress'
+            ) AS session_count,
+            (
+              SELECT COUNT(*)
               FROM drafts d
               JOIN brands b ON b.id = d.brand_id
               WHERE b.workspace_id = $1
@@ -85,6 +101,7 @@ router.get('/summary', async (req, res, next) => {
         counts: {
           brands: Number(countsRow.brand_count || 0),
           pendingBriefs: Number(countsRow.pending_count || 0),
+          inProgressSessions: Number(countsRow.session_count || 0),
           recentDrafts: Number(countsRow.draft_count || 0),
         },
         pendingBriefs: pendingBriefs.rows.map((row) => ({
@@ -98,6 +115,16 @@ router.get('/summary', async (req, res, next) => {
           matchedFields: row.matched_fields || [],
           overallScore: row.overall_score,
           createdAt: row.created_at,
+        })),
+        recentSessions: recentSessions.rows.map((row) => ({
+          id: row.id,
+          brandId: row.brand_id,
+          brandName: row.brand_name,
+          language: row.language,
+          sessionTitle: row.session_title,
+          currentStep: row.current_step,
+          source: row.source,
+          updatedAt: row.updated_at,
         })),
         recentDrafts: recentDrafts.rows.map((row) => ({
           id: row.id,
@@ -122,6 +149,7 @@ router.get('/summary', async (req, res, next) => {
         setup: {
           hasBrands: Number(countsRow.brand_count || 0) > 0,
           hasPendingBriefs: Number(countsRow.pending_count || 0) > 0,
+          hasRecentSessions: Number(countsRow.session_count || 0) > 0,
           hasRecentDrafts: Number(countsRow.draft_count || 0) > 0,
           gmailAvailable: Boolean(process.env.GMAIL_CLIENT_ID && process.env.GMAIL_CLIENT_SECRET),
         },

@@ -10,6 +10,7 @@ import {
   updateKitCardArrayField,
   updateKitCardChannelRule,
 } from '../../lib/kit-review';
+import { buildGuidelineDisplay } from '../../lib/guideline-view';
 
 function KitCard({ title, badge, children, onApprove, approved, reviewed, onOpen }) {
   const [open, setOpen] = useState(false);
@@ -53,7 +54,6 @@ export default function S5bReviewKit() {
     s4aSkipped,
     campaignCoreWhy,
     guidelineFileName,
-    guidelineTextExcerpt,
     update,
   } = useOnboarding();
   const [approved, setApproved] = useState({ voice: false, vocab: false, restricted: false, channel: false });
@@ -74,6 +74,10 @@ export default function S5bReviewKit() {
   const cards = useMemo(
     () => normalizeKitCards(kitCards || defaultCards),
     [kitCards]
+  );
+  const guidelineDisplay = useMemo(
+    () => buildGuidelineDisplay({ guidelineFileName }),
+    [guidelineFileName]
   );
   const lowConfidence = s4aSkipped;
 
@@ -100,10 +104,8 @@ export default function S5bReviewKit() {
 
       {guidelineFileName && (
         <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-700">
-          <p className="font-medium">Guidelines applied from {guidelineFileName}</p>
-          {guidelineTextExcerpt && (
-            <p className="mt-1 text-blue-800/80">{guidelineTextExcerpt}</p>
-          )}
+          <p className="font-medium">{guidelineDisplay.title}</p>
+          <p className="mt-1 text-blue-800/80">{guidelineDisplay.meta}</p>
         </div>
       )}
 

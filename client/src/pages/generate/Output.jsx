@@ -5,6 +5,7 @@ import Button from '../../components/ui/Button';
 import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { getNextOutputIntentQuestion } from '../../lib/intent-capture';
+import { buildGenerationSessionPayload } from '../../lib/generation-session';
 
 function ComplianceItem({ label, value, pass }) {
   return (
@@ -16,8 +17,11 @@ function ComplianceItem({ label, value, pass }) {
 
 export default function Output() {
   const navigate = useNavigate();
-  const { state } = useLocation();
+  const { state, search } = useLocation();
   const { user, refreshUser } = useAuth();
+  const sessionIdParam = new URLSearchParams(search).get('sessionId');
+  const [sessionId, setSessionId] = useState(sessionIdParam || state?.sessionId || '');
+  const [brief, setBrief] = useState(state?.brief || {});
   const [activeTab, setActiveTab] = useState(state?.activeTab || 'linkedin');
   const [content, setContent] = useState({
     linkedin: state?.output?.linkedin || '',
@@ -26,9 +30,9 @@ export default function Output() {
   const [instruction, setInstruction] = useState('');
   const [iterating, setIterating] = useState(false);
   const [saveState, setSaveState] = useState({ saving: false, message: '' });
+  const [autosaveState, setAutosaveState] = useState('idle');
+  const [loading, setLoading] = useState(Boolean(sessionIdParam));
   const [intentHidden, setIntentHidden] = useState(false);
-
-  const brief = state?.brief || {};
   const outputIntentQuestion = useMemo(
     () => getNextOutputIntentQuestion(user?.intentState),
     [user?.intentState]
@@ -37,6 +41,32 @@ export default function Output() {
   useEffect(() => {
     refreshUser().catch(() => {});
   }, [refreshUser]);
+
+  useEffect(() => {
+    const loadSession = async () => {
+      if (!sessionIdParam) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const res = await api.get(`/generate/sessions/${sessionIdParam}`);
+        const session = res.data.session;
+        setSessionId(session.id);
+        setBrief(session.briefPayload || {});
+        setContent({
+          linkedin: session.outputPayload?.linkedin || '',
+          blog: session.outputPayload?.blog || '',
+        });
+        setActiveTab(session.activeTab || 'linkedin');
+        setInstruction(session.lastInstruction || '');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadSession();
+  }, [sessionIdParam]);
 
   const wordCount = (text) => text.trim().split(/\s+/).filter(Boolean).length;
   const hashtagCount = (text) => (text.match(/#\w+/g) || []).length;
@@ -62,6 +92,16 @@ export default function Output() {
     try {
       const res = await api.post('/generate/iterate', { brief, instruction, currentContent: content });
       setContent(res.data.output);
+      if (sessionId) {
+        await api.patch(`/generate/sessions/${sessionId}`, buildGenerationSessionPayload({
+          brief,
+          sections: {},
+          output: res.data.output,
+          currentStep: 'output',
+          activeTab,
+          lastInstruction: instruction,
+        }));
+      }
     } catch {
       // silent
     } finally {
@@ -117,6 +157,29 @@ export default function Output() {
     setIntentHidden(true);
     await refreshUser();
   };
+
+  useEffect(() => {
+    if (loading || !sessionId || !brief?.brandId) return undefined;
+
+    const timer = setTimeout(async () => {
+      try {
+        setAutosaveState('saving');
+        await api.patch(`/generate/sessions/${sessionId}`, buildGenerationSessionPayload({
+          brief,
+          sections: {},
+          output: content,
+          currentStep: 'output',
+          activeTab,
+          lastInstruction: instruction,
+        }));
+        setAutosaveState('saved');
+      } catch {
+        setAutosaveState('error');
+      }
+    }, 700);
+
+    return () => clearTimeout(timer);
+  }, [activeTab, brief, content, instruction, loading, sessionId]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -214,7 +277,17 @@ export default function Output() {
             <span className="absolute -top-2 -right-2 text-[10px] bg-gray-900 text-white px-1.5 py-0.5 rounded-full">Coming V2</span>
           </div>
         </div>
-        {saveState.message && <p className="mb-4 text-sm text-brand-muted">{saveState.message}</p>}
+        {(saveState.message || autosaveState !== 'idle') && (
+          <p className="mb-4 text-sm text-brand-muted">
+            {saveState.message || (
+              autosaveState === 'saving'
+                ? 'Saving…'
+                : autosaveState === 'saved'
+                  ? 'Saved just now'
+                  : 'We could not save this progress yet.'
+            )}
+          </p>
+        )}
 
         {outputIntentQuestion && !intentHidden && (
           <div className="mb-6 rounded-xl border border-brand bg-brand-surface-subtle px-4 py-4 animate-dashboard-enter">

@@ -71,3 +71,19 @@ test('buildBrandDetailSections groups brand data into summary metrics and displa
     empty: 'Channel rules have not been added yet.',
   });
 });
+
+test('buildBrandDetailSections keeps guideline excerpts internal and only shows file-level status', () => {
+  const sections = buildBrandDetailSections({
+    kit: {
+      guidelineFileName: 'design doc.docx',
+      guidelineTextExcerpt: 'STEP 1 - STEP 2 - LOGIN - GOOGLE AUTH + EMAIL SIGN UP SCREEN INITIAL DETAILS...',
+    },
+  });
+
+  assert.deepEqual(sections.cards[5], {
+    title: 'Guidelines applied',
+    tone: 'neutral',
+    items: ['File: design doc.docx'],
+    empty: 'No uploaded guideline document has been applied yet.',
+  });
+});

@@ -183,6 +183,14 @@ test('buildFlowlineCards prioritises pending briefs and falls back to drafts or 
 
 test('buildRecentActivity merges briefs, drafts, and brand updates in reverse chronological order', () => {
   const items = buildRecentActivity({
+    recentSessions: [
+      {
+        id: 'session-1',
+        sessionTitle: 'Spring launch',
+        brandName: 'Atlas',
+        updatedAt: '2026-04-07T11:00:00.000Z',
+      },
+    ],
     pendingBriefs: [
       {
         id: 'brief-1',
@@ -212,6 +220,14 @@ test('buildRecentActivity merges briefs, drafts, and brand updates in reverse ch
 
   assert.deepEqual(items, [
     {
+      id: 'session-session-1',
+      kind: 'session',
+      title: 'Work resumed',
+      subject: 'Spring launch',
+      when: '2026-04-07T11:00:00.000Z',
+      href: '/generate/brief?sessionId=session-1',
+    },
+    {
       id: 'draft-draft-1',
       kind: 'draft',
       title: 'Draft saved',
@@ -234,6 +250,47 @@ test('buildRecentActivity merges briefs, drafts, and brand updates in reverse ch
       subject: 'Northstar',
       when: '2026-04-06T10:00:00.000Z',
       href: '/settings/brands/brand-2',
+    },
+  ]);
+});
+
+test('buildAttentionItems includes in-progress sessions before saved drafts', () => {
+  const items = buildAttentionItems({
+    pendingBriefs: [],
+    recentSessions: [
+      {
+        id: 'session-1',
+        sessionTitle: 'Spring launch',
+        brandName: 'Atlas',
+        currentStep: 'preview',
+      },
+    ],
+    recentDrafts: [
+      {
+        id: 'draft-1',
+        brandName: 'Atlas',
+        format: 'blog',
+      },
+    ],
+    setup: { hasBrands: true, gmailAvailable: true },
+  });
+
+  assert.deepEqual(items.slice(0, 2), [
+    {
+      id: 'session-1',
+      kind: 'session',
+      title: 'Resume Spring launch',
+      subtitle: 'Atlas',
+      status: 'session',
+      actionLabel: 'Resume session',
+    },
+    {
+      id: 'draft-1',
+      kind: 'draft',
+      title: 'Review Blog draft',
+      subtitle: 'Atlas',
+      status: 'draft',
+      actionLabel: 'Open draft',
     },
   ]);
 });

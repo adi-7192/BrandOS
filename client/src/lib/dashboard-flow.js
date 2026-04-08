@@ -63,6 +63,15 @@ export function buildFlowlineCards(summary) {
 }
 
 export function buildRecentActivity(summary) {
+  const sessionItems = (summary?.recentSessions || []).map((session) => ({
+    id: `session-${session.id}`,
+    kind: 'session',
+    title: 'Work resumed',
+    subject: session.sessionTitle || session.brandName || 'Untitled session',
+    when: session.updatedAt,
+    href: `/generate/brief?sessionId=${session.id}`,
+  }));
+
   const briefItems = (summary?.pendingBriefs || []).map((brief) => ({
     id: `brief-${brief.id}`,
     kind: 'brief',
@@ -90,7 +99,7 @@ export function buildRecentActivity(summary) {
     href: `/settings/brands/${brand.id}`,
   }));
 
-  return [...briefItems, ...draftItems, ...brandItems]
+  return [...sessionItems, ...briefItems, ...draftItems, ...brandItems]
     .filter((item) => item.when)
     .sort((a, b) => new Date(b.when).getTime() - new Date(a.when).getTime())
     .slice(0, 6);
@@ -107,6 +116,17 @@ export function buildAttentionItems(summary) {
       subtitle: brief.brandName,
       status: 'brief',
       actionLabel: 'Use brief',
+    });
+  }
+
+  for (const session of summary?.recentSessions || []) {
+    items.push({
+      id: session.id,
+      kind: 'session',
+      title: `Resume ${session.sessionTitle || session.brandName || 'session'}`,
+      subtitle: session.brandName || 'In progress',
+      status: 'session',
+      actionLabel: 'Resume session',
     });
   }
 

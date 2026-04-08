@@ -3,9 +3,153 @@ import pool from '../db/pool.js';
 import { authenticate } from '../middleware/auth.js';
 import { buildCanonicalBrief } from '../services/ai/briefBuilder.js';
 import { generateContent, iterateContent } from '../services/ai/generation.js';
+import { mapGenerationSessionRow } from '../services/generationSessions.js';
 
 const router = Router();
 router.use(authenticate);
+
+router.get('/sessions', async (req, res, next) => {
+  try {
+    const { brandId, status = 'in_progress' } = req.query;
+    const values = [req.user.id];
+    const where = ['gs.user_id = $1'];
+
+    if (brandId) {
+      values.push(brandId);
+      where.push(`gs.brand_id = $${values.length}`);
+    }
+
+    if (status) {
+      values.push(status);
+      where.push(`gs.status = $${values.length}`);
+    }
+
+    const { rows } = await pool.query(
+      `SELECT gs.*, b.name AS brand_name, b.language AS brand_language
+       FROM generation_sessions gs
+       JOIN brands b ON b.id = gs.brand_id
+       WHERE ${where.join(' AND ')}
+       ORDER BY gs.updated_at DESC
+       LIMIT 10`,
+      values
+    );
+
+    res.json({ sessions: rows.map(mapGenerationSessionRow) });
+  } catch (err) { next(err); }
+});
+
+router.get('/sessions/:id', async (req, res, next) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT gs.*, b.name AS brand_name, b.language AS brand_language
+       FROM generation_sessions gs
+       JOIN brands b ON b.id = gs.brand_id
+       WHERE gs.id = $1 AND gs.user_id = $2
+       LIMIT 1`,
+      [req.params.id, req.user.id]
+    );
+
+    if (!rows[0]) return res.status(404).json({ message: 'Generation session not found.' });
+
+    res.json({ session: mapGenerationSessionRow(rows[0]) });
+  } catch (err) { next(err); }
+});
+
+router.post('/sessions', async (req, res, next) => {
+  try {
+    const {
+      brandId,
+      sessionTitle,
+      source = 'manual',
+      sourceCardIds = [],
+      status = 'in_progress',
+      currentStep = 'brief',
+      briefPayload = {},
+      previewPayload = {},
+      outputPayload = {},
+      activeTab = 'linkedin',
+      lastInstruction = '',
+    } = req.body;
+
+    const { rows } = await pool.query(
+      `INSERT INTO generation_sessions (
+        user_id, brand_id, session_title, source, source_card_ids, status, current_step,
+        brief_payload, preview_payload, output_payload, active_tab, last_instruction
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+      RETURNING *`,
+      [
+        req.user.id,
+        brandId,
+        sessionTitle || null,
+        source,
+        sourceCardIds,
+        status,
+        currentStep,
+        briefPayload,
+        previewPayload,
+        outputPayload,
+        activeTab,
+        lastInstruction || '',
+      ]
+    );
+
+    const sessionRow = await hydrateSessionRow(rows[0].id, req.user.id);
+    res.status(201).json({ session: mapGenerationSessionRow(sessionRow) });
+  } catch (err) { next(err); }
+});
+
+router.patch('/sessions/:id', async (req, res, next) => {
+  try {
+    const existing = await hydrateSessionRow(req.params.id, req.user.id);
+    if (!existing) return res.status(404).json({ message: 'Generation session not found.' });
+
+    const nextPayload = {
+      sessionTitle: req.body.sessionTitle ?? existing.session_title,
+      source: req.body.source ?? existing.source,
+      sourceCardIds: req.body.sourceCardIds ?? existing.source_card_ids,
+      status: req.body.status ?? existing.status,
+      currentStep: req.body.currentStep ?? existing.current_step,
+      briefPayload: req.body.briefPayload ?? existing.brief_payload,
+      previewPayload: req.body.previewPayload ?? existing.preview_payload,
+      outputPayload: req.body.outputPayload ?? existing.output_payload,
+      activeTab: req.body.activeTab ?? existing.active_tab,
+      lastInstruction: req.body.lastInstruction ?? existing.last_instruction,
+    };
+
+    await pool.query(
+      `UPDATE generation_sessions
+       SET session_title = $1,
+           source = $2,
+           source_card_ids = $3,
+           status = $4,
+           current_step = $5,
+           brief_payload = $6,
+           preview_payload = $7,
+           output_payload = $8,
+           active_tab = $9,
+           last_instruction = $10,
+           updated_at = NOW()
+       WHERE id = $11 AND user_id = $12`,
+      [
+        nextPayload.sessionTitle || null,
+        nextPayload.source,
+        nextPayload.sourceCardIds,
+        nextPayload.status,
+        nextPayload.currentStep,
+        nextPayload.briefPayload,
+        nextPayload.previewPayload,
+        nextPayload.outputPayload,
+        nextPayload.activeTab,
+        nextPayload.lastInstruction || '',
+        req.params.id,
+        req.user.id,
+      ]
+    );
+
+    const sessionRow = await hydrateSessionRow(req.params.id, req.user.id);
+    res.json({ session: mapGenerationSessionRow(sessionRow) });
+  } catch (err) { next(err); }
+});
 
 // POST /api/generate/brief
 // Merge inbox cards into a confirmed brief object
@@ -80,3 +224,16 @@ router.post('/save-draft', async (req, res, next) => {
 });
 
 export default router;
+
+async function hydrateSessionRow(sessionId, userId) {
+  const { rows } = await pool.query(
+    `SELECT gs.*, b.name AS brand_name, b.language AS brand_language
+     FROM generation_sessions gs
+     JOIN brands b ON b.id = gs.brand_id
+     WHERE gs.id = $1 AND gs.user_id = $2
+     LIMIT 1`,
+    [sessionId, userId]
+  );
+
+  return rows[0];
+}

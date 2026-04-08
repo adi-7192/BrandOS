@@ -7,13 +7,15 @@ import {
   buildDraftOutputState,
   buildRecentActivity,
 } from '../../lib/dashboard-flow';
+import { buildSessionRoute } from '../../lib/generation-session';
 
 const emptySummary = {
-  counts: { brands: 0, pendingBriefs: 0, recentDrafts: 0 },
+  counts: { brands: 0, pendingBriefs: 0, recentDrafts: 0, inProgressSessions: 0 },
   pendingBriefs: [],
+  recentSessions: [],
   recentDrafts: [],
   brands: [],
-  setup: { hasBrands: false, hasPendingBriefs: false, hasRecentDrafts: false, gmailAvailable: false },
+  setup: { hasBrands: false, hasPendingBriefs: false, hasRecentSessions: false, hasRecentDrafts: false, gmailAvailable: false },
 };
 
 const navItems = [
@@ -55,10 +57,10 @@ export default function Dashboard() {
       icon: 'inbox',
     },
     {
-      label: 'Saved Drafts',
-      value: summary.counts.recentDrafts,
-      note: summary.counts.recentDrafts > 0 ? 'Ready to resume' : 'Nothing saved yet',
-      tone: summary.counts.recentDrafts > 0 ? 'green' : 'neutral',
+      label: 'In Progress',
+      value: summary.counts.inProgressSessions,
+      note: summary.counts.inProgressSessions > 0 ? 'Resume active work' : 'No live sessions',
+      tone: summary.counts.inProgressSessions > 0 ? 'green' : 'neutral',
       icon: 'draft',
     },
     {
@@ -76,6 +78,11 @@ export default function Dashboard() {
   };
 
   const handleActivityClick = (item) => {
+    if (item.kind === 'session') {
+      navigate(item.href);
+      return;
+    }
+
     if (item.kind === 'brief') {
       navigate('/generate/brief', { state: { cardIds: [item.id.replace('brief-', '')] } });
       return;
@@ -98,6 +105,14 @@ export default function Dashboard() {
   const handleAttentionClick = (item) => {
     if (item.kind === 'brief') {
       navigate('/generate/brief', { state: { cardIds: [item.id] } });
+      return;
+    }
+
+    if (item.kind === 'session') {
+      const session = summary.recentSessions.find((entry) => entry.id === item.id);
+      if (session) {
+        navigate(buildSessionRoute(session));
+      }
       return;
     }
 
@@ -329,12 +344,14 @@ function StatCard({ card, delay }) {
 function StatusPill({ status }) {
   const labels = {
     brief: 'pending',
+    session: 'live',
     draft: 'draft',
     setup: 'setup',
   };
 
   const classes = {
     brief: 'bg-[#eef4ff] text-[var(--brand-primary)]',
+    session: 'bg-[#eefaf3] text-[#2f9b63]',
     draft: 'bg-[#fff8ea] text-[#c48a20]',
     setup: 'bg-[#f3f4f6] text-slate-500',
   };

@@ -1,5 +1,5 @@
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import TopNav from '../../components/layout/TopNav';
 import Button from '../../components/ui/Button';
 import Dropdown from '../../components/ui/Dropdown';
@@ -9,6 +9,11 @@ import {
   buildManualBriefFromBrand,
   isManualBriefReady,
 } from '../../lib/generation-flow';
+import {
+  buildGenerationSessionPayload,
+  buildSessionQuery,
+  buildSessionRoute,
+} from '../../lib/generation-session';
 
 const SOURCE_COLORS = {
   inbox: 'bg-green-100 text-green-700 border-green-300',
@@ -39,7 +44,8 @@ function FieldBlock({ label, value, source, highlight, children }) {
 
 export default function Brief() {
   const navigate = useNavigate();
-  const { state, search } = useLocation();
+  const location = useLocation();
+  const { state, search, pathname } = location;
   const [brief, setBrief] = useState(null);
   const [campaignName, setCampaignName] = useState('');
   const [campaignType, setCampaignType] = useState('');
@@ -47,8 +53,13 @@ export default function Brief() {
   const [contentGoal, setContentGoal] = useState('');
   const [toneShift, setToneShift] = useState('');
   const [keyMessage, setKeyMessage] = useState('');
+  const [sessionId, setSessionId] = useState(new URLSearchParams(search).get('sessionId') || state?.sessionId || '');
+  const [autosaveState, setAutosaveState] = useState('idle');
   const [loading, setLoading] = useState(true);
   const brandIdParam = new URLSearchParams(search).get('brandId');
+  const sessionIdParam = new URLSearchParams(search).get('sessionId');
+  const initialSnapshotRef = useRef('');
+  const lastSavedSnapshotRef = useRef('');
 
   const seedFields = (nextBrief) => {
     setCampaignName(nextBrief?.campaignName || '');
@@ -62,6 +73,33 @@ export default function Brief() {
   useEffect(() => {
     const loadBrief = async () => {
       try {
+        if (sessionIdParam) {
+          const res = await api.get(`/generate/sessions/${sessionIdParam}`);
+          const session = res.data.session;
+
+          if (session.currentStep && session.currentStep !== 'brief') {
+            navigate(buildSessionRoute(session), {
+              replace: true,
+              state: {
+                sessionId: session.id,
+                brief: session.briefPayload,
+                sections: session.previewPayload,
+                output: session.outputPayload,
+                activeTab: session.activeTab,
+              },
+            });
+            return;
+          }
+
+          setSessionId(session.id);
+          setBrief(session.briefPayload || {});
+          seedFields(session.briefPayload || {});
+          const snapshot = buildFieldSnapshot(session.briefPayload || {});
+          initialSnapshotRef.current = snapshot;
+          lastSavedSnapshotRef.current = snapshot;
+          return;
+        }
+
         if (state?.mode === 'manual' || brandIdParam) {
           const sourceBrand = state?.brand
             ? state.brand
@@ -69,6 +107,9 @@ export default function Brief() {
           const nextBrief = buildManualBriefFromBrand(sourceBrand);
           setBrief(nextBrief);
           seedFields(nextBrief);
+          const snapshot = buildFieldSnapshot(nextBrief);
+          initialSnapshotRef.current = snapshot;
+          lastSavedSnapshotRef.current = snapshot;
           return;
         }
 
@@ -76,6 +117,9 @@ export default function Brief() {
         const res = await api.post('/generate/brief', { cardIds });
         setBrief(res.data.brief);
         seedFields(res.data.brief);
+        const snapshot = buildFieldSnapshot(res.data.brief);
+        initialSnapshotRef.current = snapshot;
+        lastSavedSnapshotRef.current = snapshot;
       } catch {
         setBrief(null);
       } finally {
@@ -84,7 +128,7 @@ export default function Brief() {
     };
 
     loadBrief();
-  }, [brandIdParam, state]);
+  }, [brandIdParam, navigate, sessionIdParam, state]);
 
   const nextBrief = brief ? buildConfirmedBrief(brief, {
     campaignName,
@@ -98,10 +142,59 @@ export default function Brief() {
   const readyToContinue = nextBrief ? isManualBriefReady(nextBrief) : false;
   const isManualMode = nextBrief?.mode === 'manual';
 
-  const handleContinue = () => {
-    navigate('/generate/preview', {
+  const persistSession = async ({ nextStep, nextBriefOverride } = {}) => {
+    const briefForSave = nextBriefOverride || nextBrief;
+    const payload = buildGenerationSessionPayload({
+      brief: briefForSave,
+      sections: {},
+      output: { linkedin: '', blog: '' },
+      currentStep: nextStep || 'brief',
+      activeTab: 'linkedin',
+      lastInstruction: '',
+    });
+
+    setAutosaveState('saving');
+
+    const res = sessionId
+      ? await api.patch(`/generate/sessions/${sessionId}`, payload)
+      : await api.post('/generate/sessions', payload);
+
+    const persisted = res.data.session;
+    const nextSessionId = persisted.id;
+    setSessionId(nextSessionId);
+    lastSavedSnapshotRef.current = buildFieldSnapshot(briefForSave);
+    setAutosaveState('saved');
+
+    if (!sessionId) {
+      navigate(`${pathname}${buildSessionQuery(nextSessionId)}`, {
+        replace: true,
+        state: { ...state, sessionId: nextSessionId, brief: briefForSave },
+      });
+    }
+
+    return persisted;
+  };
+
+  useEffect(() => {
+    if (loading || !nextBrief?.brandId) return undefined;
+
+    const snapshot = buildFieldSnapshot(nextBrief);
+    if (snapshot === lastSavedSnapshotRef.current) return undefined;
+    if (!sessionId && snapshot === initialSnapshotRef.current) return undefined;
+
+    const timer = setTimeout(() => {
+      persistSession().catch(() => setAutosaveState('error'));
+    }, 700);
+
+    return () => clearTimeout(timer);
+  }, [audienceType, campaignName, campaignType, contentGoal, keyMessage, loading, nextBrief, sessionId, toneShift]);
+
+  const handleContinue = async () => {
+    const persisted = await persistSession({ nextStep: 'preview' });
+    navigate(`/generate/preview${buildSessionQuery(persisted.id)}`, {
       state: {
         brief: nextBrief,
+        sessionId: persisted.id,
       },
     });
   };
@@ -221,6 +314,15 @@ export default function Brief() {
                 Preview content →
               </Button>
             </div>
+            {autosaveState !== 'idle' && (
+              <p className="text-xs text-slate-400">
+                {autosaveState === 'saving'
+                  ? 'Saving…'
+                  : autosaveState === 'saved'
+                    ? 'Saved just now'
+                    : 'We could not save this progress yet.'}
+              </p>
+            )}
           </div>
         )}
       </div>
@@ -235,4 +337,15 @@ function ContextItem({ label, value }) {
       <p className="mt-2 text-sm text-gray-700">{value}</p>
     </div>
   );
+}
+
+function buildFieldSnapshot(brief) {
+  return JSON.stringify({
+    campaignName: brief?.campaignName || '',
+    campaignType: brief?.campaignType || '',
+    audienceType: brief?.audienceType || brief?.audience || '',
+    contentGoal: brief?.contentGoal || '',
+    toneShift: brief?.toneShift || '',
+    keyMessage: brief?.keyMessage || '',
+  });
 }

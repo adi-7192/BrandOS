@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import TopNav from '../../components/layout/TopNav';
 import api from '../../services/api';
 import { buildGeneratingContext } from '../../lib/generation-flow';
+import { buildGenerationSessionPayload, buildSessionQuery } from '../../lib/generation-session';
 
 const STEPS = [
   (brand) => `Loading brand kit v1…`,
@@ -15,35 +16,86 @@ const STEPS = [
 
 export default function Creating() {
   const navigate = useNavigate();
-  const { state } = useLocation();
+  const { state, search } = useLocation();
   const [currentStep, setCurrentStep] = useState(0);
-  const brief = state?.brief || {};
-  const sections = state?.sections || {};
+  const sessionIdParam = new URLSearchParams(search).get('sessionId');
+  const [brief, setBrief] = useState(state?.brief || {});
+  const [sections, setSections] = useState(state?.sections || {});
+  const [sessionId, setSessionId] = useState(sessionIdParam || state?.sessionId || '');
   const kit = brief.kit || {};
   const context = buildGeneratingContext(brief);
 
   useEffect(() => {
-    let step = 0;
-    const interval = setInterval(() => {
-      step += 1;
-      setCurrentStep(step);
-      if (step >= STEPS.length) clearInterval(interval);
-    }, 900);
-
     const generate = async () => {
+      let interval;
+      let activeBrief = brief;
+      let activeSections = sections;
+      let activeSessionId = sessionIdParam || state?.sessionId || '';
+
       try {
-        const res = await api.post('/generate/create', { brief, sections });
+        if (sessionIdParam) {
+          const sessionRes = await api.get(`/generate/sessions/${sessionIdParam}`);
+          activeBrief = sessionRes.data.session.briefPayload || {};
+          activeSections = sessionRes.data.session.previewPayload || {};
+          activeSessionId = sessionRes.data.session.id;
+          setBrief(activeBrief);
+          setSections(activeSections);
+          setSessionId(activeSessionId);
+        }
+
+        const creatingPayload = buildGenerationSessionPayload({
+          brief: activeBrief,
+          sections: activeSections,
+          output: {},
+          currentStep: 'creating',
+          activeTab: 'linkedin',
+          lastInstruction: '',
+        });
+
+        if (activeSessionId) {
+          await api.patch(`/generate/sessions/${activeSessionId}`, creatingPayload);
+        } else {
+          const created = await api.post('/generate/sessions', creatingPayload);
+          activeSessionId = created.data.session.id;
+          setSessionId(activeSessionId);
+        }
+
+        let step = 0;
+        interval = setInterval(() => {
+          step += 1;
+          setCurrentStep(step);
+          if (step >= STEPS.length) clearInterval(interval);
+        }, 900);
+
+        const res = await api.post('/generate/create', { brief: activeBrief, sections: activeSections });
         clearInterval(interval);
-        navigate('/generate/output', { state: { output: res.data.output, brief } });
+        await api.patch(`/generate/sessions/${activeSessionId}`, buildGenerationSessionPayload({
+          brief: activeBrief,
+          sections: activeSections,
+          output: res.data.output,
+          currentStep: 'output',
+          activeTab: 'linkedin',
+          lastInstruction: '',
+        }));
+        navigate(`/generate/output${buildSessionQuery(activeSessionId)}`, { state: { output: res.data.output, brief: activeBrief, sessionId: activeSessionId } });
       } catch {
-        clearInterval(interval);
-        navigate('/generate/output', { state: { output: { linkedin: '', blog: '' }, brief } });
+        if (interval) clearInterval(interval);
+        if (activeSessionId) {
+          await api.patch(`/generate/sessions/${activeSessionId}`, buildGenerationSessionPayload({
+            brief: activeBrief,
+            sections: activeSections,
+            output: { linkedin: '', blog: '' },
+            currentStep: 'output',
+            activeTab: 'linkedin',
+            lastInstruction: '',
+          })).catch(() => {});
+        }
+        navigate(`/generate/output${buildSessionQuery(activeSessionId)}`, { state: { output: { linkedin: '', blog: '' }, brief: activeBrief, sessionId: activeSessionId } });
       }
     };
 
     generate();
-    return () => clearInterval(interval);
-  }, []);
+  }, [navigate, sessionIdParam, state]);
 
   return (
     <div className="min-h-screen bg-gray-50">

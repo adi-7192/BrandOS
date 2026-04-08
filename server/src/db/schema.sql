@@ -194,6 +194,25 @@ CREATE TABLE IF NOT EXISTS inbox_cards (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- In-progress generation sessions
+CREATE TABLE IF NOT EXISTS generation_sessions (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  brand_id UUID REFERENCES brands(id) ON DELETE CASCADE,
+  session_title TEXT,
+  source TEXT DEFAULT 'manual' CHECK (source IN ('manual', 'inbox')),
+  source_card_ids TEXT[] DEFAULT '{}',
+  status TEXT DEFAULT 'in_progress' CHECK (status IN ('in_progress', 'saved', 'completed', 'abandoned')),
+  current_step TEXT DEFAULT 'brief' CHECK (current_step IN ('brief', 'preview', 'creating', 'output')),
+  brief_payload JSONB DEFAULT '{}'::jsonb,
+  preview_payload JSONB DEFAULT '{}'::jsonb,
+  output_payload JSONB DEFAULT '{}'::jsonb,
+  active_tab TEXT DEFAULT 'linkedin' CHECK (active_tab IN ('linkedin', 'blog')),
+  last_instruction TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- Drafts
 CREATE TABLE IF NOT EXISTS drafts (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -211,6 +230,9 @@ CREATE INDEX IF NOT EXISTS idx_brands_workspace ON brands(workspace_id);
 CREATE INDEX IF NOT EXISTS idx_brand_kits_brand ON brand_kits(brand_id);
 CREATE INDEX IF NOT EXISTS idx_inbox_cards_brand ON inbox_cards(brand_id);
 CREATE INDEX IF NOT EXISTS idx_inbox_cards_status ON inbox_cards(status);
+CREATE INDEX IF NOT EXISTS idx_generation_sessions_user ON generation_sessions(user_id);
+CREATE INDEX IF NOT EXISTS idx_generation_sessions_brand ON generation_sessions(brand_id);
+CREATE INDEX IF NOT EXISTS idx_generation_sessions_status ON generation_sessions(status);
 CREATE INDEX IF NOT EXISTS idx_drafts_brand ON drafts(brand_id);
 
 -- Intent capture

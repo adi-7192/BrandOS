@@ -1,3 +1,5 @@
+import { buildGuidelineDisplay } from './guideline-view.js';
+
 const SWATCH_GROUPS = [
   ['#1f2a44', '#ef476f', '#f6e7c1', '#203864'],
   ['#c1121f', '#f8f9fa', '#2b2d42', '#edf2f4'],
@@ -32,6 +34,9 @@ export function buildBrandCardModel(brand) {
 
 export function buildBrandDetailSections(brand) {
   const kit = brand?.kit || {};
+  const guidelineDisplay = buildGuidelineDisplay({
+    guidelineFileName: kit.guidelineFileName,
+  });
 
   return {
     summary: [
@@ -77,10 +82,7 @@ export function buildBrandDetailSections(brand) {
       {
         title: 'Guidelines applied',
         tone: 'neutral',
-        items: [
-          kit.guidelineFileName ? `File: ${kit.guidelineFileName}` : null,
-          kit.guidelineTextExcerpt || null,
-        ].filter(Boolean),
+        items: guidelineDisplay.detailItems,
         empty: 'No uploaded guideline document has been applied yet.',
       },
     ],

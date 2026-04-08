@@ -3,11 +3,14 @@ import { useEffect, useMemo, useState } from 'react';
 import AppShell from '../../components/layout/AppShell';
 import api from '../../services/api';
 import { buildBrandDetailSections } from '../../lib/brand-kits-view';
+import { buildResumeSessionItem, buildSessionRoute } from '../../lib/generation-session';
 
 export default function BrandEditor() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [brand, setBrand] = useState(null);
+  const [sessions, setSessions] = useState([]);
+  const [showResumePicker, setShowResumePicker] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -16,7 +19,14 @@ export default function BrandEditor() {
       .finally(() => setLoading(false));
   }, [id]);
 
+  useEffect(() => {
+    api.get(`/generate/sessions?brandId=${id}&status=in_progress`)
+      .then((res) => setSessions(res.data.sessions || []))
+      .catch(() => setSessions([]));
+  }, [id]);
+
   const detail = useMemo(() => (brand ? buildBrandDetailSections(brand) : null), [brand]);
+  const resumableSessions = useMemo(() => sessions.map(buildResumeSessionItem), [sessions]);
 
   return (
     <AppShell>
@@ -47,7 +57,14 @@ export default function BrandEditor() {
               </p>
             </div>
             <button
-              onClick={() => navigate(`/generate/brief?brandId=${brand.id}`, { state: { mode: 'manual', brand } })}
+              onClick={() => {
+                if (resumableSessions.length > 0) {
+                  setShowResumePicker(true);
+                  return;
+                }
+
+                navigate(`/generate/brief?brandId=${brand.id}`, { state: { mode: 'manual', brand } });
+              }}
               className="inline-flex items-center justify-center rounded-xl bg-[var(--brand-primary)] px-5 py-3 text-sm font-medium text-white shadow-[0_12px_24px_rgba(37,99,235,0.18)] transition-colors hover:bg-[var(--brand-primary-hover)]"
             >
               Generate content
@@ -98,6 +115,60 @@ export default function BrandEditor() {
               </div>
             ))}
           </div>
+
+          {showResumePicker && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 px-4">
+              <div className="w-full max-w-xl rounded-[28px] border border-[#e7ebf3] bg-white p-6 shadow-[0_24px_80px_rgba(15,23,42,0.18)]">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <h2 className="font-sans text-[1.5rem] font-semibold tracking-[-0.03em] text-slate-950">
+                      Resume work for {brand.name}
+                    </h2>
+                    <p className="mt-2 text-sm text-slate-500">
+                      You already have in-progress sessions for this brand. Resume one or start a new campaign.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setShowResumePicker(false)}
+                    className="text-sm font-medium text-slate-400 transition-colors hover:text-slate-600"
+                  >
+                    Close
+                  </button>
+                </div>
+
+                <div className="mt-5 space-y-3">
+                  {resumableSessions.map((session) => (
+                    <button
+                      key={session.id}
+                      onClick={() => navigate(buildSessionRoute(sessions.find((entry) => entry.id === session.id)))}
+                      className="flex w-full items-center justify-between rounded-2xl border border-[#e7ebf3] px-4 py-4 text-left transition-colors hover:bg-[#fafcff]"
+                    >
+                      <div>
+                        <p className="text-sm font-semibold text-slate-900">{session.title}</p>
+                        <p className="mt-1 text-sm text-slate-500">{session.subtitle}</p>
+                      </div>
+                      <span className="text-xs font-medium text-slate-400">{formatUpdatedAt(session.updatedAt)}</span>
+                    </button>
+                  ))}
+                </div>
+
+                <div className="mt-6 flex items-center justify-between gap-3">
+                  <button
+                    onClick={() => setShowResumePicker(false)}
+                    className="text-sm font-medium text-slate-500 transition-colors hover:text-slate-700"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => navigate(`/generate/brief?brandId=${brand.id}`, { state: { mode: 'manual', brand } })}
+                    className="inline-flex items-center justify-center rounded-xl bg-[var(--brand-primary)] px-5 py-3 text-sm font-medium text-white shadow-[0_12px_24px_rgba(37,99,235,0.18)] transition-colors hover:bg-[var(--brand-primary-hover)]"
+                  >
+                    Start new session
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </AppShell>
@@ -128,4 +199,18 @@ function getItemToneClasses(tone) {
   };
 
   return classes[tone] || classes.neutral;
+}
+
+function formatUpdatedAt(value) {
+  if (!value) return 'Just now';
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'Just now';
+
+  return date.toLocaleString([], {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
 }
