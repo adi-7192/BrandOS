@@ -1,9 +1,15 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useOnboarding } from '../../context/OnboardingContext';
 import OnboardingShell from '../../components/layout/OnboardingShell';
 import KitProgressBar from '../../components/layout/KitProgressBar';
 import Button from '../../components/ui/Button';
+import Textarea from '../../components/ui/Textarea';
+import {
+  normalizeKitCards,
+  updateKitCardArrayField,
+  updateKitCardChannelRule,
+} from '../../lib/kit-review';
 
 function KitCard({ title, badge, children, onApprove, approved, reviewed, onOpen }) {
   const [open, setOpen] = useState(false);
@@ -57,11 +63,15 @@ export default function S5bReviewKit() {
     },
   };
 
-  const cards = kitCards || defaultCards;
+  const cards = useMemo(
+    () => normalizeKitCards(kitCards || defaultCards),
+    [kitCards]
+  );
   const lowConfidence = s4aSkipped;
 
   const approve = (key) => setApproved(a => ({ ...a, [key]: true }));
   const markReviewed = (key) => setReviewed(r => ({ ...r, [key]: true }));
+  const syncKitCards = (nextKitCards) => update({ kitCards: nextKitCards });
 
   const allReviewed = Object.values(reviewed).every(Boolean);
 
@@ -89,6 +99,15 @@ export default function S5bReviewKit() {
               <span key={adj} className="chip chip-purple">{adj}</span>
             ))}
           </div>
+          <div className="mt-3">
+            <Textarea
+              label="Edit adjectives"
+              rows={2}
+              value={cards.voiceAdjectives.join(', ')}
+              onChange={(e) => syncKitCards(updateKitCardArrayField(cards, 'voiceAdjectives', e.target.value))}
+              placeholder="Comma separated adjectives"
+            />
+          </div>
         </KitCard>
 
         <KitCard title="Vocabulary to use" badge="AI drafted" approved={approved.vocab} reviewed={reviewed.vocab}
@@ -97,6 +116,15 @@ export default function S5bReviewKit() {
             {cards.vocabulary?.map(w => (
               <span key={w} className="chip chip-green">{w}</span>
             ))}
+          </div>
+          <div className="mt-3">
+            <Textarea
+              label="Edit vocabulary"
+              rows={2}
+              value={cards.vocabulary.join(', ')}
+              onChange={(e) => syncKitCards(updateKitCardArrayField(cards, 'vocabulary', e.target.value))}
+              placeholder="Comma separated words or phrases"
+            />
           </div>
         </KitCard>
 
@@ -108,7 +136,15 @@ export default function S5bReviewKit() {
               <span key={w} className="chip chip-red">🔒 {w}</span>
             ))}
           </div>
-          <button className="text-xs text-gray-500 hover:underline">+ Add word</button>
+          <div className="mt-3">
+            <Textarea
+              label="Edit restricted words"
+              rows={2}
+              value={cards.restrictedWords.join(', ')}
+              onChange={(e) => syncKitCards(updateKitCardArrayField(cards, 'restrictedWords', e.target.value))}
+              placeholder="Comma separated blocked words"
+            />
+          </div>
         </KitCard>
 
         <KitCard title="Channel rules" badge="AI drafted" approved={approved.channel} reviewed={reviewed.channel}
@@ -116,6 +152,20 @@ export default function S5bReviewKit() {
           <div className="space-y-2 text-sm text-gray-700">
             <div><span className="font-medium">LinkedIn:</span> {cards.channelRules?.linkedin}</div>
             <div><span className="font-medium">Blog:</span> {cards.channelRules?.blog}</div>
+          </div>
+          <div className="mt-3 space-y-3">
+            <Textarea
+              label="LinkedIn rule"
+              rows={2}
+              value={cards.channelRules?.linkedin}
+              onChange={(e) => syncKitCards(updateKitCardChannelRule(cards, 'linkedin', e.target.value))}
+            />
+            <Textarea
+              label="Blog rule"
+              rows={2}
+              value={cards.channelRules?.blog}
+              onChange={(e) => syncKitCards(updateKitCardChannelRule(cards, 'blog', e.target.value))}
+            />
           </div>
         </KitCard>
       </div>

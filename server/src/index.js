@@ -9,6 +9,7 @@ import inboxRouter from './routes/inbox.js';
 import generateRouter from './routes/generate.js';
 import dashboardRouter from './routes/dashboard.js';
 import intentRouter from './routes/intent.js';
+import settingsRouter from './routes/settings.js';
 import { errorHandler } from './middleware/errorHandler.js';
 
 const app = express();
@@ -42,6 +43,7 @@ app.use('/api/inbox', inboxRouter);
 app.use('/api/generate', generateRouter);
 app.use('/api/dashboard', dashboardRouter);
 app.use('/api/intent', intentRouter);
+app.use('/api/settings', settingsRouter);
 
 app.use(errorHandler);
 
@@ -53,4 +55,3 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 export default app;
-

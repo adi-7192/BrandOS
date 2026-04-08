@@ -1,3 +1,5 @@
+import { normalizeKitCards } from './kit-review.js';
+
 export function buildOnboardingSavePayload(state) {
   return {
     role: state.role,
@@ -21,7 +23,7 @@ export function buildOnboardingSavePayload(state) {
     publishingFrequency: state.publishingFrequency,
     voiceFormality: state.voiceFormality,
     campaignCoreWhy: state.campaignCoreWhy,
-    kitCards: state.kitCards,
+    kitCards: normalizeKitCards(state.kitCards || {}),
   };
 }
 

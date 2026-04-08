@@ -14,6 +14,12 @@ CREATE TABLE IF NOT EXISTS users (
   role TEXT,
   team TEXT,
   brand_count TEXT,
+  preferred_inbox_view TEXT DEFAULT 'updates',
+  include_original_email BOOLEAN DEFAULT TRUE,
+  forwarding_enabled BOOLEAN DEFAULT TRUE,
+  default_content_format TEXT DEFAULT 'linkedin',
+  tone_strictness TEXT DEFAULT 'balanced',
+  preferred_output_length TEXT DEFAULT 'standard',
   onboarding_complete BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -29,13 +35,75 @@ DO $$ BEGIN
   END IF;
 END $$;
 
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'users' AND column_name = 'preferred_inbox_view'
+  ) THEN
+    ALTER TABLE users ADD COLUMN preferred_inbox_view TEXT DEFAULT 'updates';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'users' AND column_name = 'include_original_email'
+  ) THEN
+    ALTER TABLE users ADD COLUMN include_original_email BOOLEAN DEFAULT TRUE;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'users' AND column_name = 'forwarding_enabled'
+  ) THEN
+    ALTER TABLE users ADD COLUMN forwarding_enabled BOOLEAN DEFAULT TRUE;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'users' AND column_name = 'default_content_format'
+  ) THEN
+    ALTER TABLE users ADD COLUMN default_content_format TEXT DEFAULT 'linkedin';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'users' AND column_name = 'tone_strictness'
+  ) THEN
+    ALTER TABLE users ADD COLUMN tone_strictness TEXT DEFAULT 'balanced';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'users' AND column_name = 'preferred_output_length'
+  ) THEN
+    ALTER TABLE users ADD COLUMN preferred_output_length TEXT DEFAULT 'standard';
+  END IF;
+END $$;
+
 -- Workspaces
 CREATE TABLE IF NOT EXISTS workspaces (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID REFERENCES users(id) ON DELETE CASCADE,
   company_name TEXT NOT NULL,
+  display_name TEXT,
+  gmail_connection_status TEXT DEFAULT 'not_connected',
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'workspaces' AND column_name = 'display_name'
+  ) THEN
+    ALTER TABLE workspaces ADD COLUMN display_name TEXT;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'workspaces' AND column_name = 'gmail_connection_status'
+  ) THEN
+    ALTER TABLE workspaces ADD COLUMN gmail_connection_status TEXT DEFAULT 'not_connected';
+  END IF;
+END $$;
 
 -- Brands
 CREATE TABLE IF NOT EXISTS brands (

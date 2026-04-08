@@ -139,7 +139,7 @@ export default function Output() {
           {brief.contentGoal && <span className="chip chip-grey">{brief.contentGoal}</span>}
           {brief.toneShift && <span className="chip chip-grey">{brief.toneShift}</span>}
           {brief.language && <span className="chip chip-grey">{brief.language}</span>}
-          <span className="chip chip-green">✓ 0 restricted words</span>
+          <span className="chip chip-green">✓ {brief.kit?.restrictedWords?.length || 0} restricted words</span>
         </div>
 
         {/* Output body */}

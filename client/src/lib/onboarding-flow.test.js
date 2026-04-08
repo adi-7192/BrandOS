@@ -74,6 +74,43 @@ test('buildOnboardingSavePayload includes onboarding and kit fields expected by 
   });
 });
 
+test('buildOnboardingSavePayload falls back to safe default kit cards when extraction has not populated them', () => {
+  const payload = buildOnboardingSavePayload({
+    role: '',
+    team: '',
+    brandCount: '',
+    brandName: 'BHV Marais',
+    primaryMarket: 'France',
+    brandLanguage: 'French',
+    websiteUrl: '',
+    pastContentExamples: '',
+    audienceType: '',
+    buyerSeniority: '',
+    ageRange: '',
+    industrySector: '',
+    industryTarget: '',
+    funnelStage: '',
+    toneShift: '',
+    proofStyle: '',
+    contentRole: '',
+    contentGoal: '',
+    publishingFrequency: 'Weekly',
+    voiceFormality: null,
+    campaignCoreWhy: '',
+    kitCards: null,
+  });
+
+  assert.deepEqual(payload.kitCards, {
+    voiceAdjectives: ['Authentic', 'Confident', 'Approachable'],
+    vocabulary: ['innovation', 'community', 'experience', 'craft', 'quality'],
+    restrictedWords: ['cheap', 'free', 'guarantee', 'best'],
+    channelRules: {
+      linkedin: 'Max 220 words · Hook in line 1 · Max 3 hashtags · No em dashes',
+      blog: '700–900 words · Subheadings required · End with a question or call to action',
+    },
+  });
+});
+
 test('shouldClearAuthOnError returns true for auth token failures and auth me requests', () => {
   assert.equal(
     shouldClearAuthOnError({

@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import pool from '../db/pool.js';
 import { authenticate } from '../middleware/auth.js';
+import { buildCanonicalBrief } from '../services/ai/briefBuilder.js';
 import { generateContent, iterateContent } from '../services/ai/generation.js';
 
 const router = Router();
@@ -18,7 +19,13 @@ router.post('/brief', async (req, res, next) => {
     const { rows } = await pool.query(
       `SELECT ic.*, b.name as brand_name, b.language,
               k.voice_adjectives, k.restricted_words, k.vocabulary,
-              k.audience_type, k.funnel_stage, k.content_goal, k.publishing_frequency
+              k.channel_rules_linkedin, k.channel_rules_blog,
+              k.audience_type, k.buyer_seniority, k.age_range,
+              k.industry_sector, k.industry_target, k.funnel_stage,
+              k.tone_shift, k.proof_style, k.content_role,
+              k.content_goal, k.publishing_frequency, k.formality_level,
+              k.campaign_core_why, k.past_content_examples, k.website_url,
+              k.version
        FROM inbox_cards ic
        JOIN brands b ON b.id = ic.brand_id
        LEFT JOIN brand_kits k ON k.brand_id = b.id AND k.is_active = TRUE
@@ -26,25 +33,7 @@ router.post('/brief', async (req, res, next) => {
       cardIds
     );
 
-    const merged = mergeCards(rows);
-    const lowConfidence = (merged.overall_score || 1) < 0.40;
-
-    res.json({
-      brief: {
-        brandId: merged.brand_id,
-        brandName: merged.brand_name,
-        voiceAdjectives: merged.voice_adjectives,
-        language: merged.language,
-        campaignName: merged.extracted?.campaignName || merged.email_subject,
-        campaignType: merged.extracted?.campaignType,
-        audience: merged.extracted?.audience,
-        toneShift: merged.extracted?.toneShift,
-        keyMessage: merged.extracted?.keyMessage,
-        restrictedWords: merged.restricted_words,
-        lowConfidence,
-        sourceCardIds: cardIds,
-      },
-    });
+    res.json({ brief: buildCanonicalBrief(rows, cardIds) });
   } catch (err) { next(err); }
 });
 
@@ -88,23 +77,5 @@ router.post('/save-draft', async (req, res, next) => {
     res.json({ ok: true, version: nextVersion });
   } catch (err) { next(err); }
 });
-
-function mergeCards(cards) {
-  if (cards.length === 0) return {};
-  if (cards.length === 1) {
-    const c = cards[0];
-    return { ...c, extracted: c.extracted_fields || {} };
-  }
-  // Multi-card merge: most recently extracted value wins per field
-  const base = cards[0];
-  const mergedExtracted = {};
-  for (const card of cards) {
-    const ef = card.extracted_fields || {};
-    for (const [key, val] of Object.entries(ef)) {
-      if (val) mergedExtracted[key] = val;
-    }
-  }
-  return { ...base, extracted: mergedExtracted };
-}
 
 export default router;

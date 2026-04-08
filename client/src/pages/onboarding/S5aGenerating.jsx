@@ -38,6 +38,7 @@ export default function S5aGenerating() {
           buyerSeniority: ob.buyerSeniority,
           ageRange: ob.ageRange,
           industrySector: ob.industrySector,
+          industryTarget: ob.industryTarget,
           campaignType: ob.campaignType,
           funnelStage: ob.funnelStage,
           toneShift: ob.toneShift,

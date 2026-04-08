@@ -2,7 +2,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import OpenAI from 'openai';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-const PROVIDER = process.env.AI_PROVIDER || 'anthropic';
+export const PROVIDER = process.env.AI_PROVIDER || 'anthropic';
 
 const MODELS = {
   anthropic: 'claude-sonnet-4-6',
@@ -12,6 +12,12 @@ const MODELS = {
 
 export const MODEL = MODELS[PROVIDER] || MODELS.anthropic;
 
+const PROVIDER_KEY_MAP = {
+  anthropic: 'ANTHROPIC_API_KEY',
+  openai: 'OPENAI_API_KEY',
+  gemini: 'GEMINI_API_KEY',
+};
+
 let anthropicClient, openaiClient, geminiClient;
 
 if (PROVIDER === 'anthropic') {
@@ -20,6 +26,11 @@ if (PROVIDER === 'anthropic') {
   openaiClient = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 } else if (PROVIDER === 'gemini') {
   geminiClient = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+}
+
+export function isAIConfigured() {
+  const envKey = PROVIDER_KEY_MAP[PROVIDER];
+  return Boolean(envKey && process.env[envKey]);
 }
 
 /**
@@ -62,6 +73,20 @@ export async function callAI(systemPrompt, userMessage, maxTokens = 1000) {
   }
 
   throw new Error(`Unknown AI_PROVIDER: ${PROVIDER}. Valid values: anthropic | openai | gemini`);
+}
+
+export async function testAIConnection() {
+  if (!isAIConfigured()) {
+    throw new Error(`Missing credentials for ${PROVIDER}.`);
+  }
+
+  const response = await callAI(
+    'You are a connection test for BrandOS. Reply with exactly OK.',
+    'Return OK.',
+    10
+  );
+
+  return response;
 }
 
 export default anthropicClient;

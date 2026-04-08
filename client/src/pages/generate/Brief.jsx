@@ -4,6 +4,7 @@ import TopNav from '../../components/layout/TopNav';
 import Button from '../../components/ui/Button';
 import Dropdown from '../../components/ui/Dropdown';
 import api from '../../services/api';
+import { buildConfirmedBrief } from '../../lib/generation-flow';
 
 const SOURCE_COLORS = {
   inbox: 'bg-green-100 text-green-700 border-green-300',
@@ -45,13 +46,21 @@ export default function Brief() {
   useEffect(() => {
     const cardIds = state?.cardIds || [];
     api.post('/generate/brief', { cardIds })
-      .then(res => setBrief(res.data.brief))
+      .then((res) => {
+        setBrief(res.data.brief);
+        setAudienceType(res.data.brief?.audienceType || '');
+        setContentGoal(res.data.brief?.contentGoal || '');
+      })
       .catch(() => setBrief(null))
       .finally(() => setLoading(false));
   }, []);
 
   const handleContinue = () => {
-    navigate('/generate/preview', { state: { brief: { ...brief, audienceType, contentGoal } } });
+    navigate('/generate/preview', {
+      state: {
+        brief: buildConfirmedBrief(brief, { audienceType, contentGoal }),
+      },
+    });
   };
 
   return (
@@ -74,7 +83,7 @@ export default function Brief() {
           </div>
           <div className="flex-1">
             <p className="font-semibold text-gray-900">{brief?.brandName || 'Brand'}</p>
-            <p className="text-xs text-gray-400">{brief?.voiceAdjectives?.join(' · ')} · {brief?.language}</p>
+            <p className="text-xs text-gray-400">{brief?.kit?.voiceAdjectives?.join(' · ')} · {brief?.language}</p>
           </div>
           <button className="text-xs text-gray-400 hover:underline">Change brand</button>
         </div>
@@ -89,9 +98,9 @@ export default function Brief() {
               </div>
             )}
 
-            <FieldBlock label="Campaign name" value={brief?.campaignName} source="inbox" />
-            <FieldBlock label="Campaign type" value={brief?.campaignType} source="inbox" />
-            <FieldBlock label="Audience" value={brief?.audience} source="inbox" />
+            <FieldBlock label="Campaign name" value={brief?.campaignName || 'Pending'} source="inbox" />
+            <FieldBlock label="Campaign type" value={brief?.campaignType || 'Pending'} source="inbox" />
+            <FieldBlock label="Audience" value={brief?.audience || 'Pending'} source="inbox" />
 
             <FieldBlock label="Audience type" source="user-provided">
               <Dropdown
@@ -102,8 +111,8 @@ export default function Brief() {
               <p className="text-xs text-gray-400 mt-1">Narrows framing and tone for this campaign — overrides the brand kit default if needed.</p>
             </FieldBlock>
 
-            <FieldBlock label="Tone shift" value={brief?.toneShift} source="inbox" />
-            <FieldBlock label="Key message" value={brief?.keyMessage} source="inbox" highlight />
+            <FieldBlock label="Tone shift" value={brief?.toneShift || 'Keep baseline'} source="inbox" />
+            <FieldBlock label="Key message" value={brief?.keyMessage || 'Pending'} source="inbox" highlight />
 
             {/* Missing fields */}
             <div className="border-t border-gray-200 pt-4">

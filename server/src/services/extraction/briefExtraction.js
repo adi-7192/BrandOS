@@ -1,4 +1,5 @@
-import anthropic, { MODEL } from '../ai/client.js';
+import { callAI } from '../ai/client.js';
+import { parseStructuredJson } from '../ai/structuredOutput.js';
 
 const FIELD_WEIGHTS = {
   key_message: 0.25,
@@ -45,19 +46,16 @@ Return ONLY a JSON object:
   "cta_intent": { "value": "...", "confidence": 0.4, "sourceQuote": "..." }
 }`;
 
-  const msg = await anthropic.messages.create({
-    model: MODEL,
-    max_tokens: 800,
-    system: systemPrompt,
-    messages: [{ role: 'user', content: `Subject: ${subject}\n\n${context}` }],
-  });
+  const raw = await callAI(
+    systemPrompt,
+    `Subject: ${subject}\n\n${context}`,
+    800
+  );
 
-  let extracted;
-  try {
-    extracted = JSON.parse(msg.content[0].text.trim());
-  } catch {
-    extracted = {};
-  }
+  const { data: extracted } = parseStructuredJson(raw, {
+    fallback: {},
+    validate: (value) => value && typeof value === 'object' && !Array.isArray(value),
+  });
 
   // Enforce: no source quote → cap at 0.6
   for (const field of Object.keys(extracted)) {

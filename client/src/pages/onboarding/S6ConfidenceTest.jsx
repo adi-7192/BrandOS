@@ -7,6 +7,11 @@ import KitProgressBar from '../../components/layout/KitProgressBar';
 import Button from '../../components/ui/Button';
 import api from '../../services/api';
 import { buildOnboardingSavePayload } from '../../lib/onboarding-flow';
+import {
+  buildConfidenceRegenerationPayload,
+  buildConfidenceSamplePayload,
+  canRegenerateConfidenceSample,
+} from '../../lib/confidence-flow';
 
 const REGENERATE_CHIPS = ['Tone too formal', 'Tone too casual', 'Wrong vocabulary', 'Too long', 'Too short', 'Weak opening', 'CTA missing'];
 
@@ -20,20 +25,14 @@ export default function S6ConfidenceTest() {
   const [saveError, setSaveError] = useState('');
   const [reaction, setReaction] = useState(null); // 'positive' | 'mixed' | 'negative'
   const [regenerateCount, setRegenerateCount] = useState(0);
+  const [regenerating, setRegenerating] = useState(false);
   const [selectedChips, setSelectedChips] = useState([]);
   const [freeText, setFreeText] = useState('');
 
   useEffect(() => {
     const generate = async () => {
       try {
-        const res = await api.post('/onboarding/confidence-sample', {
-          brandName: ob.brandName,
-          kitCards: ob.kitCards,
-          campaignType: ob.campaignType,
-          funnelStage: ob.funnelStage,
-          toneShift: ob.toneShift,
-          brandLanguage: ob.brandLanguage,
-        });
+        const res = await api.post('/onboarding/confidence-sample', buildConfidenceSamplePayload(ob));
         setSamplePost(res.data.samplePost);
       } catch {
         setSamplePost('Sample post generation failed. Please try editing the kit directly.');
@@ -43,6 +42,32 @@ export default function S6ConfidenceTest() {
     };
     generate();
   }, []);
+
+  const handleRegenerate = async () => {
+    if (!canRegenerateConfidenceSample({ selectedChips, freeText, regenerateCount, regenerating })) {
+      return;
+    }
+
+    setSaveError('');
+    setRegenerating(true);
+
+    try {
+      const res = await api.post(
+        '/onboarding/confidence-sample',
+        buildConfidenceRegenerationPayload(ob, {
+          currentSample: samplePost,
+          selectedChips,
+          freeText,
+        })
+      );
+      setSamplePost(res.data.samplePost);
+      setRegenerateCount((count) => count + 1);
+    } catch (err) {
+      setSaveError(err.response?.data?.message || 'Failed to regenerate the sample. Please try editing the kit directly.');
+    } finally {
+      setRegenerating(false);
+    }
+  };
 
   const handleApprove = async () => {
     setSaveError('');
@@ -59,6 +84,7 @@ export default function S6ConfidenceTest() {
   };
 
   const approveEnabled = reaction === 'positive' || (reaction === 'mixed' && regenerateCount > 0);
+  const regenerateEnabled = canRegenerateConfidenceSample({ selectedChips, freeText, regenerateCount, regenerating });
 
   return (
     <OnboardingShell phase="Phase 2 · build brand kit">
@@ -132,9 +158,9 @@ export default function S6ConfidenceTest() {
                 placeholder="Describe what's off…"
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm resize-none focus:outline-none focus:border-gray-900"
               />
-              <Button variant="secondary" className="mt-3 text-sm" disabled={regenerateCount >= 1}
-                onClick={() => { setRegenerateCount(c => c + 1); }}>
-                {regenerateCount >= 1 ? 'Regenerated once' : 'Regenerate'}
+              <Button variant="secondary" className="mt-3 text-sm" disabled={!regenerateEnabled}
+                onClick={handleRegenerate}>
+                {regenerating ? 'Regenerating…' : regenerateCount >= 1 ? 'Regenerated once' : 'Regenerate'}
               </Button>
             </div>
           )}

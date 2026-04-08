@@ -1,26 +1,33 @@
 import { callAI } from './client.js';
+import { parseStructuredJson } from './structuredOutput.js';
 
 /**
  * Generate a confidence test sample post using kit + brief context.
  */
-export async function generateConfidenceSample({ brandName, kitCards, campaignType, funnelStage, toneShift, brandLanguage }) {
+export async function generateConfidenceSample({
+  brandName,
+  kitCards,
+  campaignType,
+  funnelStage,
+  toneShift,
+  brandLanguage,
+  currentSample,
+  feedbackChips,
+  feedbackNotes,
+}) {
   const kit = kitCards || {};
   const systemPrompt = buildSystemPrompt({ brandName, kit, brandLanguage });
-
-  const userMessage = `Generate a sample LinkedIn post for ${brandName}.
-Campaign type: ${campaignType || 'Brand awareness'}
-Funnel stage: ${funnelStage || 'Top of funnel'}
-Tone shift: ${toneShift || 'Keep baseline'}
-
-Requirements:
-- Strictly follow the brand voice: ${kit.voiceAdjectives?.join(', ')}
-- Use vocabulary: ${kit.vocabulary?.join(', ')}
-- NEVER use these words: ${kit.restrictedWords?.join(', ')}
-- Max 150 words
-- Strong hook in line 1
-- Max 2 hashtags
-- Write in ${brandLanguage || 'English'}`;
-
+  const userMessage = buildConfidenceUserMessage({
+    brandName,
+    kit,
+    campaignType,
+    funnelStage,
+    toneShift,
+    brandLanguage,
+    currentSample,
+    feedbackChips,
+    feedbackNotes,
+  });
   return await callAI(systemPrompt, userMessage, 400);
 }
 
@@ -69,11 +76,17 @@ Return ONLY a JSON object:
 }`;
 
   const raw = await callAI(systemPrompt, userMessage, 2000);
-  try {
-    return JSON.parse(raw);
-  } catch {
-    return { linkedin: raw, blog: '' };
+  const fallback = { linkedin: String(raw || '').trim(), blog: '' };
+  const { data, usedFallback } = parseStructuredJson(raw, {
+    fallback,
+    validate: (value) => typeof value?.linkedin === 'string' && typeof value?.blog === 'string',
+  });
+
+  if (usedFallback) {
+    console.warn('Content generation returned invalid JSON. Falling back to raw LinkedIn output.');
   }
+
+  return data;
 }
 
 /**
@@ -105,11 +118,16 @@ Apply the instruction while keeping the brand voice. Return ONLY a JSON object:
 }`;
 
   const raw = await callAI(systemPrompt, userMessage, 2000);
-  try {
-    return JSON.parse(raw);
-  } catch {
-    return currentContent;
+  const { data, usedFallback } = parseStructuredJson(raw, {
+    fallback: currentContent,
+    validate: (value) => typeof value?.linkedin === 'string' && typeof value?.blog === 'string',
+  });
+
+  if (usedFallback) {
+    console.warn('Content iteration returned invalid JSON. Keeping current content.');
   }
+
+  return data;
 }
 
 // Shared system prompt builder
@@ -128,4 +146,55 @@ Never explain your process. Return only the requested content.`;
 function getWordTarget(frequency) {
   const map = { 'Daily': 400, '2–3 times per week': 500, 'Weekly': 700, 'Bi-weekly': 800, 'Monthly or less': 1000 };
   return map[frequency] || 700;
+}
+
+export function buildConfidenceUserMessage({
+  brandName,
+  kit,
+  campaignType,
+  funnelStage,
+  toneShift,
+  brandLanguage,
+  currentSample,
+  feedbackChips,
+  feedbackNotes,
+}) {
+  const hasFeedback = Array.isArray(feedbackChips) && feedbackChips.length > 0 || String(feedbackNotes || '').trim();
+
+  if (hasFeedback && currentSample) {
+    return `Refine this existing LinkedIn sample for ${brandName}.
+Campaign type: ${campaignType || 'Brand awareness'}
+Funnel stage: ${funnelStage || 'Top of funnel'}
+Tone shift: ${toneShift || 'Keep baseline'}
+
+Current sample:
+${currentSample}
+
+Feedback to address: ${feedbackChips?.join(', ') || 'No chips selected'}
+Additional notes: ${String(feedbackNotes || '').trim() || 'None'}
+
+Requirements:
+- Keep the same underlying campaign intent while improving the draft
+- Strictly follow the brand voice: ${kit.voiceAdjectives?.join(', ')}
+- Use vocabulary: ${kit.vocabulary?.join(', ')}
+- NEVER use these words: ${kit.restrictedWords?.join(', ')}
+- Max 150 words
+- Strong hook in line 1
+- Max 2 hashtags
+- Write in ${brandLanguage || 'English'}`;
+  }
+
+  return `Generate a sample LinkedIn post for ${brandName}.
+Campaign type: ${campaignType || 'Brand awareness'}
+Funnel stage: ${funnelStage || 'Top of funnel'}
+Tone shift: ${toneShift || 'Keep baseline'}
+
+Requirements:
+- Strictly follow the brand voice: ${kit.voiceAdjectives?.join(', ')}
+- Use vocabulary: ${kit.vocabulary?.join(', ')}
+- NEVER use these words: ${kit.restrictedWords?.join(', ')}
+- Max 150 words
+- Strong hook in line 1
+- Max 2 hashtags
+- Write in ${brandLanguage || 'English'}`;
 }

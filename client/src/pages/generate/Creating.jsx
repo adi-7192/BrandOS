@@ -2,13 +2,14 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import TopNav from '../../components/layout/TopNav';
 import api from '../../services/api';
+import { buildGeneratingContext } from '../../lib/generation-flow';
 
 const STEPS = [
   (brand) => `Loading brand kit v1…`,
   (brand, kit) => `Applying tone: ${kit?.voiceAdjectives?.join(' · ') || '…'}`,
   () => 'Anchoring to key message…',
   (brand, kit) => `Enforcing ${kit?.restrictedWords?.length || 0} restricted word guardrails…`,
-  (brand, kit) => `Writing in brand voice (${kit?.language || 'English'})…`,
+  (brand, kit, language) => `Writing in brand voice (${language || 'English'})…`,
   () => 'Checking format compliance…',
 ];
 
@@ -18,8 +19,8 @@ export default function Creating() {
   const [currentStep, setCurrentStep] = useState(0);
   const brief = state?.brief || {};
   const sections = state?.sections || {};
-
-  const kit = { voiceAdjectives: ['Authentic', 'Confident', 'Approachable'], restrictedWords: [], language: brief.language || 'English' };
+  const kit = brief.kit || {};
+  const context = buildGeneratingContext(brief);
 
   useEffect(() => {
     let step = 0;
@@ -66,7 +67,7 @@ export default function Creating() {
                   <span className={`h-5 w-5 flex-shrink-0 rounded-full flex items-center justify-center text-xs ${i < currentStep ? 'bg-gray-900 text-white' : 'bg-gray-200'}`}>
                     {i < currentStep ? '✓' : i + 1}
                   </span>
-                  {stepFn(brief.brandName, kit)}
+                  {stepFn(brief.brandName, kit, brief.language)}
                 </div>
               ))}
             </div>
@@ -76,13 +77,13 @@ export default function Creating() {
           <div className="w-52 flex-shrink-0 rounded-xl border border-gray-200 bg-white p-4">
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">Context being applied</p>
             <div className="space-y-2 text-xs text-gray-600">
-              <div><span className="text-gray-400">Brand voice</span><br />{kit.voiceAdjectives?.join(', ')}</div>
-              <div><span className="text-gray-400">Language</span><br />{brief.language || 'English'}</div>
-              <div><span className="text-gray-400">Tone shift</span><br />{brief.toneShift || 'Baseline'}</div>
-              <div><span className="text-gray-400">Audience</span><br />{brief.audienceType || brief.audience || '—'}</div>
-              <div><span className="text-gray-400">Guardrails</span><br />{kit.restrictedWords?.length || 0} active</div>
-              <div><span className="text-gray-400">Goal</span><br />{brief.contentGoal || '—'}</div>
-              <div><span className="text-gray-400">Key message</span><br /><span className="truncate block">{brief.keyMessage || '—'}</span></div>
+              <div><span className="text-gray-400">Brand voice</span><br />{context.voice}</div>
+              <div><span className="text-gray-400">Language</span><br />{context.language}</div>
+              <div><span className="text-gray-400">Tone shift</span><br />{context.toneShift}</div>
+              <div><span className="text-gray-400">Audience</span><br />{context.audience}</div>
+              <div><span className="text-gray-400">Guardrails</span><br />{context.guardrailCount} active</div>
+              <div><span className="text-gray-400">Goal</span><br />{context.goal}</div>
+              <div><span className="text-gray-400">Key message</span><br /><span className="truncate block">{context.keyMessage}</span></div>
             </div>
           </div>
         </div>

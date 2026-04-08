@@ -1,4 +1,5 @@
 import { callAI } from './client.js';
+import { parseStructuredJson } from './structuredOutput.js';
 
 /**
  * Extract brand kit cards from seed content using Claude.
@@ -11,12 +12,19 @@ export async function extractBrandKit(params) {
     pastContentExamples,
     audienceType,
     buyerSeniority,
+    ageRange,
+    industrySector,
+    industryTarget,
+    campaignType,
     funnelStage,
     contentGoal,
     publishingFrequency,
     brandLanguage,
     primaryMarket,
     toneShift,
+    proofStyle,
+    contentRole,
+    voiceFormality,
   } = params;
 
   const systemPrompt = `You are an expert brand strategist extracting a brand voice kit from seed content.
@@ -38,15 +46,24 @@ Rules:
 - Vocabulary comes from patterns in the seed content, not invented
 - Restricted words are words that clash with this brand's positioning
 - Channel rules must include word limits appropriate for publishing frequency: ${publishingFrequency || 'Weekly'}
+- Audience, campaign type, funnel stage, proof style, and role in the sales cycle should influence how specific the rules feel
+- If formality is provided, reflect it in the voice and channel rules
 - Respond ONLY with the JSON object. No markdown fences.`;
 
   const userMessage = `Brand: ${brandName}
 Market: ${primaryMarket || 'Not specified'}
 Language: ${brandLanguage || 'English'}
 Audience: ${audienceType || 'Not specified'} — ${buyerSeniority || ''}
+Age range: ${ageRange || 'Not specified'}
+Industry sector: ${industrySector || 'Not specified'}
+Target industry: ${industryTarget || 'Not specified'}
+Campaign type: ${campaignType || 'Not specified'}
 Funnel stage: ${funnelStage || 'Not specified'}
 Content goal: ${contentGoal || 'Not specified'}
 Tone shift: ${toneShift || 'Keep baseline'}
+Proof style: ${proofStyle || 'Not specified'}
+Content role: ${contentRole || 'Not specified'}
+Formality level: ${voiceFormality ?? 'Balanced'}
 Publishing frequency: ${publishingFrequency || 'Weekly'}
 
 ${websiteUrl ? `Website URL (assume content was read): ${websiteUrl}` : ''}
@@ -54,19 +71,31 @@ ${websiteUrl ? `Website URL (assume content was read): ${websiteUrl}` : ''}
 ${pastContentExamples ? `Past content examples:\n${pastContentExamples}` : 'No past content examples provided.'}`;
 
   const raw = await callAI(systemPrompt, userMessage, 800);
+  const fallback = {
+    voiceAdjectives: ['Authentic', 'Confident', 'Approachable'],
+    vocabulary: ['innovation', 'community', 'experience', 'craft', 'quality'],
+    restrictedWords: ['cheap', 'discount', 'guarantee'],
+    channelRules: {
+      linkedin: 'Max 220 words · Hook in line 1 · Max 3 hashtags · No em dashes',
+      blog: '700–900 words · Subheadings required · End with a question or call to action',
+    },
+  };
 
-  try {
-    return JSON.parse(raw);
-  } catch {
-    // Fallback if parse fails
-    return {
-      voiceAdjectives: ['Authentic', 'Confident', 'Approachable'],
-      vocabulary: ['innovation', 'community', 'experience', 'craft', 'quality'],
-      restrictedWords: ['cheap', 'discount', 'guarantee'],
-      channelRules: {
-        linkedin: 'Max 220 words · Hook in line 1 · Max 3 hashtags · No em dashes',
-        blog: '700–900 words · Subheadings required · End with a question or call to action',
-      },
-    };
+  const { data, usedFallback } = parseStructuredJson(raw, {
+    fallback,
+    validate: (value) => (
+      Array.isArray(value?.voiceAdjectives)
+      && Array.isArray(value?.vocabulary)
+      && Array.isArray(value?.restrictedWords)
+      && typeof value?.channelRules === 'object'
+      && typeof value?.channelRules?.linkedin === 'string'
+      && typeof value?.channelRules?.blog === 'string'
+    ),
+  });
+
+  if (usedFallback) {
+    console.warn('Brand kit extraction returned invalid JSON. Using fallback kit cards.');
   }
+
+  return data;
 }
