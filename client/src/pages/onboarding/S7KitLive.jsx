@@ -1,11 +1,17 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useOnboarding } from '../../context/OnboardingContext';
 import OnboardingShell from '../../components/layout/OnboardingShell';
 import Button from '../../components/ui/Button';
+import { useAuth } from '../../context/AuthContext';
+import api from '../../services/api';
+import { KIT_LIVE_INTENT_QUESTION } from '../../lib/intent-capture';
 
 export default function S7KitLive() {
   const navigate = useNavigate();
   const ob = useOnboarding();
+  const { user, refreshUser } = useAuth();
+  const [intentHidden, setIntentHidden] = useState(false);
 
   const chips = [
     ob.kitCards?.voiceAdjectives?.join(' · '),
@@ -15,6 +21,23 @@ export default function S7KitLive() {
     [ob.brandLanguage, ob.primaryMarket].filter(Boolean).join(' · '),
     ob.publishingFrequency,
   ].filter(Boolean);
+
+  const hasAnsweredKitLiveIntent = user?.intentState?.answeredQuestionKeys?.includes(KIT_LIVE_INTENT_QUESTION.questionKey);
+
+  const handleIntentAnswer = async (answer) => {
+    await api.post('/intent', {
+      moment: 'kit_live',
+      question_key: KIT_LIVE_INTENT_QUESTION.questionKey,
+      answer,
+    });
+    setIntentHidden(true);
+    await refreshUser();
+  };
+
+  const handleGoToDashboard = () => {
+    setIntentHidden(true);
+    navigate('/dashboard');
+  };
 
   return (
     <OnboardingShell phase="">
@@ -33,8 +56,26 @@ export default function S7KitLive() {
         ))}
       </div>
 
+      {!hasAnsweredKitLiveIntent && !intentHidden && (
+        <div className="mb-8 rounded-[20px] border border-brand bg-brand-surface-subtle px-4 py-4 text-left animate-dashboard-enter">
+          <p className="text-sm font-medium text-brand">{KIT_LIVE_INTENT_QUESTION.label}</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {KIT_LIVE_INTENT_QUESTION.options.map((option) => (
+              <button
+                key={option}
+                type="button"
+                onClick={() => handleIntentAnswer(option)}
+                className="rounded-full bg-brand-surface px-3 py-2 text-xs font-medium text-brand-muted transition-colors hover:text-brand"
+              >
+                {option}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-col gap-3">
-        <Button variant="primary" className="w-full" onClick={() => navigate('/dashboard')}>
+        <Button variant="primary" className="w-full" onClick={handleGoToDashboard}>
           Go to dashboard
         </Button>
         <button onClick={() => navigate('/onboarding/brand-name')} className="text-sm text-center text-gray-500 hover:underline">

@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import TopNav from '../../components/layout/TopNav';
 import Button from '../../components/ui/Button';
 import api from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
+import { getNextOutputIntentQuestion } from '../../lib/intent-capture';
 
 function ComplianceItem({ label, value, pass }) {
   return (
@@ -15,6 +17,7 @@ function ComplianceItem({ label, value, pass }) {
 export default function Output() {
   const navigate = useNavigate();
   const { state } = useLocation();
+  const { user, refreshUser } = useAuth();
   const [activeTab, setActiveTab] = useState(state?.activeTab || 'linkedin');
   const [content, setContent] = useState({
     linkedin: state?.output?.linkedin || '',
@@ -23,8 +26,17 @@ export default function Output() {
   const [instruction, setInstruction] = useState('');
   const [iterating, setIterating] = useState(false);
   const [saveState, setSaveState] = useState({ saving: false, message: '' });
+  const [intentHidden, setIntentHidden] = useState(false);
 
   const brief = state?.brief || {};
+  const outputIntentQuestion = useMemo(
+    () => getNextOutputIntentQuestion(user?.intentState),
+    [user?.intentState]
+  );
+
+  useEffect(() => {
+    refreshUser().catch(() => {});
+  }, [refreshUser]);
 
   const wordCount = (text) => text.trim().split(/\s+/).filter(Boolean).length;
   const hashtagCount = (text) => (text.match(/#\w+/g) || []).length;
@@ -80,6 +92,31 @@ export default function Output() {
   };
 
   const copyToClipboard = (text) => navigator.clipboard.writeText(text);
+
+  const handleIntentAnswer = async (answer) => {
+    if (!outputIntentQuestion) return;
+
+    await api.post('/intent', {
+      moment: 'post_generation',
+      question_key: outputIntentQuestion.questionKey,
+      answer,
+      content_piece_count: user?.intentState?.generationSessionCount || 0,
+    });
+    setIntentHidden(true);
+    await refreshUser();
+  };
+
+  const handleIntentDismiss = async () => {
+    if (!outputIntentQuestion) return;
+
+    await api.post('/intent/dismiss', {
+      moment: 'post_generation',
+      question_key: outputIntentQuestion.questionKey,
+      content_piece_count: user?.intentState?.generationSessionCount || 0,
+    });
+    setIntentHidden(true);
+    await refreshUser();
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -178,6 +215,35 @@ export default function Output() {
           </div>
         </div>
         {saveState.message && <p className="mb-4 text-sm text-brand-muted">{saveState.message}</p>}
+
+        {outputIntentQuestion && !intentHidden && (
+          <div className="mb-6 rounded-xl border border-brand bg-brand-surface-subtle px-4 py-4 animate-dashboard-enter">
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex-1">
+                <p className="text-sm font-medium text-brand">{outputIntentQuestion.label}</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {outputIntentQuestion.options.map((option) => (
+                    <button
+                      key={option}
+                      type="button"
+                      onClick={() => handleIntentAnswer(option)}
+                      className="rounded-full bg-brand-surface px-3 py-2 text-xs font-medium text-brand-muted transition-colors hover:text-brand"
+                    >
+                      {option}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleIntentDismiss}
+                className="text-sm font-medium text-brand-muted transition-colors hover:text-brand"
+              >
+                ×
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Format switch */}
         <div className="border-t border-gray-200 pt-4">

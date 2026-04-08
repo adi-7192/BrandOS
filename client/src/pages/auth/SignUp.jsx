@@ -4,6 +4,15 @@ import { useAuth } from '../../context/AuthContext';
 import Input from '../../components/ui/Input';
 import Button from '../../components/ui/Button';
 import { getPostAuthRoute } from '../../lib/auth-flow';
+import {
+  SIGNUP_INTENT_QUESTIONS,
+  armPendingSignupIntent,
+  flushPendingSignupIntent,
+  loadPendingSignupIntent,
+  savePendingSignupIntent,
+  upsertPendingSignupIntent,
+} from '../../lib/intent-capture';
+import api from '../../services/api';
 
 const GOOGLE_AUTH_URL = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000'}/api/auth/google`;
 
@@ -11,6 +20,10 @@ export default function SignUp() {
   const navigate = useNavigate();
   const { signUp } = useAuth();
   const [form, setForm] = useState({ firstName: '', lastName: '', email: '', companyName: '', password: '' });
+  const [intentAnswers, setIntentAnswers] = useState(() => {
+    const pending = loadPendingSignupIntent();
+    return Object.fromEntries(pending.map((entry) => [entry.questionKey, entry.answer]));
+  });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -22,12 +35,22 @@ export default function SignUp() {
     setLoading(true);
     try {
       const user = await signUp(form);
+      await flushPendingSignupIntent(api);
       navigate(getPostAuthRoute(user));
     } catch (err) {
       setError(err.response?.data?.message || 'Sign-up failed. Please try again.');
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleIntentSelect = (questionKey, answer) => {
+    const nextAnswers = { ...intentAnswers, [questionKey]: answer };
+    setIntentAnswers(nextAnswers);
+    armPendingSignupIntent();
+    savePendingSignupIntent(
+      upsertPendingSignupIntent(loadPendingSignupIntent(), { questionKey, answer })
+    );
   };
 
   return (
@@ -56,6 +79,32 @@ export default function SignUp() {
           <Input name="email" type="email" label="Work email" value={form.email} onChange={handleChange} required />
           <Input name="companyName" label="Company name" value={form.companyName} onChange={handleChange} required />
           <Input name="password" type="password" label="Password" value={form.password} onChange={handleChange} required />
+
+          <div className="rounded-[20px] border border-brand bg-brand-surface-subtle px-4 py-4">
+            <div className="space-y-4">
+              {SIGNUP_INTENT_QUESTIONS.map((question) => (
+                <div key={question.questionKey}>
+                  <p className="text-sm font-medium text-brand">{question.label}</p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {question.options.map((option) => (
+                      <button
+                        key={option}
+                        type="button"
+                        onClick={() => handleIntentSelect(question.questionKey, option)}
+                        className={`rounded-full px-3 py-2 text-xs font-medium transition-colors ${
+                          intentAnswers[question.questionKey] === option
+                            ? 'bg-[var(--brand-primary)] text-white'
+                            : 'bg-brand-surface text-brand-muted hover:text-brand'
+                        }`}
+                      >
+                        {option}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
 
           {error && <p className="text-sm text-red-500">{error}</p>}
 

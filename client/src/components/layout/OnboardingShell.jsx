@@ -21,16 +21,15 @@ export default function OnboardingShell({ phase, step, totalSteps, children }) {
           {Array.from({ length: totalSteps }).map((_, i) => (
             <span
               key={i}
-              className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold border-2 transition-colors ${
+              aria-hidden="true"
+              className={`block h-4 w-4 rounded-full border-2 transition-colors ${
                 i + 1 === step
-                  ? 'border-gray-900 bg-gray-900 text-white'
+                  ? 'border-gray-900 bg-gray-900'
                   : i + 1 < step
-                  ? 'border-gray-900 bg-gray-100 text-gray-900'
-                  : 'border-gray-300 bg-white text-gray-400'
+                  ? 'border-gray-900 bg-gray-100'
+                  : 'border-gray-300 bg-white'
               }`}
-            >
-              {i + 1}
-            </span>
+            />
           ))}
         </div>
       )}

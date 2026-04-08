@@ -2,6 +2,8 @@ import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { getPostAuthRoute } from '../../lib/auth-flow';
+import { flushPendingSignupIntent } from '../../lib/intent-capture';
+import api from '../../services/api';
 
 export default function GoogleCallback() {
   const navigate = useNavigate();
@@ -21,7 +23,8 @@ export default function GoogleCallback() {
       return;
     }
 
-    handleGoogleToken(token).then((user) => {
+    handleGoogleToken(token).then(async (user) => {
+      await flushPendingSignupIntent(api);
       navigate(getPostAuthRoute(user), { replace: true });
     }).catch(() => {
       navigate('/signin?error=google_failed', { replace: true });

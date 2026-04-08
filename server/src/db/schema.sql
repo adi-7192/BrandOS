@@ -113,3 +113,38 @@ CREATE INDEX IF NOT EXISTS idx_brand_kits_brand ON brand_kits(brand_id);
 CREATE INDEX IF NOT EXISTS idx_inbox_cards_brand ON inbox_cards(brand_id);
 CREATE INDEX IF NOT EXISTS idx_inbox_cards_status ON inbox_cards(status);
 CREATE INDEX IF NOT EXISTS idx_drafts_brand ON drafts(brand_id);
+
+-- Intent capture
+CREATE TABLE IF NOT EXISTS intent_signals (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  moment VARCHAR(20) NOT NULL,
+  question_key VARCHAR(50) NOT NULL,
+  answer VARCHAR(100) NOT NULL,
+  content_piece_count INTEGER,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_intent_signals_user_question
+  ON intent_signals(user_id, moment, question_key);
+
+CREATE TABLE IF NOT EXISTS intent_prompt_dismissals (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  moment VARCHAR(20) NOT NULL,
+  question_key VARCHAR(50) NOT NULL,
+  content_piece_count INTEGER,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_intent_prompt_dismissals_user_question
+  ON intent_prompt_dismissals(user_id, moment, question_key);
+
+CREATE TABLE IF NOT EXISTS expansion_leads (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  triggered_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_expansion_leads_user
+  ON expansion_leads(user_id);

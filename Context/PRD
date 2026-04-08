@@ -1,0 +1,903 @@
+# BrandOS — Product Requirements Document
+**For Claude Code. Read this fully before writing any code.**
+
+---
+
+## 1. What this product is
+
+BrandOS is an AI-powered content platform for internal content marketers at multi-brand enterprise organisations (e.g. a content marketer at Galeries Lafayette Group who manages brands like BHV Marais, La Redoute, etc.).
+
+The core problem: AI tools have no memory of brand voice. Every session starts blank. A marketer managing 4–8 brands must manually re-explain tone, vocabulary, audience, and guardrails every time they use AI — for every brand, every day.
+
+The solution: BrandOS stores each brand's voice kit once. Campaign briefs arrive via tagged Gmail emails. The AI extracts the brief, the user confirms it, and content is generated in the correct brand voice in 1–2 iterations — without re-explaining anything.
+
+**Two outputs only in V1:** LinkedIn post and blog post.
+
+---
+
+## 2. User persona
+
+- Internal content marketer at a multi-brand conglomerate
+- Manages 4–8 distinct brands under one parent company
+- Uses AI daily but gets generic output because AI has no brand memory
+- Not technical. Moderate AI comfort.
+- Primary pain: re-explaining brand context every session, copy-pasting briefs from email into AI tools
+- B2B enterprise user — willing to fill detailed forms, goes through formal evaluation (RFP/sandbox), cares about output quality and pricing above all else
+
+---
+
+## 3. Tech stack decisions
+
+- **Frontend:** React + Tailwind CSS
+- **Backend:** Node.js / Express
+- **Database:** PostgreSQL (brand kits, users, inbox cards, drafts)
+- **AI:** Anthropic Claude API (claude-sonnet-4-6) for all extraction and generation
+- **Email integration:** Gmail API — reactive pull model (user applies Gmail label, system reads only labelled messages)
+- **Auth:** SSO primary via Okta/OneLogin/SAML 2.0. Google Workspace OAuth as second option. Work email + password as fallback.
+- **File storage:** S3 or equivalent for PDF/DOCX brand guideline uploads
+- **Deployment:** Vercel (frontend) + Railway or Render (backend)
+
+---
+
+## 4. Architecture overview
+
+```
+User tags Gmail message with "BrandOS — [Brand Name]" label
+  → Gmail webhook fires to BrandOS backend
+  → AI extraction pipeline runs on message content
+  → Extracted fields stored as InboxCard in DB
+  → Card appears in Brand Updates Inbox in UI
+
+User selects card → confirms brief (G2) → previews content structure (G3)
+  → Generation pipeline runs with brand kit + brief context
+  → LinkedIn post + blog post generated in one pass
+  → Output shown in tabbed workspace (G5)
+  → User iterates via natural language bar
+  → Exports via copy to clipboard
+```
+
+### Database tables (minimum viable)
+
+```
+users               id, name, email, company_name, team, brand_count, created_at
+workspaces          id, user_id, company_name
+brands              id, workspace_id, name, market, language, kit_version, created_at
+brand_kits          id, brand_id, voice_adjectives[], vocabulary[], restricted_words[],
+                    channel_rules_linkedin, channel_rules_blog, content_goal,
+                    publishing_frequency, audience_type, buyer_seniority,
+                    funnel_stage, proof_style, content_role, formality_level,
+                    campaign_core_why, version, created_at
+inbox_cards         id, brand_id, email_subject, email_from, email_body,
+                    extracted_fields jsonb, matched_fields[], unmatched_fields[],
+                    thread_id, status (pending|used|dismissed), created_at
+drafts              id, brand_id, inbox_card_id, format (linkedin|blog),
+                    content, version_number, iteration_instruction, created_at
+```
+
+---
+
+## 5. Gmail integration — how it works
+
+**Model: Reactive pull (not proactive scanning)**
+
+The system does NOT scan all email. It only reads messages the user has explicitly tagged.
+
+**Tagging methods:**
+1. User applies Gmail label `BrandOS — [Brand Name]` to any email containing campaign direction
+2. Alternative: user forwards email to `brandname@updates.brandos.app` (brand-specific address)
+
+**Extraction pipeline (runs on each tagged message):**
+
+```
+Step 1 — Intent gate
+  Is this a campaign brief (directs content creation) or brand update (changes kit values)?
+  → Campaign briefs go to inbox cards
+  → Brand updates go to kit suggestion queue
+
+Step 2 — Per-field extraction
+  Extract each of 6 fields independently with a confidence score 0–1:
+  - Key message (weight: 25%) — blocks High tier if missing
+  - Campaign type (weight: 20%) — caps at Medium if missing
+  - Audience (weight: 20%) — caps at Medium if missing
+  - Tone shift (weight: 15%) — graceful fallback to kit baseline
+  - Content goal (weight: 15%) — graceful fallback to kit default
+  - CTA intent (weight: 5%) — inferred from goal or omitted
+
+Step 3 — Source quote requirement
+  Every extracted field must reference the exact text it came from.
+  No source quote = confidence capped at 0.6 regardless of LLM certainty.
+  This prevents hallucinated extractions.
+
+Step 4 — Weighted sum
+  overall_score = sum(field_confidence * field_weight)
+  High: 75–100%
+  Partial: 40–74%
+  Low: 0–39%
+
+Step 5 — Thread context boost
+  If tagged message is part of a thread, include previous 3 messages in extraction context.
+  Missing fields often appear in earlier messages.
+```
+
+**Confidence is stored in the DB but NOT shown as a number in the UI.**
+The UI shows green chips for matched fields and grey chips for unmatched fields.
+
+**Refresh button:** On each inbox card. Three paths:
+1. Pull latest 5 messages from thread (default)
+2. User pastes additional context manually (textarea)
+3. Expand context window — re-run with 10 prior messages instead of 3
+
+After refresh, show a diff view — before/after per field with source quote — before applying changes.
+
+---
+
+## 6. Complete screen-by-screen spec
+
+### Phase 1 — Onboarding, get in fast (3 screens)
+
+---
+
+#### S1 — Team context
+**URL:** `/onboarding/team`
+**Purpose:** Collect team-level context. Company already collected at sign-up.
+
+**Fields:**
+- Your role — text input, placeholder "e.g. Content Marketing Specialist"
+- Team or department — dropdown: Brand and Content / Marketing Communications / Digital Marketing / Corporate Communications / Social Media / PR and External Affairs / Creative Studio / Other
+- How many brands does your team manage? — dropdown: 1–2 / 3–4 / 5–8 / 9+
+
+**UI rules:**
+- Progress indicator: step 1 of 3 (three numbered dots, active dot filled)
+- Phase label top right: "Phase 1 · get in fast"
+- Continue button always enabled (no required fields here)
+
+**On submit:** Save to users table. Proceed to S2.
+
+---
+
+#### S2 — Brand name
+**URL:** `/onboarding/brand-name`
+**Purpose:** Name the first brand. This propagates to every subsequent screen.
+
+**Fields:**
+- Brand name — text input, placeholder "e.g. BHV Marais"
+  - Helper text: "The brand you write content for — not your employer. You can add more brands after setup."
+- Primary market — dropdown: France / United Kingdom / Germany / United States / Pan-European / Global / Other
+- Brand language — dropdown: English / French / German / Spanish / Other
+
+**UI rules:**
+- Progress: step 2 of 3
+- Brand name typed here must appear in all subsequent screen headers ("Feed [Brand Name]'s content", "Build [Brand Name]'s kit", etc.)
+
+**On submit:** Create brands record. Proceed to S3.
+
+---
+
+#### S3 — Content types
+**URL:** `/onboarding/content-types`
+**Purpose:** Multi-select data capture. Learn what the team produces. Not a product limitation screen.
+
+**Tiles (8 total):**
+
+Available now (selectable):
+- LinkedIn posts
+- Blog posts
+
+Coming soon (shown but not selectable for generation — still trackable for roadmap data):
+- Email newsletters
+- Ad copy
+- Press releases
+- Video scripts
+- Social captions
+- Case studies
+
+**UI rules:**
+- Multi-select. User can select multiple tiles.
+- Continue button: enabled only when at least one "Available now" tile is selected.
+- Coming soon tiles: visually de-emphasised (dashed border, muted colour). Can be "selected" in the UI to capture interest data — store selection but do not affect workspace configuration.
+- Selection summary chips appear below the grid as tiles are chosen.
+- Question: "What does your team produce?" — team framing, not individual.
+
+**On submit:** Store format selections. Store coming-soon interest data separately. Proceed to unlock gate.
+
+---
+
+### Platform unlock gate
+**URL:** `/onboarding/unlocked`
+**Purpose:** Acknowledge Phase 1 completion. Set expectation for Phase 2. This is NOT a loading screen — it is a deliberate pause.
+
+**Content:**
+- Icon + headline: "You're in. Platform unlocked."
+- Body: "Now let's build [Brand Name]'s voice kit — so the AI knows exactly how to write for this brand, every time."
+- Phase 1 summary card showing 4 rows: Workspace / Team / First brand / Formats selected — all with a green check
+- Single CTA button: "Build brand kit"
+- Below button: "Phase 2 · 2 steps · takes about 5 minutes"
+
+**No navigation links, no secondary actions.**
+
+**On click:** Proceed to S4a.
+
+---
+
+### Phase 2 — Build first brand kit (5 steps)
+
+---
+
+#### S4a — Brand content
+**URL:** `/onboarding/brand-content`
+**Purpose:** Seed content for AI extraction. Three distinct input types.
+
+**Kit progress bar:** 5 segments. Step 1 active.
+
+**Fields:**
+- Website URL — URL input, placeholder "https://bhvmarais.com"
+  - Tooltip: "The AI reads your site to understand how this brand writes — structure, tone, and vocabulary come from what's already live."
+- Past content examples — textarea, height ~60px
+  - Placeholder: "Paste a past campaign, LinkedIn post, blog excerpt, or any copy that already sounds like this brand…"
+  - Tooltip: "The strongest training signal we have. Real examples teach the AI more than any guideline doc."
+- Upload brand guidelines — file upload, accepts PDF and DOCX
+  - Label: "Optional · PDF or DOCX"
+  - Tooltip: "Your brand guide, tone doc, or any document with brand copy rules. The AI reads it so you don't have to re-type the rules each time."
+
+**UI rules:**
+- All fields optional
+- "Skip for now — I'll add context later" text link below the continue button
+- If skipped, kit cards in S5b show "Low confidence — more input recommended" label instead of "AI drafted"
+
+**On submit:** Store inputs. Trigger AI extraction. Proceed to S4b.
+
+---
+
+#### S4b — Audience, campaign context, goal
+**URL:** `/onboarding/audience-campaign`
+**Purpose:** All audience, campaign, and goal parameters. All dropdowns. All have ? tooltips.
+
+**Kit progress bar:** Step 2 active.
+
+**Section: Brand audience**
+
+- Audience type — dropdown
+  - Options: B2B decision makers / Young professionals / General consumers / Parents and families / Custom — I'll describe my audience
+  - Tooltip: "Who you're writing for changes word choice, depth, and assumed knowledge."
+
+- Buyer seniority — dropdown
+  - Options: C-suite (CEO, CFO, CMO) / Director / VP / Manager / Practitioner / Individual contributor / Mixed — multiple levels
+  - Tooltip: "C-suite content is strategic and brief. Practitioner-level can go deep and technical."
+
+- Age range — dropdown: 18–24 / 25–34 / 35–44 / 45–54 / 55+ / All ages
+
+- Industry or sector — text input, placeholder "e.g. Fashion, Retail"
+  - Tooltip: "Jargon natural in fintech can feel wrong in fashion."
+
+- Which industry are you targeting? — dropdown
+  - Options: Retail and e-commerce / Financial services / Technology and SaaS / Healthcare and pharma / Manufacturing and logistics / Media and entertainment / Professional services / Education / Public sector / NGO / Hospitality and travel / Other — I'll describe it
+  - Tooltip: "The buyer's industry determines which pain points and pressures to reference."
+
+**Section: Campaign context**
+
+- Campaign type — dropdown
+  - Options: Product launch / Brand awareness / Seasonal / Thought leadership / PR and press / Community
+  - Tooltip: "A product launch needs 'what' and 'why now'. Thought leadership needs a strong POV with no hard sell."
+
+- Funnel stage — dropdown
+  - Options: Top of funnel — awareness (reaching new audiences) / Mid funnel — consideration (nurturing interest) / Bottom of funnel — decision (driving a specific action)
+  - Tooltip: "The single biggest lever for B2B content effectiveness."
+
+- Tone shift — dropdown
+  - Options: More urgent / More celebratory / More intimate / More authoritative / More playful / Keep baseline — no shift
+  - Tooltip: "Layered on top of brand voice — does not replace it."
+  - Helper text below: "Tone shifts layer on top of your core brand voice — they do not replace it."
+
+- Proof point style — dropdown
+  - Options: Data-led — statistics and research / Case study-led — client stories and results / Opinion-led — strong point of view / Mixed — combination of all three
+  - Tooltip: "B2B buyers trust differently. Mixing styles without intention reads as unfocused."
+
+- Content role in the sales cycle — dropdown
+  - Options: Standalone / organic reach / Sales enablement / Account-based (ABM) / Partner / co-marketing
+  - Above the dropdown show an inline purple info box (always visible, not a tooltip) with 3 bullet points:
+    - "Language permission level — standalone organic never pitches. Sales enablement can be direct about outcomes."
+    - "Social proof usage — ABM references specific industry pain points. Organic stays broad."
+    - "Closing structure — organic ends with a thought or question. Sales enablement ends with a clear action."
+
+**Section: Content goal and cadence**
+
+- What should this content achieve? — dropdown
+  - Options: Lead generation / Brand visibility / Thought leadership / PR and press
+  - Tooltip: "Changes the closing structure — lead gen ends with a clear next step, thought leadership ends with a question."
+
+- Publishing frequency — dropdown [REQUIRED — mark with red asterisk]
+  - Options: Daily / 2–3 times per week / Weekly / Bi-weekly / Monthly or less
+  - Tooltip: "High-frequency teams need shorter punchier content. Low-frequency teams can go deeper per post."
+
+- Voice formality — optional field behind a checkbox gate
+  - Default: checkbox unchecked, slider hidden
+  - Checkbox label: "Set a custom formality level for this brand"
+  - When checked: reveal a 5-point range slider (1=Conversational, 3=Balanced, 5=Formal)
+  - Slider label updates live as user drags: Conversational / Leans conversational / Balanced / Leans formal / Formal
+  - Tooltip: "Enterprise B2B rarely fits neatly into casual or formal. Optional — tone adjectives from the next step already set a baseline."
+
+**UI rules:**
+- Back button to S4a
+- "Skip for now" text link
+- "Generate brand kit →" is the primary CTA
+
+**On submit:** Store all values to brand_kits. Trigger extraction pipeline with S4a + S4b inputs combined. Navigate to S5a.
+
+---
+
+#### S5a — AI generating
+**URL:** `/onboarding/generating`
+**Purpose:** Show the AI working. Build anticipation before the result.
+
+**Kit progress bar:** Step 3 active.
+
+**Content:**
+- Headline: "Reading [Brand Name]…"
+- Subtext: "The AI is extracting your brand's voice from everything you provided. This takes about 10–15 seconds."
+- Spinner animation
+- 5 extraction steps shown sequentially (~700ms each, animate one at a time):
+  1. Reading website content
+  2. Identifying brand voice patterns
+  3. Extracting vocabulary and tone
+  4. Mapping audience signals
+  5. Drafting kit cards
+
+**No button. Auto-advances to S5b when extraction is complete.**
+
+---
+
+#### S5b — Review kit cards
+**URL:** `/onboarding/review-kit`
+**Purpose:** User reviews and approves AI-drafted kit. Reviewer not author.
+
+**Kit progress bar:** Step 4 active.
+
+**5 cards in order:**
+
+**Card 1 — Brand voice** (renamed from "Tone adjectives" — less jargony)
+- Badge: "AI drafted"
+- Content: 3 adjective chips extracted from seed content
+- Footer: Edit | Approve
+- On approve: badge changes to "Approved ✓", button turns teal
+- Tooltip on card: "Used to calibrate every generation for this brand."
+
+**Card 2 — Vocabulary to use**
+- Badge: "AI drafted"
+- Content: 5–8 word/phrase chips extracted from past content
+- Footer: Edit | Approve
+
+**Card 3 — Restricted words**
+- Badge: "AI drafted + yours"
+- Content: word chips in red style (locked icon visual)
+- Footer: + Add word | Approve
+- Below chips: "Hard guardrails — the AI will never use these words regardless of campaign or tone shift."
+
+**Card 4 — Channel rules**
+- Badge: "AI drafted"
+- Content:
+  - LinkedIn: max word count, hook requirement, hashtag count, prohibited punctuation
+  - Blog: word count range, structure requirements, closing requirement
+- Footer: Edit | Approve
+
+**Card 5 — Campaign core why (Optional)**
+- NOT shown by default
+- Show as a dashed-border toggle row below the four cards:
+  - Checkbox + label: "Add campaign core why" + "Optional"
+  - Sub-label: "A single-line campaign proposition — what this brand stands for in this moment."
+- When checkbox ticked: reveal card with free-text input
+  - Placeholder: "e.g. This is not a sale — it's a cultural moment."
+  - Helper: "Used as the anchor line for this campaign's content across both formats."
+  - Footer: Save
+
+**Run confidence test button** at bottom. Enabled when all 4 core cards have been reviewed (user opened each one, not necessarily approved).
+
+---
+
+#### S6 — Confidence test
+**URL:** `/onboarding/confidence-test`
+**Purpose:** Generate one sample post. User rates it. Three states.
+
+**Kit progress bar:** Step 5 active.
+
+**Sample post display:**
+- Badge row: "[Brand Name] · LinkedIn · [campaign type] · [funnel stage] · [tone shift] · 0 restricted words"
+- The post itself — generated using the complete kit
+- Compliance row below post: word count / hashtag count / hook detected / restricted words
+
+**Three reaction buttons (equal width):**
+- "This sounds right"
+- "Close but not quite"
+- "Doesn't sound like us"
+
+**State A — Positive ("This sounds right"):**
+- Green banner: "The kit looks well-calibrated for this brand. You can still edit any card before going live."
+- Action row: [Back to kit] [Approve and continue] — approve enabled
+
+**State B — Mixed ("Close but not quite"):**
+- Recovery panel with 3 options (first pre-selected and expanded):
+  1. Tell us what's off — regenerate once (show chip selector: Tone too formal / Tone too casual / Wrong vocabulary / Too long / Too short / Weak opening / CTA missing — plus free text input)
+  2. Edit this draft directly
+  3. Go back and adjust the kit
+- Action row: [Back to kit] [Approve and continue] — approve DISABLED until user regenerates or edits
+
+**State C — Negative ("Doesn't sound like us"):**
+- Recovery panel, option 1 is "Go back and adjust the kit" labelled "Recommended"
+- Amber advisory banner: "If the output feels completely wrong, going back to the kit gives the best result. The kit drives every future generation."
+- All 3 options still available
+- Action row: [Back to kit] [Approve and continue] — approve DISABLED
+- Maximum 1 regeneration per confidence test session
+
+**On approval:** Create brand_kit record as active. Navigate to S7.
+
+---
+
+#### S7 — Kit live
+**URL:** `/onboarding/kit-live`
+**Purpose:** Confirmation. Two CTAs. Phase 3 signposted.
+
+**Content:**
+- Green check icon
+- Headline: "[Brand Name]'s kit is live."
+- Subtext: "Ready to generate on-brand content — every time, without re-explaining the brief."
+- Summary chips: voice adjectives / restricted word count / channel rules / content goal / language + market (from S2) / publishing frequency (from S4b)
+- Primary CTA: "Start generating content" → navigates to /inbox
+- Secondary CTA (underline text link): "Add another brand" → navigates to S2 for brand 2
+
+**Phase 3 signpost (text only, no buttons):**
+- "What's available next:"
+- "Connect Gmail to capture campaign briefs automatically · takes 2 min"
+- "Add the group layer — shared rules across all brands · in settings"
+- "Add your next brand — each additional brand takes ~5 minutes"
+
+---
+
+### Content generation flow (G1–G5)
+
+---
+
+#### G1 — Brand updates inbox
+**URL:** `/inbox`
+**Purpose:** Triage view of all tagged emails. Select one or more to use as brief.
+
+**Tabs:** Pending (n) / Used (n) / Dismissed (n)
+
+**Select all bar (above cards):**
+- Custom checkbox + "Select all" label
+- When any card selected: show "Clear selection" on right
+- Checkbox ticks all/unticks all
+
+**Each inbox card contains:**
+- Checkbox on the left (custom styled, outside the card border)
+- Card body:
+  - Brand name (coloured pill)
+  - Email subject line
+  - Sender + channel (Gmail/Slack) + timestamp
+  - Excerpt of email body (2–3 lines, truncated)
+  - Field matching chips: green = extracted, grey = not detected
+    - Show: Campaign / Tone / Audience / Key message / Goal / CTA
+  - Refresh link at bottom of card: "↻ Refresh from inbox"
+    - On click: show a modal/panel with 3 options:
+      1. Pull latest messages from this thread (default)
+      2. Paste additional context manually (textarea)
+      3. Expand context window — rescan with 10 prior messages
+    - After re-extraction: show diff view (before/after per field + source quote) → user applies all / selected / discards
+- Clicking anywhere on card toggles its checkbox
+
+**Sticky action bar at bottom of screen:**
+- Default (nothing selected): "Select emails above to use as your brief" + disabled "Use this brief →" button
+- 1 card selected: "[Brand Name] · 1 email selected" + enabled "Use this brief →"
+- 2+ cards selected: "N emails selected · fields will be merged into one brief" + enabled "Merge and use brief →"
+
+**No "Use this brief" button on individual cards.**
+
+**Multi-select merge logic:**
+- When multiple cards selected, merge extracted fields — most specific / most recently extracted value wins per field
+- Show merged brief in G2 with per-field source attribution
+
+---
+
+#### G2 — Brief confirmation
+**URL:** `/generate/brief`
+**Purpose:** Review extracted brief. Fill gaps. Confirm before preview.
+
+**Progress indicator:** 3 steps — Brief (active) → Preview → Generate
+
+**Brand pill at top:**
+- Avatar with brand initials
+- Brand name + voice adjectives + kit version + language
+- "Change brand" quiet link
+
+**Extracted fields (each as a bordered field block with source badge):**
+- Source badge colours: green = from inbox / amber = AI-inferred / purple = user-provided
+- Each field has an Edit button (top right of field block)
+- Fields shown:
+  1. Campaign name — from email subject
+  2. Campaign type — extracted or inferred
+  3. Audience — extracted text from email
+  4. **Audience type** — NEW FIELD, dropdown, user-provided badge
+     - Options: B2B decision makers / Young professionals / General consumers / Parents and families / Custom
+     - Helper text below: "Narrows framing and tone for this campaign — overrides the brand kit default if needed."
+  5. Tone shift — extracted
+  6. Key message — extracted, shown with AMBER border (special treatment)
+     - Sub-label: "Quoted directly — used as anchor for both LinkedIn and blog formats"
+
+**Missing fields section** (below a divider "Needs your input"):
+- Content goal — required, dropdown
+- Deadline — optional, text input
+
+**CTAs:**
+- Primary: "Preview content →"
+- Back link: "← Back to inbox"
+
+---
+
+#### G3 — Content preview
+**URL:** `/generate/preview`
+**Purpose:** Show structured preview for both formats. User edits inline. Version history available.
+
+**Progress indicator:** Brief (done) → Preview (active) → Generate
+
+**Format toggle:** LinkedIn post | Blog post (tab-style toggle at top)
+
+**Version bar (sits between format toggle and preview):**
+- Shows: current version name + edit description + timestamp
+- Navigation: ‹ (previous version) | "N / Total" count | › (next version, disabled if current)
+- "History" button on right
+- Previous/next arrows navigate through versions — loads that version's content into preview
+- When on a non-current version: show "Restore this version" button
+
+**Version history panel (shown on "History" click):**
+- Panel slides in or overlays above the preview
+- Close button
+- List of all versions:
+  - Version number + label ("original", "current", or instruction text)
+  - Relative timestamp
+  - "Restore" button per version (disabled on current version)
+- Versions stored: the original generated preview + every edit the user saves
+
+**Preview content (same for both formats — shown in correct tab):**
+
+LinkedIn preview:
+- Section labels in purple (small, above each section): Hook / Body / Closing / Hashtags
+- Content of each section — editable (contenteditable divs)
+- Format compliance footer: word count / limit check / hashtag count / hook detected / restricted word count — green ✓ or amber ⚠ per item
+
+Blog preview:
+- Section labels: Headline / Opening / Body sections / Closing
+- Content of each section — editable
+- Compliance footer: word count / range check / closing structure / restricted word count
+
+**Edit notice** (shown above preview, always):
+- "Click any section to edit before generating."
+
+**CTAs:**
+- Primary: "Looks good — generate full content →"
+- Back link: "← Back to brief"
+
+**Version save logic:**
+- Each time user edits content and navigates away (or after 3 seconds of inactivity), save as a new version automatically
+- Do not save on every keystroke — debounce at 3 seconds
+
+---
+
+#### G4 — Generation
+**URL:** `/generate/creating`
+**Purpose:** Run generation. Show context being applied. Auto-advance.
+
+**Progress indicator:** Brief (done) → Preview (done) → Generate (active)
+
+**Content:**
+- Spinner
+- Headline: "Writing for [Brand Name]…"
+- Current step label (animated through 6 steps):
+  1. Loading brand kit v[n]…
+  2. Applying tone: [adjective 1] · [adjective 2] · [adjective 3]…
+  3. Anchoring to key message…
+  4. Enforcing [n] restricted word guardrails…
+  5. Writing in brand voice ([language])…
+  6. Checking format compliance…
+
+**Context panel (static, always visible):**
+- Header: "Context being applied"
+- Rows: Brand voice / Language / Tone shift / Audience / Guardrails (n active) / Goal / Key message (truncated)
+
+**No user action. Auto-advances to G5 on completion.**
+
+Both formats (LinkedIn + blog) are generated in the same API call, passing full context.
+
+---
+
+#### G5 — Output workspace
+**URL:** `/generate/output`
+**Purpose:** View, iterate, and export generated content.
+
+**Tab layout:** LinkedIn post | Blog post
+Both generated. Switching tabs is instant — no re-generation needed.
+
+**Per tab content:**
+
+Output badge row (above content):
+- "[Brand Name] · [format] · [goal] · [tone shift] · [language] · ✓ 0 restricted words"
+
+Output body:
+- Contenteditable div — user can type directly for quick edits without triggering AI
+- Min height: 160px
+
+Format compliance row (below output body):
+- LinkedIn: word count + limit / hashtag count / hook in line 1 / CTA detected
+- Blog: word count + range / closing structure
+- Each item: green ✓ = compliant, amber ⚠ = gap
+
+Contextual iteration chips:
+- Generated based on the compliance warnings in the current output
+- e.g. if CTA missing: chip reads "Add a CTA"
+- e.g. if too short: chip reads "Make it longer"
+- Clicking a chip fills the instruction bar (does not auto-submit)
+
+Natural language iteration bar:
+- Text input + "Apply →" button
+- Placeholder: "e.g. Make it shorter · Add a CTA · Use a question as the hook"
+- On apply: re-generate with full brand context + instruction
+- Full brand kit re-injected on every iteration pass — prevents brand drift
+
+Export row:
+- Save draft (stores to drafts table)
+- Copy to clipboard
+- Copy markdown (blog tab only)
+- Post to LinkedIn — dashed border button with "Coming V2" floating badge — non-functional in V1
+
+Format switch link at bottom:
+- LinkedIn tab: "Generate blog post for this campaign →"
+- Blog tab: "← Back to LinkedIn post"
+
+---
+
+## 7. Generation prompt architecture (5 layers)
+
+Every generation call assembles context in this order:
+
+```
+Layer 1 — Brand identity (auto-loaded from brand_kit)
+  Voice adjectives, vocabulary to use, restricted words (hard guardrail),
+  channel rules for target format, content goal, publishing frequency
+
+Layer 2 — Few-shot examples (from brand_kit.past_content_examples)
+  1–3 real examples that already sound like the brand
+  Strongest voice signal — weight this heavily in the system prompt
+
+Layer 3 — Campaign brief (from G2 confirmed fields)
+  Campaign type, audience, audience type, tone shift, key message,
+  funnel stage, proof style, content role, CTA intent, deadline
+
+Layer 4 — Preview edits (from G3 edited sections)
+  Any sections the user edited in the preview screen
+  These override the AI's free generation for those sections
+
+Layer 5 — Channel format spec
+  LinkedIn: max 220 words, hook in line 1, max 3 hashtags, no em dashes
+  Blog: target word count based on frequency (daily=400, weekly=700, monthly=1000),
+        subheadings optional, must end with a question if goal=thought_leadership
+```
+
+**Restricted words are enforced as a hard constraint, not a soft preference.** After generation, run a post-processing check. If any restricted word appears, regenerate automatically (once). Flag to user if it appears again.
+
+---
+
+## 8. Navigation structure
+
+```
+/                   → Landing page (marketing)
+/signup             → Sign up
+/signin             → Sign in
+
+/onboarding/team                    → S1
+/onboarding/brand-name              → S2
+/onboarding/content-types           → S3
+/onboarding/unlocked                → Platform unlock gate
+/onboarding/brand-content           → S4a
+/onboarding/audience-campaign       → S4b
+/onboarding/generating              → S5a
+/onboarding/review-kit              → S5b
+/onboarding/confidence-test         → S6
+/onboarding/kit-live                → S7
+
+/dashboard                          → Main dashboard (post-onboarding home)
+/inbox                              → G1 Brand updates inbox
+/generate/brief                     → G2
+/generate/preview                   → G3
+/generate/creating                  → G4
+/generate/output                    → G5
+
+/settings                           → Brand kit management, SSO config, group layer
+/settings/brands                    → All brands list
+/settings/brands/:id                → Individual brand kit editor
+```
+
+---
+
+## 9. Dashboard (post-onboarding home)
+
+**URL:** `/dashboard`
+
+**Sections:**
+1. Greeting: "Good morning, [first name]" + "N brand kit(s) live · ready to generate"
+2. Brand kits grid (2-column):
+   - Each card: brand name / last updated / voice adjective chips / audience
+   - Last card in grid: "+ Add brand" with dashed border
+3. Generate content shortcuts:
+   - One card per format (LinkedIn / Blog) pre-filled with most recent brand + campaign context
+4. Brand updates inbox section:
+   - If Gmail not connected: amber nudge with "Set up" badge
+   - If connected: show pending cards count
+5. Recent activity log (last 5 actions)
+
+**Top nav:** Logo left. "+ New content" button right. Always visible.
+
+---
+
+## 10. Auth flow
+
+**Sign up:**
+1. SSO button (primary): "Continue with SSO — Okta · OneLogin · RSA · SAML 2.0"
+2. Google Workspace button (secondary): "Continue with Google Workspace — for teams using Google suite"
+3. Divider: "or sign up with work email"
+4. Work email form: First name / Last name / Work email / Company name
+5. Submit: "Create workspace"
+6. Trust signals below form: SSO configurable post-setup / GDPR compliant / Enterprise SLA
+
+**Sign in:**
+1. Same SSO and Google Workspace buttons
+2. Work email + password form
+3. Footer links: "Forgot password?" and "Contact IT admin"
+
+**Post-auth redirect:**
+- New user → S1
+- Returning user → Dashboard (never to onboarding)
+
+---
+
+## 11. Edge cases to handle
+
+1. **Mid-onboarding exit after Phase 1:** Dashboard shows empty brand kits grid + "Finish building your first brand kit" prompt. Clicking resumes at S4a with S2 brand name retained.
+
+2. **S4a completely skipped:** Kit cards in S5b show "Low confidence — more input recommended" instead of "AI drafted". Soft prompt encourages adding seed content.
+
+3. **S6 second consecutive negative:** After one regeneration that also gets a negative rating, force the Go back path — show: "The kit needs more calibration before we can generate accurately. Let's adjust the review cards." Return to S5b. No third regeneration in same session.
+
+4. **Gmail OAuth failure:** Show email fallback with inline message: "Google sign-in was unavailable. Use your email instead." No progress lost.
+
+5. **Duplicate brand name in S2:** Warning below field: "You already have a kit for [Brand Name]. Would you like to add content to the existing kit instead?" Two options: continue (must rename) or navigate to existing kit.
+
+6. **Inbox card with Low confidence, user proceeds anyway:** Red advisory in G2 header: "This brief is missing several fields. The more you fill in, the better the output." All missing fields highlighted as required.
+
+7. **Refresh finds no new messages:** "No new messages found in this thread since the last extraction." Score and chips unchanged.
+
+8. **Restricted word appears in generated output:** Post-process every generation. If hit: auto-regenerate once. If second generation also hits: show flagged word highlighted in red with manual edit prompt.
+
+9. **Iteration bar — brand drift prevention:** Every iteration pass re-injects the full brand kit. Do not carry over only the previous iteration's output. Always: kit + brief + instruction.
+
+---
+
+## 12. What is NOT in V1 (do not build)
+
+- LinkedIn API direct posting (show disabled button with "Coming V2" badge)
+- Slack integration (V1.1)
+- Google Meet transcript ingestion (V1.2)
+- Group layer UI (available in settings after brand 2 is created, but not in onboarding)
+- Team invite / multi-user workspace
+- Approval workflow
+- Performance reporting / analytics
+- Instagram, X, TikTok, WhatsApp content formats
+- CMS direct publish
+- Email newsletters, ad copy, video scripts, press releases, case studies (show as Coming soon tiles in S3 only)
+- Scheduling / auto-posting
+- Brand drift analytics
+- Learning loop / fine-tuning on rejection patterns
+
+---
+
+## 13. Key design principles (apply everywhere)
+
+1. **One screen, one task.** No screen should collect information AND explain a concept at the same time.
+
+2. **User is reviewer, not author.** Wherever possible, the AI drafts and the user confirms. Never present a blank form when the AI can pre-fill it.
+
+3. **Source attribution on all AI extractions.** Every extracted field must show where it came from (from inbox / AI-inferred / user-provided). No invisible AI decisions.
+
+4. **Restricted words are hard constraints.** Not suggestions. Not soft preferences. The AI never uses them. Enforce in post-processing.
+
+5. **Brand kit is the source of truth.** Every generation re-injects the full kit. Never let iterations drift away from the kit by carrying only the previous output forward.
+
+6. **? tooltips on every input field.** One line answering "why does this help me?" — not "what is this field." Sakshi's principle: curse of knowledge — users don't know what we're asking without explanation.
+
+7. **Enterprise language throughout.** No "No credit card required", no "Get started free", no personal Gmail auth. Every CTA, label, and error message should read as if it was written for a procurement-aware professional.
+
+8. **Never trap the user.** Every screen with a forward action has a back option. The confidence test always shows "Back to kit" regardless of reaction state.
+
+---
+
+## 14. Build order (phases)
+
+**Phase 1 — MVP (build first):**
+1. Auth (SSO + Google Workspace + work email)
+2. Onboarding S1–S7 (full flow, all screens)
+3. Brand kit storage (brand_kits table, all fields)
+4. Gmail integration: label-based tagging + extraction pipeline + inbox UI (G1)
+5. Content generation G2–G5 (brief confirmation, preview with version history, generation, output workspace)
+6. Dashboard
+
+**Phase 2 — V1.1 (after MVP is stable):**
+1. Slack slash command integration
+2. Brand kit update suggestions from inbox (brand update vs campaign brief classification)
+3. Multi-brand dashboard (add brands 2–8 from dashboard)
+4. Group layer in settings
+
+**Phase 3 — V1.2:**
+1. Google Meet transcript upload
+2. Brand drift detection
+3. LinkedIn direct posting (G5 button becomes functional)
+
+---
+
+## 15. Confidence scoring implementation notes
+
+The scoring runs entirely in the backend. The UI never shows a percentage.
+
+```javascript
+const FIELD_WEIGHTS = {
+  key_message: 0.25,
+  campaign_type: 0.20,
+  audience: 0.20,
+  tone_shift: 0.15,
+  content_goal: 0.15,
+  cta_intent: 0.05
+};
+
+// Per-field confidence scoring rules:
+// - Explicitly stated in message: 0.85–1.0
+// - Clearly inferable from context: 0.60–0.84
+// - Ambiguous or absent: 0.0–0.59
+// - No source quote found: cap at 0.60 regardless of LLM output
+
+// Overall score
+const overall = Object.entries(FIELD_WEIGHTS)
+  .reduce((sum, [field, weight]) => sum + (field_scores[field] * weight), 0);
+
+// Tiers (used internally for card ordering and refresh recommendation)
+// High: overall >= 0.75
+// Partial: overall >= 0.40
+// Low: overall < 0.40
+
+// UI representation:
+// High: all chips green
+// Partial: some chips amber/grey
+// Low: most chips grey + advisory text on card
+```
+
+---
+
+## 16. Gmail API integration notes
+
+**Required OAuth scopes (minimal):**
+- `https://www.googleapis.com/auth/gmail.labels` — read label names
+- `https://www.googleapis.com/auth/gmail.readonly` — read messages with specific labels
+
+**Do NOT request:**
+- Full gmail.modify or gmail.compose — unnecessary and will alarm enterprise IT
+
+**Webhook setup:**
+- Use Gmail Push Notifications via Google Cloud Pub/Sub
+- Subscribe to mailbox changes for the specific label only
+- On notification: fetch message, run extraction, store InboxCard
+
+**Alternative (simpler for MVP):**
+- Poll the labelled mailbox every 5 minutes via cron
+- Less real-time but avoids Pub/Sub setup complexity
+- Acceptable for MVP given typical enterprise usage patterns
+
+**Label format:** `BrandOS — [Brand Name]`
+Users create this label in Gmail manually. Instructions shown in settings/inbox setup screen.
+
+---
+
+*End of PRD. Build in the order specified in Section 14. When in doubt, refer to Section 13 (design principles). Do not add features not listed here without flagging first.*

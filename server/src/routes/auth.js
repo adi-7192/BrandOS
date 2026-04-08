@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import pool from '../db/pool.js';
 import { authenticate } from '../middleware/auth.js';
+import { getIntentState } from '../services/intentSignals.js';
 
 const router = Router();
 
@@ -117,7 +118,7 @@ router.post('/signup', async (req, res, next) => {
     // Create workspace
     await pool.query('INSERT INTO workspaces (user_id, company_name) VALUES ($1, $2)', [user.id, companyName]);
 
-    res.status(201).json({ token: sign(user), user: formatUser(user) });
+    res.status(201).json({ token: sign(user), user: await formatUser(user) });
   } catch (err) { next(err); }
 });
 
@@ -131,7 +132,7 @@ router.post('/signin', async (req, res, next) => {
     if (!user.password_hash) return res.status(401).json({ message: 'Please sign in with SSO.' });
     const valid = await bcrypt.compare(password, user.password_hash);
     if (!valid) return res.status(401).json({ message: 'Invalid credentials.' });
-    res.json({ token: sign(user), user: formatUser(user) });
+    res.json({ token: sign(user), user: await formatUser(user) });
   } catch (err) { next(err); }
 });
 
@@ -140,7 +141,7 @@ router.get('/me', authenticate, async (req, res, next) => {
   try {
     const { rows } = await pool.query('SELECT * FROM users WHERE id = $1', [req.user.id]);
     if (!rows[0]) return res.status(404).json({ message: 'User not found.' });
-    res.json({ user: formatUser(rows[0]) });
+    res.json({ user: await formatUser(rows[0]) });
   } catch (err) { next(err); }
 });
 
@@ -169,11 +170,11 @@ router.patch('/profile', authenticate, async (req, res, next) => {
       [companyName.trim(), req.user.id]
     );
 
-    res.json({ user: formatUser(rows[0]) });
+    res.json({ user: await formatUser(rows[0]) });
   } catch (err) { next(err); }
 });
 
-function formatUser(u) {
+async function formatUser(u) {
   return {
     id: u.id,
     firstName: u.first_name,
@@ -181,6 +182,7 @@ function formatUser(u) {
     email: u.email,
     companyName: u.company_name,
     onboardingComplete: u.onboarding_complete,
+    intentState: await getIntentState(u.id),
   };
 }
 
