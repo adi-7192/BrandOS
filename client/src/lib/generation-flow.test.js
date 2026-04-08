@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+  hasPreviewContent,
   buildConfirmedBrief,
   buildGeneratingContext,
   buildManualBriefFromBrand,
@@ -219,4 +220,36 @@ test('mergePreviewSuggestions fills blank preview sections without overwriting u
       closing: 'AI blog closing',
     },
   });
+});
+
+test('hasPreviewContent ignores placeholder hashtags and only treats meaningful draft text as content', () => {
+  assert.equal(
+    hasPreviewContent(
+      {
+        linkedin: {
+          hook: '',
+          body: '',
+          closing: '',
+          hashtags: '#brand #content #marketing',
+        },
+      },
+      'linkedin'
+    ),
+    false
+  );
+
+  assert.equal(
+    hasPreviewContent(
+      {
+        linkedin: {
+          hook: 'A stronger opening line',
+          body: '',
+          closing: '',
+          hashtags: '#brand #content #marketing',
+        },
+      },
+      'linkedin'
+    ),
+    true
+  );
 });

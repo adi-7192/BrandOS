@@ -39,8 +39,13 @@ export function mergePreviewSuggestions(currentSections, suggestedSections) {
 }
 
 export function hasPreviewContent(sections, format) {
-  const values = Object.values(sections?.[format] || {});
-  return values.some((value) => String(value || '').trim());
+  const section = sections?.[format] || {};
+  return Object.entries(section).some(([key, value]) => {
+    const nextValue = String(value || '').trim();
+    if (!nextValue) return false;
+    if (key === 'hashtags' && nextValue === '#brand #content #marketing') return false;
+    return true;
+  });
 }
 
 export function buildGeneratingContext(brief) {

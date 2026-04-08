@@ -214,8 +214,8 @@ export default function Preview() {
               {suggestionsState === 'loading'
                 ? 'Refreshing…'
                 : activeFormat === 'linkedin'
-                  ? 'Refresh LinkedIn draft'
-                  : 'Refresh blog draft'}
+                  ? 'Try another suggestion'
+                  : 'Try another suggestion'}
             </button>
           </div>
 
