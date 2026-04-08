@@ -31,14 +31,14 @@ export async function getIntentState(userId) {
       text: 'SELECT moment, question_key FROM intent_prompt_dismissals WHERE user_id = $1',
       values: [userId],
     }),
-    pool.query(
-      `SELECT COUNT(d.id) AS draft_count
-       FROM drafts d
-       JOIN brands b ON b.id = d.brand_id
-       JOIN workspaces w ON w.id = b.workspace_id
-       WHERE w.user_id = $1`,
-      [userId]
-    ),
+    safeIntentQuery({
+      text: `SELECT COUNT(d.id) AS draft_count
+             FROM drafts d
+             JOIN brands b ON b.id = d.brand_id
+             JOIN workspaces w ON w.id = b.workspace_id
+             WHERE w.user_id = $1`,
+      values: [userId],
+    }, [{ draft_count: 0 }]),
   ]);
 
   const answeredQuestionKeys = signals.rows.map((row) => row.question_key);
