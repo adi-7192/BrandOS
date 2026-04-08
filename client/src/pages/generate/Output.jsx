@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import TopNav from '../../components/layout/TopNav';
 import Button from '../../components/ui/Button';
@@ -6,6 +6,15 @@ import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { getNextOutputIntentQuestion } from '../../lib/intent-capture';
 import { buildGenerationSessionPayload } from '../../lib/generation-session';
+import {
+  OUTPUT_FEEDBACK_CHIPS,
+  SELECTION_REWRITE_CHIPS,
+  buildGlobalFeedbackInstruction,
+  buildSelectionRewriteInstruction,
+  canApplyGlobalFeedback,
+  getSelectionState,
+  replaceSelection,
+} from '../../lib/output-feedback';
 
 function ComplianceItem({ label, value, pass }) {
   return (
@@ -19,6 +28,7 @@ export default function Output() {
   const navigate = useNavigate();
   const { state, search } = useLocation();
   const { user, refreshUser } = useAuth();
+  const editorRef = useRef(null);
   const sessionIdParam = new URLSearchParams(search).get('sessionId');
   const [sessionId, setSessionId] = useState(sessionIdParam || state?.sessionId || '');
   const [brief, setBrief] = useState(state?.brief || {});
@@ -27,8 +37,15 @@ export default function Output() {
     linkedin: state?.output?.linkedin || '',
     blog: state?.output?.blog || '',
   });
-  const [instruction, setInstruction] = useState('');
+  const [draftReaction, setDraftReaction] = useState('');
+  const [feedbackChips, setFeedbackChips] = useState([]);
+  const [feedbackNote, setFeedbackNote] = useState('');
   const [iterating, setIterating] = useState(false);
+  const [selectionRange, setSelectionRange] = useState({ start: 0, end: 0 });
+  const [selectionFeedbackChips, setSelectionFeedbackChips] = useState([]);
+  const [selectionFeedbackNote, setSelectionFeedbackNote] = useState('');
+  const [selectionRewriteState, setSelectionRewriteState] = useState({ loading: false, message: '' });
+  const [lastAiChange, setLastAiChange] = useState({ linkedin: '', blog: '' });
   const [saveState, setSaveState] = useState({ saving: false, message: '' });
   const [autosaveState, setAutosaveState] = useState('idle');
   const [loading, setLoading] = useState(Boolean(sessionIdParam));
@@ -37,6 +54,17 @@ export default function Output() {
     () => getNextOutputIntentQuestion(user?.intentState),
     [user?.intentState]
   );
+  const activeDraft = content[activeTab] || '';
+  const selection = useMemo(
+    () => getSelectionState(activeDraft, selectionRange.start, selectionRange.end),
+    [activeDraft, selectionRange.end, selectionRange.start]
+  );
+  const canApplyFeedback = canApplyGlobalFeedback({
+    chips: feedbackChips,
+    note: feedbackNote,
+    reaction: draftReaction,
+    loading: iterating,
+  });
 
   useEffect(() => {
     refreshUser().catch(() => {});
@@ -59,7 +87,6 @@ export default function Output() {
           blog: session.outputPayload?.blog || '',
         });
         setActiveTab(session.activeTab || 'linkedin');
-        setInstruction(session.lastInstruction || '');
       } finally {
         setLoading(false);
       }
@@ -86,11 +113,45 @@ export default function Output() {
     closingOk: content.blog.trim().endsWith('?') || content.blog.trim().length > 0,
   };
 
+  const toggleChip = (value, setter) => {
+    setter((current) => (
+      current.includes(value)
+        ? current.filter((item) => item !== value)
+        : [...current, value]
+    ));
+  };
+
+  const updateSelectionFromEditor = () => {
+    if (!editorRef.current) return;
+    setSelectionRange({
+      start: editorRef.current.selectionStart || 0,
+      end: editorRef.current.selectionEnd || 0,
+    });
+  };
+
+  const resetSelectionFeedback = () => {
+    setSelectionFeedbackChips([]);
+    setSelectionFeedbackNote('');
+    setSelectionRewriteState({ loading: false, message: '' });
+  };
+
   const handleIterate = async () => {
+    const instruction = buildGlobalFeedbackInstruction({
+      reaction: draftReaction,
+      chips: feedbackChips,
+      note: feedbackNote,
+    });
+
     if (!instruction.trim()) return;
     setIterating(true);
     try {
-      const res = await api.post('/generate/iterate', { brief, instruction, currentContent: content });
+      setLastAiChange((current) => ({ ...current, [activeTab]: activeDraft }));
+      const res = await api.post('/generate/iterate', {
+        brief,
+        instruction,
+        currentContent: content,
+        format: activeTab,
+      });
       setContent(res.data.output);
       if (sessionId) {
         await api.patch(`/generate/sessions/${sessionId}`, buildGenerationSessionPayload({
@@ -106,8 +167,48 @@ export default function Output() {
       // silent
     } finally {
       setIterating(false);
-      setInstruction('');
+      setDraftReaction('');
+      setFeedbackChips([]);
+      setFeedbackNote('');
     }
+  };
+
+  const handleRewriteSelection = async () => {
+    const instruction = buildSelectionRewriteInstruction({
+      chips: selectionFeedbackChips,
+      note: selectionFeedbackNote,
+    });
+
+    if (!selection.hasSelection || !instruction.trim()) return;
+
+    setSelectionRewriteState({ loading: true, message: '' });
+    try {
+      const res = await api.post('/generate/rewrite-selection', {
+        brief,
+        format: activeTab,
+        currentText: activeDraft,
+        selectedText: selection.text,
+        instruction,
+      });
+
+      setLastAiChange((current) => ({ ...current, [activeTab]: activeDraft }));
+      setContent((current) => ({
+        ...current,
+        [activeTab]: replaceSelection(current[activeTab], selection, res.data.selection),
+      }));
+      setSelectionRange({ start: 0, end: 0 });
+      resetSelectionFeedback();
+    } catch {
+      setSelectionRewriteState({ loading: false, message: 'We could not rewrite that selection right now.' });
+    }
+  };
+
+  const handleUndoAiChange = () => {
+    const previous = lastAiChange[activeTab];
+    if (!previous) return;
+
+    setContent((current) => ({ ...current, [activeTab]: previous }));
+    setLastAiChange((current) => ({ ...current, [activeTab]: '' }));
   };
 
   const handleSaveDraft = async () => {
@@ -123,7 +224,11 @@ export default function Output() {
         inboxCardId: brief.sourceCardIds?.length === 1 ? brief.sourceCardIds[0] : null,
         format: activeTab,
         content: content[activeTab],
-        instruction: instruction || null,
+        instruction: buildGlobalFeedbackInstruction({
+          reaction: draftReaction,
+          chips: feedbackChips,
+          note: feedbackNote,
+        }) || null,
       });
       setSaveState({ saving: false, message: `Saved version ${res.data.version}.` });
     } catch {
@@ -170,7 +275,11 @@ export default function Output() {
           output: content,
           currentStep: 'output',
           activeTab,
-          lastInstruction: instruction,
+          lastInstruction: buildGlobalFeedbackInstruction({
+            reaction: draftReaction,
+            chips: feedbackChips,
+            note: feedbackNote,
+          }),
         }));
         setAutosaveState('saved');
       } catch {
@@ -179,7 +288,12 @@ export default function Output() {
     }, 700);
 
     return () => clearTimeout(timer);
-  }, [activeTab, brief, content, instruction, loading, sessionId]);
+  }, [activeTab, brief, content, draftReaction, feedbackChips, feedbackNote, loading, sessionId]);
+
+  useEffect(() => {
+    setSelectionRange({ start: 0, end: 0 });
+    resetSelectionFeedback();
+  }, [activeTab]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -206,13 +320,30 @@ export default function Output() {
         </div>
 
         {/* Output body */}
-        <div
-          contentEditable
-          suppressContentEditableWarning
-          onInput={e => setContent(c => ({ ...c, [activeTab]: e.currentTarget.textContent }))}
-          className="min-h-[160px] w-full rounded-xl border border-gray-200 bg-white p-5 text-sm text-gray-800 focus:outline-none focus:border-gray-900 whitespace-pre-wrap"
-        >
-          {content[activeTab]}
+        <div className="rounded-xl border border-gray-200 bg-white p-4">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-medium text-gray-900">Editable draft</p>
+              <p className="text-xs text-gray-400">Edit directly, then ask AI to improve the whole draft or only a selected passage.</p>
+            </div>
+            {lastAiChange[activeTab] && (
+              <button
+                type="button"
+                onClick={handleUndoAiChange}
+                className="rounded-lg border border-gray-200 px-3 py-2 text-xs font-medium text-gray-600 transition hover:border-gray-300 hover:text-gray-900"
+              >
+                Undo AI change
+              </button>
+            )}
+          </div>
+          <textarea
+            ref={editorRef}
+            value={activeDraft}
+            onChange={(e) => setContent((current) => ({ ...current, [activeTab]: e.target.value }))}
+            onMouseUp={updateSelectionFromEditor}
+            onKeyUp={updateSelectionFromEditor}
+            className="min-h-[220px] w-full resize-y rounded-xl border border-gray-200 bg-white p-4 text-sm text-gray-800 focus:border-gray-900 focus:outline-none"
+          />
         </div>
 
         {/* Compliance row */}
@@ -232,34 +363,133 @@ export default function Output() {
           )}
         </div>
 
-        {/* Contextual iteration chips */}
-        <div className="flex flex-wrap gap-2 mb-3">
-          {activeTab === 'linkedin' && !linkedinCompliance.ctaOk && (
-            <button onClick={() => setInstruction('Add a CTA')} className="text-xs px-3 py-1 rounded-full border border-amber-300 bg-amber-50 text-amber-700">
-              Add a CTA
-            </button>
-          )}
-          {activeTab === 'linkedin' && !linkedinCompliance.withinLimit && (
-            <button onClick={() => setInstruction('Make it shorter')} className="text-xs px-3 py-1 rounded-full border border-amber-300 bg-amber-50 text-amber-700">
-              Make it shorter
-            </button>
-          )}
+        <div className="mb-6 rounded-xl border border-gray-200 bg-white p-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-medium text-gray-900">Improve this draft</p>
+              <p className="text-xs text-gray-400">Tell BrandOS what feels off, then regenerate from your latest edits.</p>
+            </div>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setDraftReaction('works')}
+                className={`rounded-full px-3 py-2 text-xs font-medium transition ${
+                  draftReaction === 'works'
+                    ? 'bg-emerald-100 text-emerald-700'
+                    : 'bg-gray-100 text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                Like this draft
+              </button>
+              <button
+                type="button"
+                onClick={() => setDraftReaction('needs_changes')}
+                className={`rounded-full px-3 py-2 text-xs font-medium transition ${
+                  draftReaction === 'needs_changes'
+                    ? 'bg-amber-100 text-amber-700'
+                    : 'bg-gray-100 text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                Needs changes
+              </button>
+            </div>
+          </div>
+
+          <div className="mt-4 flex flex-wrap gap-2">
+            {OUTPUT_FEEDBACK_CHIPS.map((chip) => (
+              <button
+                key={chip}
+                type="button"
+                onClick={() => toggleChip(chip, setFeedbackChips)}
+                className={`rounded-full px-3 py-2 text-xs font-medium transition ${
+                  feedbackChips.includes(chip)
+                    ? 'bg-brand text-white'
+                    : 'bg-gray-100 text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                {chip}
+              </button>
+            ))}
+          </div>
+
+          <textarea
+            value={feedbackNote}
+            onChange={(e) => setFeedbackNote(e.target.value)}
+            placeholder="Tell AI what to improve, for example: keep the proof points but make the opening more premium."
+            className="mt-4 min-h-[92px] w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-800 focus:border-gray-900 focus:outline-none"
+          />
+
+          <div className="mt-4 flex items-center gap-3">
+            <Button variant="primary" disabled={!canApplyFeedback} onClick={handleIterate}>
+              {iterating ? 'Regenerating…' : 'Regenerate with feedback'}
+            </Button>
+            {draftReaction === 'works' && (
+              <p className="text-xs text-emerald-700">Great. You can still save, copy, or make a more specific change below.</p>
+            )}
+          </div>
         </div>
 
-        {/* Iteration bar */}
-        <div className="flex gap-2 mb-6">
-          <input
-            type="text"
-            value={instruction}
-            onChange={e => setInstruction(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && handleIterate()}
-            placeholder="e.g. Make it shorter · Add a CTA · Use a question as the hook"
-            className="flex-1 rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:outline-none focus:border-gray-900"
-          />
-          <Button variant="primary" disabled={iterating || !instruction.trim()} onClick={handleIterate}>
-            {iterating ? '…' : 'Apply →'}
-          </Button>
-        </div>
+        {selection.hasSelection && (
+          <div className="mb-6 rounded-xl border border-blue-200 bg-blue-50 p-4">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-sm font-medium text-brand">Rewrite selected text</p>
+                <p className="mt-1 text-xs text-brand-muted">Only the highlighted passage will change. The rest of the draft stays untouched.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectionRange({ start: 0, end: 0 });
+                  resetSelectionFeedback();
+                }}
+                className="text-xs font-medium text-brand-muted hover:text-brand"
+              >
+                Clear selection
+              </button>
+            </div>
+
+            <div className="mt-3 rounded-lg border border-blue-100 bg-white/80 px-3 py-3 text-sm text-gray-700">
+              {selection.text}
+            </div>
+
+            <div className="mt-4 flex flex-wrap gap-2">
+              {SELECTION_REWRITE_CHIPS.map((chip) => (
+                <button
+                  key={chip}
+                  type="button"
+                  onClick={() => toggleChip(chip, setSelectionFeedbackChips)}
+                  className={`rounded-full px-3 py-2 text-xs font-medium transition ${
+                    selectionFeedbackChips.includes(chip)
+                      ? 'bg-brand text-white'
+                      : 'bg-white text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  {chip}
+                </button>
+              ))}
+            </div>
+
+            <textarea
+              value={selectionFeedbackNote}
+              onChange={(e) => setSelectionFeedbackNote(e.target.value)}
+              placeholder="Optional: tell AI exactly how to improve the selected passage."
+              className="mt-4 min-h-[80px] w-full rounded-xl border border-blue-100 px-4 py-3 text-sm text-gray-800 focus:border-brand focus:outline-none"
+            />
+
+            <div className="mt-4 flex items-center gap-3">
+              <Button
+                variant="primary"
+                disabled={selectionRewriteState.loading || !buildSelectionRewriteInstruction({ chips: selectionFeedbackChips, note: selectionFeedbackNote })}
+                onClick={handleRewriteSelection}
+              >
+                {selectionRewriteState.loading ? 'Rewriting…' : 'Rewrite selection'}
+              </Button>
+              {selectionRewriteState.message && (
+                <p className="text-xs text-amber-700">{selectionRewriteState.message}</p>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Export row */}
         <div className="flex flex-wrap gap-2 mb-6">

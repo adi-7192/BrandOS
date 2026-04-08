@@ -5,6 +5,7 @@ import {
   buildConfidenceUserMessage,
   buildGenerationUserMessage,
   buildPreviewSuggestionUserMessage,
+  buildSelectionRewriteUserMessage,
 } from './generation.js';
 
 test('buildConfidenceUserMessage creates an initial confidence sample prompt', () => {
@@ -123,4 +124,28 @@ test('buildPreviewSuggestionUserMessage asks the model to prefill editable previ
   assert.match(message, /Key message: Shoppers can try styles before they buy\./);
   assert.match(message, /Return ONLY a JSON object/);
   assert.match(message, /"hook": "opening line suggestion"/);
+});
+
+test('buildSelectionRewriteUserMessage targets only the selected passage for one format', () => {
+  const message = buildSelectionRewriteUserMessage({
+    brief: {
+      brandName: 'Moodway',
+      language: 'English',
+      kit: {
+        voiceAdjectives: ['Clear', 'Confident'],
+        vocabulary: ['virtual try-on'],
+        restrictedWords: ['guaranteed'],
+      },
+    },
+    format: 'linkedin',
+    selectedText: 'This line needs work.',
+    currentText: 'Intro.\nThis line needs work.\nClosing.',
+    instruction: 'Make it sharper and shorter.',
+  });
+
+  assert.match(message, /Rewrite only the selected Linkedin passage for Moodway\./);
+  assert.match(message, /Selected passage:\nThis line needs work\./);
+  assert.match(message, /Instruction: Make it sharper and shorter\./);
+  assert.match(message, /Return ONLY a JSON object/);
+  assert.match(message, /"selection": "rewritten passage only"/);
 });

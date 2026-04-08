@@ -2,7 +2,7 @@ import { Router } from 'express';
 import pool from '../db/pool.js';
 import { authenticate } from '../middleware/auth.js';
 import { buildCanonicalBrief } from '../services/ai/briefBuilder.js';
-import { generateContent, generatePreviewSuggestions, iterateContent } from '../services/ai/generation.js';
+import { generateContent, generatePreviewSuggestions, iterateContent, rewriteSelection } from '../services/ai/generation.js';
 import { mapGenerationSessionRow } from '../services/generationSessions.js';
 
 const router = Router();
@@ -206,9 +206,18 @@ router.post('/preview', async (req, res, next) => {
 // Re-generate with full kit + instruction
 router.post('/iterate', async (req, res, next) => {
   try {
-    const { brief, instruction, currentContent } = req.body;
-    const output = await iterateContent({ brief, instruction, currentContent });
+    const { brief, instruction, currentContent, format } = req.body;
+    const output = await iterateContent({ brief, instruction, currentContent, format });
     res.json({ output });
+  } catch (err) { next(err); }
+});
+
+// POST /api/generate/rewrite-selection
+router.post('/rewrite-selection', async (req, res, next) => {
+  try {
+    const { brief, format, currentText, selectedText, instruction } = req.body;
+    const selection = await rewriteSelection({ brief, format, currentText, selectedText, instruction });
+    res.json({ selection });
   } catch (err) { next(err); }
 });
 

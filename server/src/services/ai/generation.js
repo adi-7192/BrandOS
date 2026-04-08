@@ -86,29 +86,27 @@ export async function generatePreviewSuggestions({ brief }) {
  * Iterate on existing content with a natural language instruction.
  * Re-injects full brand kit to prevent drift.
  */
-export async function iterateContent({ brief, instruction, currentContent }) {
+export async function iterateContent({ brief, instruction, currentContent, format }) {
   const kit = brief.kit || {};
   const systemPrompt = buildSystemPrompt({ brandName: brief.brandName, kit, brandLanguage: brief.language });
+  const userMessage = buildIterateUserMessage({ brief, instruction, currentContent, format });
 
-  const userMessage = `You are refining existing content for ${brief.brandName}.
+  if (format === 'linkedin' || format === 'blog') {
+    const raw = await callAI(systemPrompt, userMessage, 1400);
+    const { data, usedFallback } = parseStructuredJson(raw, {
+      fallback: { content: currentContent?.[format] || '' },
+      validate: (value) => typeof value?.content === 'string',
+    });
 
-Current LinkedIn post:
-${currentContent?.linkedin || ''}
+    if (usedFallback) {
+      console.warn('Content iteration returned invalid JSON for targeted format. Keeping current content.');
+    }
 
-Current blog post:
-${currentContent?.blog || ''}
-
-Instruction: ${instruction}
-
-Brand voice (ALWAYS apply): ${kit.voiceAdjectives?.join(', ')}
-Vocabulary (ALWAYS use): ${kit.vocabulary?.join(', ')}
-NEVER use these words: ${kit.restrictedWords?.join(', ')}
-
-Apply the instruction while keeping the brand voice. Return ONLY a JSON object:
-{
-  "linkedin": "updated linkedin post",
-  "blog": "updated blog post"
-}`;
+    return {
+      ...currentContent,
+      [format]: data.content,
+    };
+  }
 
   const raw = await callAI(systemPrompt, userMessage, 2000);
   const { data, usedFallback } = parseStructuredJson(raw, {
@@ -121,6 +119,29 @@ Apply the instruction while keeping the brand voice. Return ONLY a JSON object:
   }
 
   return data;
+}
+
+export async function rewriteSelection({ brief, format, currentText, selectedText, instruction }) {
+  const kit = brief.kit || {};
+  const systemPrompt = buildSystemPrompt({ brandName: brief.brandName, kit, brandLanguage: brief.language });
+  const userMessage = buildSelectionRewriteUserMessage({
+    brief,
+    format,
+    currentText,
+    selectedText,
+    instruction,
+  });
+  const raw = await callAI(systemPrompt, userMessage, 700);
+  const { data, usedFallback } = parseStructuredJson(raw, {
+    fallback: { selection: selectedText },
+    validate: (value) => typeof value?.selection === 'string',
+  });
+
+  if (usedFallback) {
+    console.warn('Selection rewrite returned invalid JSON. Keeping the selected passage unchanged.');
+  }
+
+  return data.selection;
 }
 
 // Shared system prompt builder
@@ -255,6 +276,70 @@ Return ONLY a JSON object:
     "body": "draft body summary",
     "closing": "draft closing"
   }
+}`;
+} 
+
+export function buildIterateUserMessage({ brief, instruction, currentContent, format }) {
+  const kit = brief.kit || {};
+
+  if (format === 'linkedin' || format === 'blog') {
+    const label = format === 'linkedin' ? 'LinkedIn post' : 'blog post';
+    return `You are refining the current ${label} for ${brief.brandName}.
+
+Current ${label}:
+${currentContent?.[format] || ''}
+
+Instruction: ${instruction}
+
+Brand voice (ALWAYS apply): ${kit.voiceAdjectives?.join(', ')}
+Vocabulary (ALWAYS use): ${kit.vocabulary?.join(', ')}
+NEVER use these words: ${kit.restrictedWords?.join(', ')}
+
+Apply the instruction while keeping the brand voice. Return ONLY a JSON object:
+{
+  "content": "updated ${format} draft"
+}`;
+  }
+
+  return `You are refining existing content for ${brief.brandName}.
+
+Current LinkedIn post:
+${currentContent?.linkedin || ''}
+
+Current blog post:
+${currentContent?.blog || ''}
+
+Instruction: ${instruction}
+
+Brand voice (ALWAYS apply): ${kit.voiceAdjectives?.join(', ')}
+Vocabulary (ALWAYS use): ${kit.vocabulary?.join(', ')}
+NEVER use these words: ${kit.restrictedWords?.join(', ')}
+
+Apply the instruction while keeping the brand voice. Return ONLY a JSON object:
+{
+  "linkedin": "updated linkedin post",
+  "blog": "updated blog post"
+}`;
+}
+
+export function buildSelectionRewriteUserMessage({ brief, format, currentText, selectedText, instruction }) {
+  const label = format === 'blog' ? 'Blog' : 'Linkedin';
+
+  return `Rewrite only the selected ${label} passage for ${brief.brandName}.
+
+Current full draft:
+${currentText || ''}
+
+Selected passage:
+${selectedText || ''}
+
+Instruction: ${instruction}
+
+Keep the surrounding draft consistent in tone and meaning. Do not include any commentary, explanation, or surrounding text.
+
+Return ONLY a JSON object:
+{
+  "selection": "rewritten passage only"
 }`;
 }
 
