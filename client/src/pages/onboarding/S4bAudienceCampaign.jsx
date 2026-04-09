@@ -82,7 +82,7 @@ export default function S4bAudienceCampaign() {
                 Funnel stages
                 <span className="group relative ml-1 cursor-help text-gray-400 hover:text-gray-600">
                   ?
-                  <span className="absolute left-0 top-6 z-10 hidden w-64 rounded-md bg-gray-900 p-2 text-xs text-white group-hover:block">
+                  <span className="absolute left-0 top-6 z-10 hidden w-64 rounded-md bg-slate-950 p-2 text-xs text-white group-hover:block">
                     Pick every stage this brand usually writes for. Multi-select helps BrandOS avoid forcing one campaign shape onto every generation.
                   </span>
                 </span>
@@ -97,8 +97,8 @@ export default function S4bAudienceCampaign() {
                       onClick={() => toggleFunnelStage(option)}
                       className={`rounded-full border px-3 py-2 text-sm transition-colors ${
                         active
-                          ? 'border-gray-900 bg-gray-900 text-white'
-                          : 'border-gray-300 bg-white text-gray-700 hover:border-gray-500'
+                          ? 'border-[var(--brand-primary)] bg-[var(--brand-primary)] text-white'
+                          : 'border-[#e7ebf3] bg-white text-[var(--brand-text)] hover:border-[var(--brand-primary)]'
                       }`}
                     >
                       {option}
@@ -158,14 +158,14 @@ export default function S4bAudienceCampaign() {
         </section>
 
         <div className="flex items-center gap-3 mt-2">
-          <button type="button" onClick={() => navigate('/onboarding/brand-content')} className="text-sm text-gray-500 hover:underline">
+          <button type="button" onClick={() => navigate('/onboarding/brand-content')} className="text-sm text-[var(--brand-text-muted)] transition-colors hover:text-[var(--brand-text)] hover:underline">
             ← Back
           </button>
           <Button type="submit" variant="primary" disabled={!canSubmit} className="flex-1">
             Generate brand kit →
           </Button>
         </div>
-        <button type="button" onClick={() => navigate('/onboarding/generating')} className="text-sm text-gray-400 hover:text-gray-600 hover:underline text-center">
+        <button type="button" onClick={() => navigate('/onboarding/generating')} className="text-sm text-[var(--brand-text-muted)] transition-colors hover:text-[var(--brand-text)] hover:underline text-center">
           Skip for now
         </button>
       </form>

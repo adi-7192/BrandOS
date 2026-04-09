@@ -107,12 +107,12 @@ export default function S6ConfidenceTest() {
 
       {loading ? (
         <div className="flex justify-center py-12">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-gray-900" />
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#e7ebf3] border-t-[var(--brand-primary)]" />
         </div>
       ) : (
         <>
           {/* Sample post */}
-          <div className="rounded-xl border border-gray-200 p-5 mb-4">
+          <div className="rounded-[20px] border border-[#e7ebf3] shadow-[0_1px_2px_rgba(15,23,42,0.04)] p-5 mb-4">
             <div className="flex flex-wrap gap-2 mb-3 text-xs text-gray-400">
               <span className="chip chip-purple">{ob.brandName}</span>
               <span>LinkedIn</span>
@@ -124,7 +124,7 @@ export default function S6ConfidenceTest() {
               rows={8}
               value={sampleDraft}
               onChange={(e) => setSampleDraft(e.target.value)}
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-800 resize-y focus:border-gray-900 focus:outline-none"
+              className="w-full rounded-lg border border-[#e7ebf3] px-3 py-2 text-sm text-gray-800 resize-y focus:border-[var(--brand-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary-soft)]"
             />
             <p className="mt-2 text-xs text-gray-400">You can edit this sample directly before asking AI to refine it again.</p>
           </div>
@@ -141,8 +141,8 @@ export default function S6ConfidenceTest() {
                 onClick={() => setReaction(r.key)}
                 className={`rounded-xl border-2 px-3 py-3 text-sm font-medium transition-colors text-center ${
                   reaction === r.key
-                    ? 'border-gray-900 bg-gray-900 text-white'
-                    : 'border-gray-200 bg-white text-gray-700 hover:border-gray-400'
+                    ? 'border-[var(--brand-primary)] bg-[var(--brand-primary)] text-white'
+                    : 'border-[#e7ebf3] bg-white text-gray-700 hover:border-[var(--brand-primary)]'
                 }`}
               >
                 {r.label}
@@ -166,7 +166,7 @@ export default function S6ConfidenceTest() {
                   <button
                     key={chip}
                     onClick={() => setSelectedChips(c => c.includes(chip) ? c.filter(x => x !== chip) : [...c, chip])}
-                    className={`text-xs rounded-full border px-3 py-1 ${selectedChips.includes(chip) ? 'border-gray-900 bg-gray-900 text-white' : 'border-gray-300 text-gray-600'}`}
+                    className={`text-xs rounded-full border px-3 py-1 ${selectedChips.includes(chip) ? 'border-[var(--brand-primary)] bg-[var(--brand-primary)] text-white' : 'border-[#e7ebf3] text-[var(--brand-text-muted)]'}`}
                   >
                     {chip}
                   </button>
@@ -174,7 +174,7 @@ export default function S6ConfidenceTest() {
               </div>
               <textarea rows={2} value={freeText} onChange={e => setFreeText(e.target.value)}
                 placeholder="Describe what's off…"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm resize-none focus:outline-none focus:border-gray-900"
+                className="w-full rounded-lg border border-[var(--brand-border)] px-3 py-2 text-sm resize-none focus:outline-none focus:border-[var(--brand-primary)] focus:ring-2 focus:ring-[var(--brand-primary-soft)]"
               />
               <Button variant="secondary" className="mt-3 text-sm" disabled={!regenerateEnabled}
                 onClick={handleRegenerate}>

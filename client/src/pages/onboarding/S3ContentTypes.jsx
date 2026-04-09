@@ -41,10 +41,10 @@ export default function S3ContentTypes() {
             key={type}
             type="button"
             onClick={() => toggle(type, true)}
-            className={`rounded-xl border-2 p-4 text-left text-sm font-medium transition-colors ${
+            className={`rounded-xl border p-4 text-left text-sm font-medium transition-colors ${
               contentTypes.includes(type)
-                ? 'border-gray-900 bg-gray-900 text-white'
-                : 'border-gray-200 bg-white text-gray-900 hover:border-gray-400'
+                ? 'border-[var(--brand-primary)] bg-[var(--brand-primary)] text-white'
+                : 'border-[#e7ebf3] bg-white text-gray-900 hover:border-[var(--brand-primary)]'
             }`}
           >
             {type}
@@ -56,10 +56,10 @@ export default function S3ContentTypes() {
             key={type}
             type="button"
             onClick={() => toggle(type, false)}
-            className={`rounded-xl border-2 border-dashed p-4 text-left text-sm font-medium transition-colors ${
+            className={`rounded-xl border border-dashed p-4 text-left text-sm font-medium transition-colors ${
               contentTypesInterest.includes(type)
-                ? 'border-gray-400 bg-gray-50 text-gray-700'
-                : 'border-gray-200 bg-white text-gray-400 hover:border-gray-300'
+                ? 'border-[var(--brand-primary-soft)] bg-[#f0f6ff] text-gray-700'
+                : 'border-[#e7ebf3] bg-white text-[var(--brand-text-muted)] hover:border-[var(--brand-primary-soft)]'
             }`}
           >
             {type}
@@ -81,7 +81,7 @@ export default function S3ContentTypes() {
       )}
 
       <div className="flex items-center gap-3 mt-4">
-        <button type="button" onClick={() => navigate('/onboarding/brand-name')} className="text-sm text-gray-500 hover:underline">
+        <button type="button" onClick={() => navigate('/onboarding/brand-name')} className="text-sm text-[var(--brand-text-muted)] transition-colors hover:text-[var(--brand-text)] hover:underline">
           ← Back
         </button>
         <Button variant="primary" disabled={!canContinue} onClick={() => navigate('/onboarding/unlocked')} className="flex-1">

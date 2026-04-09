@@ -52,7 +52,7 @@ export default function S2BrandName() {
         />
 
         <div className="flex items-center gap-3 mt-2">
-          <button type="button" onClick={() => navigate('/onboarding/team')} className="text-sm text-gray-500 hover:underline">
+          <button type="button" onClick={() => navigate('/onboarding/team')} className="text-sm text-[var(--brand-text-muted)] transition-colors hover:text-[var(--brand-text)] hover:underline">
             ← Back
           </button>
           <Button type="submit" variant="primary" disabled={!canContinue} className="flex-1">

@@ -7,10 +7,10 @@ export default function KitProgressBar({ activeStep }) {
         <div key={i} className="flex-1 flex flex-col items-center gap-1">
           <div
             className={`h-1.5 w-full rounded-full transition-colors ${
-              i + 1 < activeStep ? 'bg-gray-900' : i + 1 === activeStep ? 'bg-gray-400' : 'bg-gray-200'
+              i + 1 < activeStep ? 'bg-[var(--brand-primary)]' : i + 1 === activeStep ? 'bg-[var(--brand-primary-soft)]' : 'bg-gray-200'
             }`}
           />
-          <span className={`text-[10px] hidden sm:block text-center ${i + 1 === activeStep ? 'text-gray-700 font-medium' : 'text-gray-400'}`}>
+          <span className={`text-[10px] hidden sm:block text-center ${i + 1 === activeStep ? 'text-[var(--brand-primary)] font-medium' : 'text-[var(--brand-text-muted)]'}`}>
             {label}
           </span>
         </div>

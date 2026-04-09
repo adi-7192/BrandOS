@@ -27,9 +27,9 @@ export default function Unlocked() {
       </div>
 
       {/* Phase 1 summary card */}
-      <div className="rounded-xl border border-gray-200 bg-gray-50 p-5 mb-8">
+      <div className="rounded-[20px] border border-[#e7ebf3] bg-[var(--brand-surface-subtle)] shadow-[0_1px_2px_rgba(15,23,42,0.04)] p-5 mb-8">
         {summaryRows.map(row => (
-          <div key={row.label} className="flex items-center justify-between py-2 border-b border-gray-200 last:border-0">
+          <div key={row.label} className="flex items-center justify-between py-2 border-b border-[#e7ebf3] last:border-0">
             <span className="text-sm text-gray-500">{row.label}</span>
             <span className="flex items-center gap-2 text-sm font-medium text-gray-900">
               {row.value}
@@ -42,7 +42,7 @@ export default function Unlocked() {
       <Button variant="primary" className="w-full" onClick={() => navigate('/onboarding/brand-content')}>
         Build brand kit
       </Button>
-      <p className="mt-3 text-center text-xs text-gray-400">Phase 2 · 2 steps · takes about 5 minutes</p>
+      <p className="mt-3 text-center text-xs text-[var(--brand-text-muted)]">Phase 2 · 2 steps · takes about 5 minutes</p>
     </OnboardingShell>
   );
 }

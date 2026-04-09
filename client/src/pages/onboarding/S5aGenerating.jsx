@@ -70,7 +70,7 @@ export default function S5aGenerating() {
 
       <div className="text-center py-8">
         <div className="mb-6 flex justify-center">
-          <div className="h-10 w-10 animate-spin rounded-full border-4 border-gray-200 border-t-gray-900" />
+          <div className="h-10 w-10 animate-spin rounded-full border-4 border-[#e7ebf3] border-t-[var(--brand-primary)]" />
         </div>
         <h1 className="text-xl font-bold text-gray-900 mb-1">Reading {ob.brandName || 'your brand'}…</h1>
         <p className="text-sm text-gray-500 mb-8">The AI is extracting your brand's voice from everything you provided. This takes about 10–15 seconds.</p>
@@ -78,10 +78,10 @@ export default function S5aGenerating() {
         <div className="text-left space-y-3 max-w-sm mx-auto">
           {STEPS.map((step, i) => (
             <div key={i} className={`flex items-center gap-3 text-sm transition-opacity ${i < currentStep ? 'opacity-100' : 'opacity-30'}`}>
-              <span className={`h-5 w-5 flex-shrink-0 rounded-full flex items-center justify-center text-xs ${i < currentStep ? 'bg-gray-900 text-white' : 'bg-gray-200 text-gray-400'}`}>
+              <span className={`h-5 w-5 flex-shrink-0 rounded-full flex items-center justify-center text-xs ${i < currentStep ? 'bg-[var(--brand-primary)] text-white' : 'bg-[#e7ebf3] text-[var(--brand-text-muted)]'}`}>
                 {i < currentStep ? '✓' : i + 1}
               </span>
-              <span className={i < currentStep ? 'text-gray-900' : 'text-gray-400'}>{step}</span>
+              <span className={i < currentStep ? 'text-[var(--brand-text)]' : 'text-[var(--brand-text-muted)]'}>{step}</span>
             </div>
           ))}
         </div>

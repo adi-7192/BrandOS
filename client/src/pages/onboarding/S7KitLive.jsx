@@ -80,14 +80,14 @@ export default function S7KitLive() {
         <Button variant="primary" className="w-full" onClick={handleGoToDashboard}>
           Go to dashboard
         </Button>
-        <button onClick={() => navigate('/onboarding/brand-name')} className="text-sm text-center text-gray-500 hover:underline">
+        <button onClick={() => navigate('/onboarding/brand-name')} className="text-sm text-center text-[var(--brand-text-muted)] transition-colors hover:text-[var(--brand-text)] hover:underline">
           Add another brand
         </button>
       </div>
 
       {/* Phase 3 signpost */}
-      <div className="mt-8 rounded-xl bg-gray-50 border border-gray-200 p-4">
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">What's available next</p>
+      <div className="mt-8 rounded-[20px] bg-[var(--brand-surface-subtle)] border border-[#e7ebf3] shadow-[0_1px_2px_rgba(15,23,42,0.04)] p-4">
+        <p className="text-xs font-semibold text-[var(--brand-text-muted)] uppercase tracking-widest mb-2">What's available next</p>
         <ul className="space-y-3 text-sm text-gray-500">
           {nextSteps.map((step) => (
             <li key={step.title}>

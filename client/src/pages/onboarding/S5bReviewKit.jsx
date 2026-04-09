@@ -23,7 +23,7 @@ function KitCard({ title, badge, children, onApprove, approved, reviewed, onOpen
   };
 
   return (
-    <div className={`rounded-xl border-2 p-4 transition-colors ${approved ? 'border-teal-500' : 'border-gray-200'}`}>
+    <div className={`rounded-[18px] border p-4 transition-colors shadow-[0_1px_2px_rgba(15,23,42,0.04)] ${approved ? 'border-teal-500' : 'border-[#e7ebf3]'}`}>
       <div className="flex items-center justify-between cursor-pointer" onClick={handleToggle}>
         <div className="flex items-center gap-2">
           <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
@@ -210,7 +210,7 @@ export default function S5bReviewKit() {
       </div>
 
       {/* Campaign core why toggle */}
-      <div className={`rounded-xl border-2 border-dashed p-4 mb-5 ${addCoreWhy ? 'border-gray-400' : 'border-gray-200'}`}>
+      <div className={`rounded-[18px] border border-dashed p-4 mb-5 ${addCoreWhy ? 'border-[var(--brand-primary-soft)]' : 'border-[#e7ebf3]'}`}>
         <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-700">
           <input
             type="checkbox"
@@ -237,7 +237,7 @@ export default function S5bReviewKit() {
                 update({ campaignCoreWhy: e.target.value });
               }}
               placeholder="e.g. This is not a sale — it's a cultural moment."
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm placeholder-gray-400 focus:border-gray-900 focus:outline-none"
+              className="w-full rounded-lg border border-[var(--brand-border)] px-3 py-2 text-sm placeholder-[var(--brand-text-muted)] focus:border-[var(--brand-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary-soft)]"
             />
             <p className="text-xs text-gray-400 mt-1">Used as the anchor line for this campaign's content across both formats.</p>
           </div>
