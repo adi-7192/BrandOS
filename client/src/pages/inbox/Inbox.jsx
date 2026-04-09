@@ -1,9 +1,14 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AppShell from '../../components/layout/AppShell';
 import Button from '../../components/ui/Button';
 import api from '../../services/api';
-import { buildInboxCounts, groupInboxThreads, pickThreadSource } from '../../lib/inbox-view';
+import { buildInboxCounts, groupInboxThreads } from '../../lib/inbox-view';
+import { buildInboxAiCard } from '../../lib/inbox-ai-view';
+import {
+  buildGenerationSessionPayload,
+  buildSessionQuery,
+} from '../../lib/generation-session';
 
 const STATUS_TABS = ['pending', 'used', 'dismissed'];
 
@@ -13,7 +18,8 @@ export default function Inbox() {
   const [counts, setCounts] = useState({ pending: 0, used: 0, dismissed: 0 });
   const [activeTab, setActiveTab] = useState('pending');
   const [viewMode, setViewMode] = useState('updates');
-  const [selectedSourceCardId, setSelectedSourceCardId] = useState(null);
+  const [drawerCardId, setDrawerCardId] = useState(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [openThreads, setOpenThreads] = useState({});
   const [loading, setLoading] = useState(true);
 
@@ -24,17 +30,22 @@ export default function Inbox() {
       const nextCards = res.data.cards || [];
       setCards(nextCards);
       setCounts(res.data.counts || buildInboxCounts(nextCards));
-      setSelectedSourceCardId((current) => {
+      setDrawerCardId((current) => {
         if (current && nextCards.some((card) => card.id === current)) {
           return current;
         }
+
         return nextCards[0]?.id || null;
       });
       setOpenThreads({});
+      if (nextCards.length === 0) {
+        setDrawerOpen(false);
+      }
     } catch {
       setCards([]);
       setCounts({ pending: 0, used: 0, dismissed: 0 });
-      setSelectedSourceCardId(null);
+      setDrawerCardId(null);
+      setDrawerOpen(false);
     } finally {
       setLoading(false);
     }
@@ -44,25 +55,61 @@ export default function Inbox() {
     loadInbox(activeTab);
   }, [activeTab, loadInbox]);
 
-  const threads = useMemo(() => groupInboxThreads(cards), [cards]);
-  const sourceThread = useMemo(
-    () => pickThreadSource(cards, selectedSourceCardId),
-    [cards, selectedSourceCardId]
+  const aiCards = useMemo(() => cards.map(buildInboxAiCard), [cards]);
+  const aiCardMap = useMemo(
+    () => new Map(aiCards.map((card) => [card.id, card])),
+    [aiCards]
   );
+  const threads = useMemo(
+    () => groupInboxThreads(cards).map((thread) => ({
+      ...thread,
+      cards: thread.cards.map((card) => aiCardMap.get(card.id) || buildInboxAiCard(card)),
+    })),
+    [aiCardMap, cards]
+  );
+  const drawerCard = drawerCardId ? aiCardMap.get(drawerCardId) || null : null;
 
   const handleDismiss = async (id) => {
     await api.patch(`/inbox/${id}/status`, { status: 'dismissed' });
-    loadInbox(activeTab);
+    await loadInbox(activeTab);
   };
 
-  const handleUseUpdate = async (id) => {
+  const handleGenerateBrief = async (id) => {
     await api.post(`/inbox/${id}/complete-campaign`);
     navigate('/generate/brief', { state: { cardIds: [id] } });
   };
 
+  const handleGenerateContent = async (id) => {
+    const briefRes = await api.post('/generate/brief', { cardIds: [id] });
+    const brief = briefRes.data.brief;
+    const payload = buildGenerationSessionPayload({
+      brief,
+      sections: {},
+      output: {},
+      currentStep: 'preview',
+      activeTab: 'linkedin',
+      lastInstruction: '',
+    });
+    const sessionRes = await api.post('/generate/sessions', payload);
+    const sessionId = sessionRes.data.session.id;
+    await api.post(`/inbox/${id}/complete-campaign`);
+    navigate(`/generate/preview${buildSessionQuery(sessionId)}`, {
+      state: {
+        brief,
+        sessionId,
+        activeTab: 'linkedin',
+      },
+    });
+  };
+
   const handleApplyBrandUpdates = async (id) => {
     await api.post(`/inbox/${id}/apply-brand-updates`);
-    loadInbox(activeTab);
+    await loadInbox(activeTab);
+  };
+
+  const openOriginalDrawer = (id) => {
+    setDrawerCardId(id);
+    setDrawerOpen(true);
   };
 
   const toggleThread = (threadId) => {
@@ -85,7 +132,7 @@ export default function Inbox() {
               Brand Inbox
             </h1>
             <p className="mt-2 max-w-3xl text-base text-slate-500">
-              Forward completed stakeholder conversations to your BrandOS intake address. AI turns each thread into structured, brand-matched updates for review.
+              Forward stakeholder threads to your BrandOS intake address. AI turns each thread into a concise summary, extracted work blocks, and next-step actions for your team.
             </p>
           </header>
 
@@ -109,7 +156,7 @@ export default function Inbox() {
 
               <div className="inline-flex rounded-xl border border-[#e7ebf3] bg-white p-1">
                 {[
-                  { id: 'updates', label: 'Extracted updates' },
+                  { id: 'updates', label: 'AI summaries' },
                   { id: 'threads', label: 'Grouped by thread' },
                 ].map((option) => (
                   <button
@@ -132,66 +179,76 @@ export default function Inbox() {
             </div>
           </section>
 
-          <section className="grid gap-6 xl:grid-cols-[minmax(0,1.55fr)_420px]">
-            <div className="space-y-4">
-              {cards.length === 0 ? (
-                <EmptyInboxState activeTab={activeTab} />
-              ) : viewMode === 'updates' ? (
-                cards.map((card, index) => (
-                  <UpdateCard
-                    key={card.id}
-                    card={card}
-                    index={index}
-                    onUse={() => handleUseUpdate(card.id)}
-                    onDismiss={() => handleDismiss(card.id)}
-                    onApplyBrandUpdates={() => handleApplyBrandUpdates(card.id)}
-                    onViewSource={() => setSelectedSourceCardId(card.id)}
-                    onReload={() => loadInbox(activeTab)}
-                  />
-                ))
-              ) : (
-                threads.map((thread, index) => (
-                  <ThreadCard
-                    key={thread.id}
-                    thread={thread}
-                    index={index}
-                    open={Boolean(openThreads[thread.id])}
-                    onToggle={() => toggleThread(thread.id)}
-                    onUse={handleUseUpdate}
-                    onDismiss={handleDismiss}
-                    onViewSource={setSelectedSourceCardId}
-                  />
-                ))
-              )}
-            </div>
-
-            <SourcePanel
-              sourceThread={sourceThread}
-              onUse={handleUseUpdate}
-              onViewSourceCard={setSelectedSourceCardId}
-            />
+          <section className="space-y-4">
+            {cards.length === 0 ? (
+              <EmptyInboxState activeTab={activeTab} />
+            ) : viewMode === 'updates' ? (
+              aiCards.map((card, index) => (
+                <UpdateCard
+                  key={card.id}
+                  aiCard={card}
+                  index={index}
+                  onGenerateBrief={() => handleGenerateBrief(card.id)}
+                  onGenerateContent={() => handleGenerateContent(card.id)}
+                  onDismiss={() => handleDismiss(card.id)}
+                  onApplyBrandUpdates={() => handleApplyBrandUpdates(card.id)}
+                  onViewOriginal={() => openOriginalDrawer(card.id)}
+                  onReload={() => loadInbox(activeTab)}
+                />
+              ))
+            ) : (
+              threads.map((thread, index) => (
+                <ThreadCard
+                  key={thread.id}
+                  thread={thread}
+                  index={index}
+                  open={Boolean(openThreads[thread.id])}
+                  onToggle={() => toggleThread(thread.id)}
+                  onGenerateBrief={handleGenerateBrief}
+                  onGenerateContent={handleGenerateContent}
+                  onDismiss={handleDismiss}
+                  onApplyBrandUpdates={handleApplyBrandUpdates}
+                  onViewOriginal={openOriginalDrawer}
+                  onReload={() => loadInbox(activeTab)}
+                />
+              ))
+            )}
           </section>
+
+          <OriginalMailDrawer
+            open={drawerOpen}
+            card={drawerCard}
+            onClose={() => setDrawerOpen(false)}
+          />
         </div>
       )}
     </AppShell>
   );
 }
 
-function UpdateCard({ card, index, onUse, onDismiss, onApplyBrandUpdates, onViewSource, onReload }) {
+function UpdateCard({
+  aiCard,
+  index,
+  onGenerateBrief,
+  onGenerateContent,
+  onDismiss,
+  onApplyBrandUpdates,
+  onViewOriginal,
+  onReload,
+  nested = false,
+}) {
   const [instruction, setInstruction] = useState('');
   const [interpretation, setInterpretation] = useState(null);
   const [routingState, setRoutingState] = useState('idle');
   const [error, setError] = useState('');
-  const type = inferUpdateType(card);
-  const confidence = getConfidenceView(card.overallScore);
-  const tags = getCardTags(card);
-  const needsRouting = card.routingStatus === 'needs_routing' || !card.brandId;
+  const textareaRef = useRef(null);
+  const needsRouting = aiCard.needsRouting;
 
   const handleInterpret = async () => {
     setRoutingState('loading');
     setError('');
     try {
-      const res = await api.post(`/inbox/${card.id}/route/interpret`, { instruction });
+      const res = await api.post(`/inbox/${aiCard.id}/route/interpret`, { instruction });
       setInterpretation(res.data.interpretation);
       setRoutingState('ready');
     } catch (err) {
@@ -206,7 +263,7 @@ function UpdateCard({ card, index, onUse, onDismiss, onApplyBrandUpdates, onView
     setRoutingState('confirming');
     setError('');
     try {
-      await api.post(`/inbox/${card.id}/route/confirm`, {
+      await api.post(`/inbox/${aiCard.id}/route/confirm`, {
         brandId: interpretation.brandId,
         instruction,
         summary: interpretation.summary,
@@ -220,88 +277,156 @@ function UpdateCard({ card, index, onUse, onDismiss, onApplyBrandUpdates, onView
     }
   };
 
+  const handleAction = async (actionId) => {
+    if (actionId === 'view-original') {
+      onViewOriginal();
+      return;
+    }
+
+    if (actionId === 'dismiss') {
+      await onDismiss();
+      return;
+    }
+
+    if (actionId === 'update-brand-kit') {
+      await onApplyBrandUpdates();
+      return;
+    }
+
+    if (actionId === 'generate-content') {
+      await onGenerateContent();
+      return;
+    }
+
+    if (actionId === 'generate-brief') {
+      await onGenerateBrief();
+      return;
+    }
+
+    if (actionId === 'route-thread') {
+      textareaRef.current?.focus();
+    }
+  };
+
   return (
     <div
-      className="animate-dashboard-enter rounded-[24px] border border-[#e7ebf3] bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]"
-      style={{ animationDelay: `${60 + (index * 45)}ms` }}
+      className={`animate-dashboard-enter rounded-[24px] border border-[#e7ebf3] bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)] ${nested ? '' : ''}`}
+      style={{ animationDelay: nested ? undefined : `${60 + (index * 45)}ms` }}
     >
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-sm text-slate-500">{card.brandName}</span>
-        <span className="rounded-full bg-[#f6f8fb] px-3 py-1 text-xs font-semibold text-slate-500">
-          {type}
+        <span className="rounded-full bg-[#f6f8fb] px-3 py-1 text-xs font-semibold text-slate-600">
+          {aiCard.brandName}
         </span>
-        {needsRouting && (
-          <span className="rounded-full bg-[#fff8ea] px-3 py-1 text-xs font-semibold text-[#c48a20]">
-            Needs routing
+        <span className={`rounded-full px-3 py-1 text-xs font-semibold ${getClassificationClasses(aiCard.classification)}`}>
+          {formatClassificationLabel(aiCard.classification)}
+        </span>
+        <span className={`rounded-full px-3 py-1 text-xs font-semibold ${getConfidenceClasses(aiCard.confidence.tone)}`}>
+          {aiCard.confidence.label}
+        </span>
+        {aiCard.status !== 'pending' ? (
+          <span className="rounded-full bg-[#f6f8fb] px-3 py-1 text-xs font-semibold capitalize text-slate-500">
+            {aiCard.status}
           </span>
-        )}
-        <span className={`rounded-full px-3 py-1 text-xs font-semibold ${confidence.classes}`}>
-          {confidence.label}
-        </span>
+        ) : null}
       </div>
 
-      <h2 className="mt-3 font-sans text-[1.45rem] font-semibold tracking-[-0.03em] text-slate-950">
-        {card.emailSubject}
-      </h2>
-
-      <p className="mt-1 text-sm text-slate-400">
-        {card.emailFrom} · {formatRelativeTime(card.createdAt)}
-      </p>
-
-      <p className="mt-4 max-w-4xl text-[1.02rem] leading-8 text-slate-600">
-        {card.excerpt || 'AI extracted an update from this thread and matched it to the brand context.'}
-      </p>
-
-      {tags.length > 0 && (
-        <div className="mt-4 flex flex-wrap gap-2">
-          {tags.map((tag) => (
-            <span key={`${card.id}-${tag}`} className="rounded-full bg-[#f6f8fb] px-3 py-1 text-xs font-medium text-slate-500">
-              {tag}
-            </span>
-          ))}
+      <div className="mt-4 flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h2 className="font-sans text-[1.45rem] font-semibold tracking-[-0.03em] text-slate-950">
+            {aiCard.emailSubject}
+          </h2>
+          <p className="mt-1 text-sm text-slate-400">
+            {aiCard.emailFrom} · {formatRelativeTime(aiCard.createdAt)}
+          </p>
         </div>
-      )}
+        {!needsRouting && (
+          <div className="flex flex-wrap items-center gap-2">
+            {aiCard.raw.campaignActionStatus !== 'not_applicable' && (
+              <StatusChip label={`Campaign · ${formatActionStatus(aiCard.raw.campaignActionStatus)}`} tone={aiCard.raw.campaignActionStatus} />
+            )}
+            {aiCard.raw.brandUpdateActionStatus !== 'not_applicable' && (
+              <StatusChip label={`Brand updates · ${formatActionStatus(aiCard.raw.brandUpdateActionStatus)}`} tone={aiCard.raw.brandUpdateActionStatus} />
+            )}
+          </div>
+        )}
+      </div>
 
-      {!needsRouting && (
-        <div className="mt-4 flex flex-wrap gap-2">
-          {card.campaignActionStatus !== 'not_applicable' && (
-            <span className={`rounded-full px-3 py-1 text-xs font-semibold ${getActionStatusView(card.campaignActionStatus).classes}`}>
-              Campaign · {getActionStatusView(card.campaignActionStatus).label}
-            </span>
-          )}
-          {card.brandUpdateActionStatus !== 'not_applicable' && (
-            <span className={`rounded-full px-3 py-1 text-xs font-semibold ${getActionStatusView(card.brandUpdateActionStatus).classes}`}>
-              Brand updates · {getActionStatusView(card.brandUpdateActionStatus).label}
-            </span>
-          )}
-        </div>
-      )}
+      <div className="mt-5 rounded-[20px] border border-[#dbe7ff] bg-[#f8fbff] p-4">
+        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--brand-primary)]">AI summary</p>
+        <h3 className="mt-2 text-lg font-semibold text-slate-950">{aiCard.aiTitle}</h3>
+        <p className="mt-3 text-sm leading-7 text-slate-600">{aiCard.aiSummary}</p>
+        {aiCard.highlights.length > 0 ? (
+          <ul className="mt-4 space-y-2 text-sm text-slate-600">
+            {aiCard.highlights.map((item) => (
+              <li key={`${aiCard.id}-${item}`} className="flex items-start gap-2">
+                <span className="mt-1 h-2 w-2 rounded-full bg-[var(--brand-primary)]" />
+                <span>{item}</span>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+      </div>
 
-      {card.brandUpdateProposal?.fields && Object.keys(card.brandUpdateProposal.fields).length > 0 && !needsRouting && (
+      {aiCard.campaign.visible ? (
         <div className="mt-5 rounded-[20px] border border-[#eef2f7] bg-[#fbfcff] p-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">Brand diff</p>
-          <div className="mt-3 space-y-3">
-            {Object.entries(card.brandUpdateProposal.fields).map(([field, proposal]) => (
-              <div key={`${card.id}-${field}`} className="rounded-[16px] border border-[#e7ebf3] bg-white p-3">
-                <p className="text-sm font-semibold text-slate-900">{formatFieldLabel(field)}</p>
-                <p className="mt-2 text-xs text-slate-400">Current</p>
-                <p className="mt-1 text-sm text-slate-600">{formatProposalValue(proposal.current)}</p>
-                <p className="mt-3 text-xs text-slate-400">Suggested</p>
-                <p className="mt-1 text-sm text-slate-900">{formatProposalValue(proposal.suggested)}</p>
-                {proposal.reason ? <p className="mt-2 text-xs text-slate-500">{proposal.reason}</p> : null}
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">AI extracted campaign brief</p>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            {aiCard.campaign.fields.map((field) => (
+              <div key={`${aiCard.id}-${field.key}`} className="rounded-[16px] border border-[#e7ebf3] bg-white p-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">{field.label}</p>
+                <p className="mt-2 text-sm text-slate-900">{field.value}</p>
               </div>
             ))}
           </div>
         </div>
-      )}
+      ) : null}
 
-      {needsRouting && (
+      {aiCard.brandUpdates.visible ? (
+        <div className="mt-5 rounded-[20px] border border-[#eef2f7] bg-[#fbfcff] p-4">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">AI suggested brand updates</p>
+              {aiCard.brandUpdates.summary ? (
+                <p className="mt-2 text-sm leading-7 text-slate-600">{aiCard.brandUpdates.summary}</p>
+              ) : null}
+            </div>
+          </div>
+          <div className="mt-4 space-y-3">
+            {aiCard.brandUpdates.changes.map((change) => (
+              <div key={`${aiCard.id}-${change.field}`} className="rounded-[16px] border border-[#e7ebf3] bg-white p-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-sm font-semibold text-slate-900">{change.label}</p>
+                  <span className="rounded-full bg-[#f6f8fb] px-3 py-1 text-xs font-medium text-slate-500">
+                    Suggested
+                  </span>
+                </div>
+                <div className="mt-3 grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">Current</p>
+                    <p className="mt-2 text-sm text-slate-600">{change.current}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">Suggested</p>
+                    <p className="mt-2 text-sm text-slate-900">{change.suggested}</p>
+                  </div>
+                </div>
+                {change.reason ? (
+                  <p className="mt-3 text-sm text-slate-500">{change.reason}</p>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {needsRouting ? (
         <div className="mt-5 rounded-[20px] border border-[#fff1c8] bg-[#fffaf0] p-4">
           <p className="text-sm font-semibold text-slate-900">Help BrandOS route this thread</p>
           <p className="mt-2 text-sm leading-7 text-slate-500">
             Tell BrandOS which brand this belongs to and whether it should create a campaign, update the brand kit, or both.
           </p>
           <textarea
+            ref={textareaRef}
             value={instruction}
             onChange={(event) => setInstruction(event.target.value)}
             placeholder="Example: This belongs to BHV Marais. Create a campaign from this and review any lasting tone changes for the brand kit."
@@ -312,8 +437,8 @@ function UpdateCard({ card, index, onUse, onDismiss, onApplyBrandUpdates, onView
           ) : null}
           {interpretation ? (
             <div className="mt-4 rounded-xl border border-[#dbe7ff] bg-white px-4 py-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--brand-primary)]">Interpretation</p>
-              <p className="mt-2 text-sm text-slate-700">{interpretation.summary}</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--brand-primary)]">AI interpretation</p>
+              <p className="mt-2 text-sm text-slate-700">I understood this as: {interpretation.summary}</p>
               <p className="mt-2 text-xs text-slate-400">
                 Brand: {interpretation.brandName || 'Unresolved'} · Campaign: {interpretation.createCampaign ? 'Yes' : 'No'} · Brand updates: {interpretation.reviewBrandUpdates ? 'Yes' : 'No'}
               </p>
@@ -324,39 +449,76 @@ function UpdateCard({ card, index, onUse, onDismiss, onApplyBrandUpdates, onView
               </div>
             </div>
           ) : null}
-          <div className="mt-4 flex flex-wrap items-center gap-3">
-            <Button variant="secondary" onClick={handleInterpret} disabled={!instruction.trim() || routingState === 'loading'}>
-              {routingState === 'loading' ? 'Interpreting…' : 'Interpret instruction'}
-            </Button>
-          </div>
         </div>
-      )}
+      ) : null}
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
-        {!needsRouting && (
-          <Button variant="primary" onClick={onUse} disabled={card.campaignActionStatus === 'done'}>
-            {card.campaignActionStatus === 'done' ? 'Campaign done' : 'Create campaign'}
-          </Button>
-        )}
-        {!needsRouting && card.brandUpdateProposal?.fields && Object.keys(card.brandUpdateProposal.fields).length > 0 && (
-          <Button variant="secondary" onClick={onApplyBrandUpdates} disabled={card.brandUpdateActionStatus === 'done'}>
-            {card.brandUpdateActionStatus === 'done' ? 'Brand updates done' : 'Update brand kit'}
-          </Button>
-        )}
-        {card.status === 'pending' && (
-          <button onClick={onDismiss} className="text-sm font-medium text-slate-500 transition-colors hover:text-slate-900">
-            Dismiss
-          </button>
-        )}
-        <button onClick={onViewSource} className="text-sm font-medium text-[var(--brand-primary)] transition-colors hover:text-[var(--brand-primary-hover)]">
-          View original mail
-        </button>
+        {aiCard.actions.map((action) => {
+          if (action.id === 'view-original') {
+            return (
+              <button
+                key={`${aiCard.id}-${action.id}`}
+                onClick={() => handleAction(action.id)}
+                className="text-sm font-medium text-[var(--brand-primary)] transition-colors hover:text-[var(--brand-primary-hover)]"
+              >
+                {action.label}
+              </button>
+            );
+          }
+
+          if (action.id === 'dismiss') {
+            return (
+              <button
+                key={`${aiCard.id}-${action.id}`}
+                onClick={() => handleAction(action.id)}
+                className="text-sm font-medium text-slate-500 transition-colors hover:text-slate-900"
+              >
+                {action.label}
+              </button>
+            );
+          }
+
+          return (
+            <Button
+              key={`${aiCard.id}-${action.id}`}
+              variant={action.recommended ? 'primary' : 'secondary'}
+              disabled={action.disabled || (action.id === 'route-thread' && routingState === 'loading')}
+              onClick={() => {
+                if (action.id === 'route-thread' && !interpretation && !instruction.trim()) {
+                  textareaRef.current?.focus();
+                  return;
+                }
+
+                if (action.id === 'route-thread' && !interpretation) {
+                  handleInterpret();
+                  return;
+                }
+
+                handleAction(action.id);
+              }}
+              className={action.recommended ? 'shadow-[0_12px_24px_rgba(37,99,235,0.16)]' : ''}
+            >
+              {action.recommended ? `${action.label} · Recommended` : action.label}
+            </Button>
+          );
+        })}
       </div>
     </div>
   );
 }
 
-function ThreadCard({ thread, index, open, onToggle, onUse, onDismiss, onViewSource }) {
+function ThreadCard({
+  thread,
+  index,
+  open,
+  onToggle,
+  onGenerateBrief,
+  onGenerateContent,
+  onDismiss,
+  onApplyBrandUpdates,
+  onViewOriginal,
+  onReload,
+}) {
   const statusView = getThreadStatusView(thread.statuses);
 
   return (
@@ -370,12 +532,14 @@ function ThreadCard({ thread, index, open, onToggle, onUse, onDismiss, onViewSou
       >
         <div>
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm text-slate-500">{thread.brandName}</span>
+            <span className="rounded-full bg-[#f6f8fb] px-3 py-1 text-xs font-semibold text-slate-600">
+              {thread.brandName}
+            </span>
             <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusView.classes}`}>
               {statusView.label}
             </span>
-            <span className="rounded-full bg-[#f6f8fb] px-3 py-1 text-xs font-semibold text-slate-500">
-              {thread.updateCount} extracted {thread.updateCount === 1 ? 'update' : 'updates'}
+            <span className="rounded-full bg-[#eef4ff] px-3 py-1 text-xs font-semibold text-[var(--brand-primary)]">
+              {thread.updateCount} {thread.updateCount === 1 ? 'AI summary' : 'AI summaries'}
             </span>
           </div>
           <h2 className="mt-3 font-sans text-[1.35rem] font-semibold tracking-[-0.03em] text-slate-950">
@@ -390,101 +554,100 @@ function ThreadCard({ thread, index, open, onToggle, onUse, onDismiss, onViewSou
         </span>
       </button>
 
-      {open && (
+      {open ? (
         <div className="border-t border-[#eef2f7] bg-[#fcfdff] px-5 py-5">
           <div className="space-y-4">
             {thread.cards.map((card) => (
-              <div key={card.id} className="rounded-[20px] border border-[#e7ebf3] bg-white p-4">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="rounded-full bg-[#f6f8fb] px-3 py-1 text-xs font-semibold text-slate-500">
-                    {inferUpdateType(card)}
-                  </span>
-                  <span className={`rounded-full px-3 py-1 text-xs font-semibold ${getConfidenceView(card.overallScore).classes}`}>
-                    {getConfidenceView(card.overallScore).label}
-                  </span>
-                </div>
-                <p className="mt-3 text-sm leading-7 text-slate-600">{card.excerpt}</p>
-                <div className="mt-4 flex flex-wrap items-center gap-3">
-                  <button onClick={() => onUse(card.id)} className="text-sm font-medium text-[var(--brand-primary)] transition-colors hover:text-[var(--brand-primary-hover)]">
-                    Use update
-                  </button>
-                  {card.status === 'pending' && (
-                    <button onClick={() => onDismiss(card.id)} className="text-sm font-medium text-slate-500 transition-colors hover:text-slate-900">
-                      Dismiss
-                    </button>
-                  )}
-                  <button onClick={() => onViewSource(card.id)} className="text-sm font-medium text-slate-500 transition-colors hover:text-slate-900">
-                    View source
-                  </button>
-                </div>
-              </div>
+              <UpdateCard
+                key={card.id}
+                aiCard={card}
+                nested
+                onGenerateBrief={() => onGenerateBrief(card.id)}
+                onGenerateContent={() => onGenerateContent(card.id)}
+                onDismiss={() => onDismiss(card.id)}
+                onApplyBrandUpdates={() => onApplyBrandUpdates(card.id)}
+                onViewOriginal={() => onViewOriginal(card.id)}
+                onReload={onReload}
+              />
             ))}
           </div>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }
 
-function SourcePanel({ sourceThread, onUse, onViewSourceCard }) {
+function OriginalMailDrawer({ open, card, onClose }) {
+  const [showTechnicalDetails, setShowTechnicalDetails] = useState(false);
+
+  useEffect(() => {
+    if (!open) {
+      setShowTechnicalDetails(false);
+    }
+  }, [open, card?.id]);
+
+  if (!open || !card) {
+    return null;
+  }
+
   return (
-    <div className="animate-dashboard-enter overflow-hidden rounded-[24px] border border-[#e7ebf3] bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]" style={{ animationDelay: '180ms' }}>
-      <div className="border-b border-[#eef2f7] px-5 py-4 sm:px-6">
-        <h2 className="font-sans text-[1.35rem] font-semibold tracking-[-0.03em] text-slate-950">
-          Original Mail
-        </h2>
-      </div>
+    <div className="fixed inset-0 z-40">
+      <button
+        aria-label="Close original email drawer"
+        className="absolute inset-0 bg-slate-950/20"
+        onClick={onClose}
+      />
+      <aside className="absolute right-0 top-0 flex h-full w-full max-w-[460px] flex-col border-l border-[#e7ebf3] bg-white shadow-[-12px_0_32px_rgba(15,23,42,0.16)]">
+        <div className="flex items-start justify-between gap-4 border-b border-[#eef2f7] px-5 py-5">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">Original email</p>
+            <h2 className="mt-2 font-sans text-[1.3rem] font-semibold tracking-[-0.03em] text-slate-950">
+              {card.originalMail.subject}
+            </h2>
+            <p className="mt-2 text-sm text-slate-500">
+              {card.originalMail.from} · {formatLongDate(card.originalMail.createdAt)}
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="rounded-lg border border-[#e7ebf3] px-3 py-2 text-sm font-medium text-slate-500 transition-colors hover:text-slate-900"
+          >
+            Close
+          </button>
+        </div>
 
-      {sourceThread ? (
-        <div className="px-5 py-5 sm:px-6">
-          <h3 className="font-sans text-[1.15rem] font-semibold tracking-[-0.02em] text-slate-950">
-            {sourceThread.subject}
-          </h3>
-          <p className="mt-2 text-sm text-slate-400">
-            {sourceThread.sourceLabel} · {formatLongDate(sourceThread.createdAt)}
-          </p>
-
-          <div className="mt-5 rounded-[20px] border border-[#eef2f7] bg-[#fbfcff] p-4">
-            <p className="whitespace-pre-wrap text-sm leading-7 text-slate-600">
-              {sourceThread.emailBody || 'Original message body unavailable.'}
+        <div className="flex-1 overflow-y-auto px-5 py-5">
+          <div className="rounded-[20px] border border-[#eef2f7] bg-[#fbfcff] p-4">
+            <p className="whitespace-pre-wrap text-sm leading-7 text-slate-700">
+              {card.originalMail.body || 'Original message body unavailable.'}
             </p>
           </div>
 
-          <div className="mt-6">
-            <p className="text-sm font-semibold text-slate-900">Extracted updates</p>
-            <div className="mt-3 space-y-3">
-              {sourceThread.cards.map((card) => (
-                <div
-                  key={card.id}
-                  className="flex items-start justify-between gap-4 rounded-[18px] border border-[#eef2f7] bg-white p-4"
-                >
-                  <button
-                    onClick={() => onViewSourceCard(card.id)}
-                    className="flex-1 text-left transition-colors hover:text-slate-900"
-                  >
-                    <p className="text-sm font-medium text-slate-900">{inferUpdateType(card)}</p>
-                    <p className="mt-1 text-sm text-slate-500">{card.excerpt}</p>
-                  </button>
-                  <button
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      onUse(card.id);
-                    }}
-                    className="shrink-0 text-sm font-medium text-[var(--brand-primary)] transition-colors hover:text-[var(--brand-primary-hover)]"
-                  >
-                    Use
-                  </button>
-                </div>
-              ))}
-            </div>
+          <div className="mt-5">
+            <button
+              onClick={() => setShowTechnicalDetails((current) => !current)}
+              className="text-sm font-medium text-[var(--brand-primary)] transition-colors hover:text-[var(--brand-primary-hover)]"
+            >
+              {showTechnicalDetails ? 'Hide technical details' : 'Show technical details'}
+            </button>
+            {showTechnicalDetails ? (
+              <div className="mt-3 rounded-[18px] border border-[#eef2f7] bg-white p-4 text-sm text-slate-600">
+                <p><span className="font-semibold text-slate-900">Message ID:</span> {card.originalMail.messageId || 'Unavailable'}</p>
+                <p className="mt-2"><span className="font-semibold text-slate-900">Delivered to:</span> {(card.originalMail.recipients || []).join(', ') || 'Unavailable'}</p>
+              </div>
+            ) : null}
           </div>
         </div>
-      ) : (
-        <div className="px-6 py-12 text-sm leading-7 text-slate-500">
-          Select an update to inspect the original stakeholder thread without leaving BrandOS.
-        </div>
-      )}
+      </aside>
     </div>
+  );
+}
+
+function StatusChip({ label, tone }) {
+  return (
+    <span className={`rounded-full px-3 py-1 text-xs font-semibold ${getActionToneClasses(tone)}`}>
+      {label}
+    </span>
   );
 }
 
@@ -495,81 +658,57 @@ function EmptyInboxState({ activeTab }) {
         No {activeTab} items
       </h2>
       <p className="mx-auto mt-3 max-w-xl text-sm leading-7 text-slate-500">
-        Forward a completed stakeholder thread to your BrandOS intake address and AI will turn it into extracted updates for review.
+        Forward a stakeholder thread to your BrandOS intake address and AI will turn it into a concise summary with campaign and brand-update actions for review.
       </p>
     </div>
   );
 }
 
-function inferUpdateType(card) {
-  if (card.classification === 'needs_routing') {
-    return 'Needs routing';
-  }
-
-  if (card.classification === 'mixed') {
-    return 'Campaign + brand update';
-  }
-
-  if (card.classification === 'brand_update') {
-    return 'Brand update';
-  }
-
-  const fields = card.matchedFields || [];
-  const extracted = card.extractedFields || {};
-
-  if (extracted.toneShift || (fields.includes('tone') && !fields.includes('campaign'))) {
-    return 'Brand voice update';
-  }
-
-  if (fields.includes('cta') || fields.includes('goal')) {
-    return 'CTA / asset request';
-  }
-
-  if (fields.includes('audience')) {
-    return 'Audience insight';
-  }
-
+function formatClassificationLabel(value) {
+  if (value === 'brand_update') return 'Brand update';
+  if (value === 'needs_routing') return 'Needs routing';
+  if (value === 'mixed') return 'Campaign + brand update';
   return 'Campaign brief';
 }
 
-function getCardTags(card) {
-  const fields = (card.matchedFields || []).slice(0, 4);
-  if (fields.length > 0) {
-    return fields.map(formatFieldLabel);
+function getClassificationClasses(value) {
+  if (value === 'brand_update') {
+    return 'bg-[#eefaf3] text-[#2f9b63]';
   }
 
-  return Object.values(card.extractedFields || {})
-    .filter(Boolean)
-    .slice(0, 3)
-    .map((value) => String(value));
+  if (value === 'needs_routing') {
+    return 'bg-[#fff8ea] text-[#c48a20]';
+  }
+
+  if (value === 'mixed') {
+    return 'bg-[#eef4ff] text-[var(--brand-primary)]';
+  }
+
+  return 'bg-[#f6f8fb] text-slate-500';
 }
 
-function formatFieldLabel(field) {
-  return String(field)
-    .replace(/_/g, ' ')
-    .replace(/\b\w/g, (char) => char.toUpperCase());
+function getConfidenceClasses(tone) {
+  if (tone === 'positive') {
+    return 'bg-[#eefaf3] text-[#2f9b63]';
+  }
+
+  if (tone === 'warning') {
+    return 'bg-[#fff8ea] text-[#c48a20]';
+  }
+
+  return 'bg-[#f6f8fb] text-slate-500';
 }
 
-function formatProposalValue(value) {
-  if (Array.isArray(value)) {
-    return value.length > 0 ? value.join(', ') : 'None set';
+function getActionToneClasses(status) {
+  if (status === 'done') {
+    return 'bg-[#eefaf3] text-[#2f9b63]';
   }
 
-  return value || 'None set';
-}
-
-function getConfidenceView(score) {
-  const value = Number(score || 0);
-
-  if (value >= 0.75) {
-    return { label: 'High confidence', classes: 'bg-[#eefaf3] text-[#2f9b63]' };
+  if (status === 'dismissed') {
+    return 'bg-[#f6f8fb] text-slate-500';
   }
 
-  if (value >= 0.45) {
-    return { label: 'Partial confidence', classes: 'bg-[#fff8ea] text-[#c48a20]' };
-  }
-
-  return { label: 'Low confidence', classes: 'bg-[#f6f8fb] text-slate-500' };
+  return 'bg-[#eef4ff] text-[var(--brand-primary)]';
 }
 
 function getThreadStatusView(statuses) {
@@ -584,16 +723,10 @@ function getThreadStatusView(statuses) {
   return { label: 'dismissed', classes: 'bg-[#f6f8fb] text-slate-500' };
 }
 
-function getActionStatusView(status) {
-  if (status === 'done') {
-    return { label: 'Done', classes: 'bg-[#eefaf3] text-[#2f9b63]' };
-  }
-
-  if (status === 'dismissed') {
-    return { label: 'Dismissed', classes: 'bg-[#f6f8fb] text-slate-500' };
-  }
-
-  return { label: 'Needs review', classes: 'bg-[#eef4ff] text-[var(--brand-primary)]' };
+function formatActionStatus(status) {
+  if (status === 'done') return 'Done';
+  if (status === 'dismissed') return 'Dismissed';
+  return 'Needs review';
 }
 
 function formatRelativeTime(value) {
@@ -620,11 +753,11 @@ function formatLongDate(value) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '';
 
-  return date.toLocaleString(undefined, {
+  return new Intl.DateTimeFormat('en-US', {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
     hour: 'numeric',
     minute: '2-digit',
-  });
+  }).format(date);
 }
