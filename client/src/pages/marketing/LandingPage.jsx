@@ -1,10 +1,10 @@
 import { Link } from 'react-router-dom';
 
 const proofPoints = [
-  'Built for multi-brand enterprise teams',
-  'Brand voice stored once, reused every session',
-  'LinkedIn and blog workflows in V1',
-  'Structured review before generation',
+  { icon: 'groups', label: 'Built for multi-brand enterprise teams' },
+  { icon: 'inventory', label: 'Brand voice stored once, reused every session' },
+  { icon: 'share', label: 'LinkedIn and blog workflows in V1' },
+  { icon: 'checklist', label: 'Structured review before generation' },
 ];
 
 const workflowSteps = [
@@ -43,32 +43,38 @@ const brandCards = [
     market: 'France',
     language: 'French',
     status: 'Active kit',
+    statusTone: 'primary',
     tones: ['Editorial', 'Warm'],
+    initials: 'BM',
   },
   {
     name: 'La Redoute',
     market: 'Europe',
     language: 'English',
     status: 'Awaiting brief',
+    statusTone: 'muted',
     tones: ['Commercial', 'Direct'],
+    initials: 'LR',
   },
   {
     name: 'AM.PM',
     market: 'Global',
     language: 'English',
     status: 'Generating draft',
+    statusTone: 'info',
     tones: ['Premium', 'Calm'],
+    initials: 'A',
   },
 ];
 
 function MarketingButton({ to, children, variant = 'primary' }) {
   const base =
-    'inline-flex items-center justify-center rounded-xl px-5 py-3 text-sm font-semibold transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--brand-primary)]';
+    'inline-flex items-center justify-center rounded-full px-8 py-3.5 text-base font-medium transition-all duration-200';
   const styles = {
     primary:
-      'bg-[var(--brand-primary)] text-white shadow-brand-sm hover:bg-[var(--brand-primary-hover)]',
+      'border border-transparent bg-[var(--brand-primary)] text-white shadow-[0_18px_32px_rgba(37,99,235,0.28)] hover:bg-[var(--brand-primary-hover)]',
     secondary:
-      'border border-brand bg-brand-surface text-brand hover:bg-brand-surface-subtle',
+      'border border-brand bg-white text-slate-700 shadow-sm hover:bg-slate-50',
   };
 
   return (
@@ -78,171 +84,218 @@ function MarketingButton({ to, children, variant = 'primary' }) {
   );
 }
 
-function SectionEyebrow({ children }) {
+function SectionEyebrow({ children, tone = 'primary' }) {
+  const tones = {
+    primary: 'border-[var(--brand-primary-soft)] bg-[rgba(37,99,235,0.05)] text-[var(--brand-primary)]',
+    muted: 'border-brand bg-slate-100 text-slate-600',
+    surface: 'border-[var(--brand-primary-soft)] bg-white text-[var(--brand-primary)] shadow-sm',
+  };
+
   return (
-    <div className="mb-4 inline-flex rounded-full border border-[var(--brand-primary-soft)] bg-[var(--brand-primary-soft)]/60 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-primary)]">
+    <div className={`mb-6 inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] ${tones[tone]}`}>
       {children}
     </div>
   );
 }
 
+function StatusChip({ tone = 'primary', children }) {
+  const tones = {
+    primary: 'bg-[rgba(37,99,235,0.1)] text-[var(--brand-primary)]',
+    muted: 'bg-slate-100 text-slate-500',
+    success: 'bg-[rgba(23,138,91,0.12)] text-[var(--brand-success)]',
+    info: 'bg-[rgba(37,99,235,0.08)] text-[#3568d4]',
+  };
+
+  return (
+    <span className={`rounded-full px-3 py-1 text-xs font-medium ${tones[tone]}`}>
+      {children}
+    </span>
+  );
+}
+
+function FeatureIcon({ name }) {
+  const className = 'h-4 w-4 text-[var(--brand-primary)]';
+
+  if (name === 'groups') {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className} aria-hidden="true">
+        <path d="M16 20a4 4 0 0 0-8 0" />
+        <circle cx="12" cy="11" r="3" />
+        <path d="M21 20a4 4 0 0 0-3-3.87" />
+        <path d="M3 20a4 4 0 0 1 3-3.87" />
+      </svg>
+    );
+  }
+
+  if (name === 'inventory') {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className} aria-hidden="true">
+        <path d="M4 7.5h16V19a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7.5Z" />
+        <path d="M9 3.5h6" />
+        <path d="M8 7.5V5.5h8v2" />
+      </svg>
+    );
+  }
+
+  if (name === 'share') {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className} aria-hidden="true">
+        <circle cx="18" cy="5" r="2.5" />
+        <circle cx="6" cy="12" r="2.5" />
+        <circle cx="18" cy="19" r="2.5" />
+        <path d="m8.2 10.9 7.6-4.2" />
+        <path d="m8.2 13.1 7.6 4.2" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className} aria-hidden="true">
+      <path d="M5 12.5 9 16.5 19 6.5" />
+      <path d="M19 12v7a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h9" />
+    </svg>
+  );
+}
+
 export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-brand text-brand">
-      <header className="sticky top-0 z-40 border-b border-brand bg-[rgba(247,249,252,0.88)] backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:px-8">
-          <Link to="/" className="font-brand-heading text-xl font-extrabold tracking-[-0.03em] text-brand">
+    <div className="min-h-screen bg-[#f8fafc] text-slate-800 selection:bg-[rgba(37,99,235,0.14)] selection:text-[var(--brand-primary)]">
+      <header className="sticky top-0 z-50 border-b border-[#e2e8f0] bg-[rgba(248,250,252,0.9)] backdrop-blur-md">
+        <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+          <Link to="/" className="font-brand-heading text-2xl font-bold tracking-[-0.03em] text-slate-900">
             BrandOS
           </Link>
-          <nav className="hidden items-center gap-8 text-sm font-medium text-brand-muted md:flex">
-            <a href="#how-it-works" className="transition-colors hover:text-brand">
+
+          <nav className="hidden items-center gap-8 md:flex">
+            <a className="text-sm font-medium text-slate-600 transition-colors hover:text-slate-900" href="#how-it-works">
               How it works
             </a>
-            <a href="#for-teams" className="transition-colors hover:text-brand">
+            <a className="text-sm font-medium text-slate-600 transition-colors hover:text-slate-900" href="#for-teams">
               For teams
             </a>
-            <Link to="/signin" className="transition-colors hover:text-brand">
+            <Link className="text-sm font-medium text-slate-600 transition-colors hover:text-slate-900" to="/signin">
               Sign in
             </Link>
           </nav>
-          <div className="flex items-center gap-3">
-            <Link to="/signin" className="hidden text-sm font-medium text-brand-muted transition-colors hover:text-brand sm:inline">
+
+          <div className="flex items-center gap-4">
+            <Link to="/signin" className="hidden text-sm font-medium text-slate-600 transition-colors hover:text-slate-900 sm:inline-flex">
               Sign in
             </Link>
-            <MarketingButton to="/signup">Start setup</MarketingButton>
+            <Link
+              to="/signup"
+              className="inline-flex items-center justify-center rounded-full bg-[var(--brand-primary)] px-5 py-2.5 text-sm font-medium text-white shadow-sm shadow-[rgba(37,99,235,0.2)] transition-colors hover:bg-[var(--brand-primary-hover)]"
+            >
+              Start setup
+            </Link>
           </div>
         </div>
       </header>
 
       <main>
-        <section className="relative overflow-hidden px-6 pb-20 pt-12 lg:px-8 lg:pb-28 lg:pt-20">
-          <div className="absolute inset-x-0 top-0 -z-10 h-[32rem] bg-[radial-gradient(circle_at_top_right,_rgba(37,99,235,0.18),_transparent_45%),radial-gradient(circle_at_top_left,_rgba(143,180,255,0.22),_transparent_35%)]" />
-          <div className="mx-auto grid max-w-7xl gap-14 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:items-center">
-            <div className="max-w-2xl">
-              <SectionEyebrow>Brand Memory for Enterprise Content Teams</SectionEyebrow>
-              <h1 className="max-w-3xl text-5xl font-extrabold tracking-[-0.045em] text-brand sm:text-6xl">
-                AI with brand memory for teams managing multiple brands
-              </h1>
-              <p className="mt-6 max-w-2xl text-lg leading-8 text-brand-muted sm:text-xl">
-                BrandOS stores each brand&apos;s voice kit, turns tagged campaign briefs into structured
-                inputs, and generates on-brand LinkedIn and blog drafts without re-explaining context every
-                session.
-              </p>
-              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-                <MarketingButton to="/signup">Start setup</MarketingButton>
-                <MarketingButton to="/signin" variant="secondary">
-                  Sign in
-                </MarketingButton>
-              </div>
-              <div className="mt-10 grid gap-3 sm:grid-cols-2">
-                {proofPoints.map((point) => (
-                  <div
-                    key={point}
-                    className="rounded-2xl border border-brand bg-brand-surface/90 px-4 py-3 text-sm font-medium text-brand shadow-brand-sm"
-                  >
-                    {point}
-                  </div>
-                ))}
-              </div>
-            </div>
+        <section className="relative overflow-hidden pb-16 pt-20 lg:pb-24 lg:pt-32">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="grid grid-cols-1 items-center gap-16 lg:grid-cols-2">
+              <div className="max-w-2xl">
+                <SectionEyebrow>Brand memory for enterprise content teams</SectionEyebrow>
+                <h1 className="font-brand-heading text-5xl font-bold leading-[1.1] tracking-[-0.04em] text-slate-900 sm:text-6xl lg:text-7xl">
+                  AI with brand memory for teams managing multiple brands
+                </h1>
+                <p className="mb-10 mt-6 text-lg leading-relaxed text-slate-600 sm:text-xl">
+                  BrandOS stores each brand&apos;s voice kit, turns tagged campaign briefs into structured inputs, and generates on-brand LinkedIn and blog drafts without re-explaining context every session.
+                </p>
 
-            <div className="relative">
-              <div className="absolute -inset-4 rounded-[2rem] bg-[radial-gradient(circle_at_top,_rgba(37,99,235,0.12),_transparent_58%)] blur-2xl" />
-              <div className="relative overflow-hidden rounded-[2rem] border border-brand bg-brand-surface shadow-brand">
-                <div className="flex items-center justify-between border-b border-brand bg-brand-surface-subtle px-5 py-4">
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-primary)]">
-                      Workspace
-                    </p>
-                    <h2 className="mt-1 text-lg font-bold text-brand">BrandOS Portfolio</h2>
-                  </div>
-                  <div className="rounded-full bg-[var(--brand-primary-soft)] px-3 py-1 text-xs font-semibold text-[var(--brand-primary)]">
-                    3 active brands
-                  </div>
+                <div className="mb-12 flex flex-col gap-4 sm:flex-row">
+                  <MarketingButton to="/signup">Start setup</MarketingButton>
+                  <MarketingButton to="/signin" variant="secondary">
+                    Sign in
+                  </MarketingButton>
                 </div>
 
-                <div className="grid gap-4 p-5 lg:grid-cols-[0.84fr_1.16fr]">
-                  <div className="rounded-2xl border border-brand bg-brand-surface-subtle p-4">
-                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-brand-muted">
-                      Brand context
-                    </p>
-                    <div className="mt-4 space-y-3">
-                      {brandCards.map((card) => (
-                        <div key={card.name} className="rounded-2xl border border-brand bg-brand-surface p-4">
-                          <div className="flex items-start justify-between gap-3">
-                            <div>
-                              <p className="text-sm font-semibold text-brand">{card.name}</p>
-                              <p className="mt-1 text-xs text-brand-muted">
-                                {card.market} · {card.language}
-                              </p>
-                            </div>
-                            <span className="rounded-full bg-[var(--brand-primary-soft)] px-2.5 py-1 text-[11px] font-semibold text-[var(--brand-primary)]">
-                              {card.status}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
+                <div className="grid grid-cols-1 gap-3 text-sm text-slate-600 sm:grid-cols-2">
+                  {proofPoints.map((point) => (
+                    <div
+                      key={point.label}
+                      className="flex items-center gap-2 rounded-xl border border-[#e2e8f0] bg-white/60 px-4 py-3 backdrop-blur-sm"
+                    >
+                      <FeatureIcon name={point.icon} />
+                      <span>{point.label}</span>
                     </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="relative flex w-full items-center justify-center lg:min-h-[700px] lg:justify-end">
+                <div className="absolute inset-0 rounded-[3rem] bg-[radial-gradient(circle_at_top_right,rgba(37,99,235,0.12),transparent_45%)] blur-3xl" />
+                <div className="relative w-full max-w-[500px] rounded-[2rem] border border-[#e2e8f0] bg-slate-50 p-6 shadow-[0_30px_80px_rgba(15,23,42,0.16)] transition-transform duration-500 ease-out lg:-rotate-2">
+                  <div className="mb-6 flex items-center justify-between border-b border-[#e2e8f0] pb-4">
+                    <div>
+                      <p className="mb-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Workspace</p>
+                      <h3 className="font-brand-heading text-lg font-semibold text-slate-900">BrandOS Portfolio</h3>
+                    </div>
+                    <StatusChip tone="primary">3 active brands</StatusChip>
                   </div>
 
-                  <div className="space-y-4">
-                    <div className="rounded-2xl border border-brand bg-brand-surface p-4">
-                      <div className="flex items-center justify-between">
-                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-brand-muted">
-                          Incoming brief
-                        </p>
-                        <span className="rounded-full bg-[rgba(23,138,91,0.12)] px-2.5 py-1 text-[11px] font-semibold text-[var(--brand-success)]">
-                          Tagged from Gmail
-                        </span>
-                      </div>
-                      <div className="mt-4 rounded-2xl bg-brand-surface-subtle p-4">
-                        <p className="text-sm font-semibold text-brand">Spring campaign refresh</p>
-                        <p className="mt-2 text-sm leading-6 text-brand-muted">
-                          Key message confirmed, audience matched, and campaign context structured before
-                          generation starts.
-                        </p>
-                        <div className="mt-4 flex flex-wrap gap-2">
-                          <span className="rounded-full bg-brand-surface px-3 py-1 text-xs font-medium text-brand-muted">
-                            Audience: Young professionals
+                  <div className="space-y-6">
+                    <div className="rounded-xl border border-[#e2e8f0] bg-white p-4 shadow-sm">
+                      <h4 className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Brand Context</h4>
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between rounded-lg border border-[rgba(37,99,235,0.2)] bg-[rgba(37,99,235,0.05)] p-3">
+                          <div>
+                            <p className="text-sm font-semibold text-slate-900">BHV Marais</p>
+                            <p className="text-xs text-slate-500">France · French</p>
+                          </div>
+                          <span className="rounded border border-[rgba(37,99,235,0.2)] bg-white px-2 py-0.5 text-[10px] font-medium text-[var(--brand-primary)] shadow-sm">
+                            Active kit
                           </span>
-                          <span className="rounded-full bg-brand-surface px-3 py-1 text-xs font-medium text-brand-muted">
-                            Goal: Brand visibility
-                          </span>
-                          <span className="rounded-full bg-brand-surface px-3 py-1 text-xs font-medium text-brand-muted">
-                            Tone: Keep baseline
-                          </span>
+                        </div>
+
+                        <div className="flex items-center justify-between rounded-lg border border-[#e2e8f0] p-3 opacity-60">
+                          <div>
+                            <p className="text-sm font-semibold text-slate-900">La Redoute</p>
+                            <p className="text-xs text-slate-500">Europe · English</p>
+                          </div>
                         </div>
                       </div>
                     </div>
 
-                    <div className="rounded-2xl border border-brand bg-[#0f172a] p-4 text-white">
-                      <div className="flex items-center justify-between">
-                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-blue-200">
-                          Generated output
+                    <div className="rounded-xl border border-[#e2e8f0] bg-white p-4 shadow-sm">
+                      <div className="mb-3 flex items-center justify-between">
+                        <h4 className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Incoming Brief</h4>
+                        <StatusChip tone="success">Tagged from Gmail</StatusChip>
+                      </div>
+
+                      <div className="rounded-lg border border-[#e2e8f0] bg-slate-50 p-3">
+                        <h5 className="mb-1 text-sm font-semibold text-slate-900">Spring campaign refresh</h5>
+                        <p className="mb-3 text-xs leading-relaxed text-slate-600">
+                          Key message confirmed, audience matched, and campaign context structured before generation starts.
                         </p>
-                        <span className="rounded-full bg-white/10 px-2.5 py-1 text-[11px] font-semibold text-blue-100">
+                        <div className="flex flex-wrap gap-2">
+                          <span className="rounded border border-[#e2e8f0] bg-white px-2 py-1 text-[10px] text-slate-600">Audience: Young professionals</span>
+                          <span className="rounded border border-[#e2e8f0] bg-white px-2 py-1 text-[10px] text-slate-600">Goal: Brand visibility</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="relative overflow-hidden rounded-xl border border-slate-700 bg-slate-900 p-5 shadow-xl">
+                      <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-[rgba(37,99,235,0.2)] blur-3xl" />
+                      <div className="relative z-10 mb-3 flex items-center justify-between">
+                        <h4 className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Generated Output</h4>
+                        <span className="rounded border border-slate-700 bg-slate-800 px-2 py-0.5 text-[10px] font-medium text-slate-300">
                           Reviewer first
                         </span>
                       </div>
-                      <p className="mt-4 text-base font-semibold">
+                      <p className="relative z-10 mb-4 text-sm font-medium text-white">
                         Drafts stay calibrated to the selected brand instead of drifting back to generic AI tone.
                       </p>
-                      <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                        <div className="rounded-2xl bg-white/10 p-4">
-                          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-blue-100">
-                            LinkedIn
-                          </p>
-                          <p className="mt-2 text-sm leading-6 text-slate-100">
-                            Structured hook, approved vocabulary, and channel rules already applied.
-                          </p>
+                      <div className="relative z-10 grid grid-cols-2 gap-3">
+                        <div className="rounded-lg border border-slate-700 bg-slate-800 p-3">
+                          <p className="mb-1 text-[10px] font-semibold uppercase text-slate-400">LinkedIn</p>
+                          <p className="text-xs leading-tight text-slate-300">Structured hook, approved vocabulary, and channel rules already applied.</p>
                         </div>
-                        <div className="rounded-2xl bg-white/10 p-4">
-                          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-blue-100">
-                            Blog
-                          </p>
-                          <p className="mt-2 text-sm leading-6 text-slate-100">
-                            Same brief, same brand kit, different format output with no context loss.
-                          </p>
+                        <div className="rounded-lg border border-slate-700 bg-slate-800 p-3">
+                          <p className="mb-1 text-[10px] font-semibold uppercase text-slate-400">Blog</p>
+                          <p className="text-xs leading-tight text-slate-300">Same brief, same brand kit, different format output with no context loss.</p>
                         </div>
                       </div>
                     </div>
@@ -253,121 +306,119 @@ export default function LandingPage() {
           </div>
         </section>
 
-        <section className="px-6 py-8 lg:px-8">
-          <div className="mx-auto max-w-7xl rounded-[2rem] border border-brand bg-brand-surface px-6 py-8 shadow-brand-sm lg:px-10">
-            <div className="grid gap-5 md:grid-cols-4">
-              {proofPoints.map((point) => (
-                <div key={`strip-${point}`} className="border-l border-brand pl-4 first:border-l-0 first:pl-0">
-                  <p className="text-sm font-semibold text-brand">{point}</p>
+        <section className="border-t border-[#e2e8f0] py-20">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="grid grid-cols-1 gap-8 lg:grid-cols-2 lg:gap-12">
+              <div className="rounded-3xl border border-[#e2e8f0] bg-white p-8 shadow-sm lg:p-12">
+                <SectionEyebrow tone="muted">Why teams struggle</SectionEyebrow>
+                <h2 className="font-brand-heading mb-6 text-3xl font-bold text-slate-900">Every session starts blank.</h2>
+                <ul className="space-y-4 text-base text-slate-600 lg:text-lg">
+                  <li className="flex items-start gap-3">
+                    <span className="mt-0.5 text-slate-400">−</span>
+                    Teams re-explain tone, audience, and restrictions for every brand.
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <span className="mt-0.5 text-slate-400">−</span>
+                    Campaign context gets copied from email into disconnected tools.
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <span className="mt-0.5 text-slate-400">−</span>
+                    Outputs drift toward generic AI language instead of brand-specific voice.
+                  </li>
+                </ul>
+              </div>
+
+              <div className="relative overflow-hidden rounded-3xl border border-[rgba(37,99,235,0.2)] bg-[rgba(37,99,235,0.05)] p-8 shadow-sm lg:p-12">
+                <div className="absolute right-0 top-0 h-64 w-64 translate-x-1/2 -translate-y-1/2 rounded-full bg-[rgba(37,99,235,0.12)] blur-3xl" />
+                <div className="relative z-10">
+                  <SectionEyebrow>The BrandOS workflow</SectionEyebrow>
+                  <h2 className="font-brand-heading mb-6 text-3xl font-bold text-slate-900">One system keeps each brand&apos;s context intact.</h2>
+                  <ul className="space-y-4 text-base text-slate-700 lg:text-lg">
+                    <li className="flex items-start gap-3">
+                      <span className="mt-0.5 text-[var(--brand-primary)]">✓</span>
+                      Each brand keeps a persistent voice kit instead of starting from zero.
+                    </li>
+                    <li className="flex items-start gap-3">
+                      <span className="mt-0.5 text-[var(--brand-primary)]">✓</span>
+                      Tagged briefs become structured inputs before generation begins.
+                    </li>
+                    <li className="flex items-start gap-3">
+                      <span className="mt-0.5 text-[var(--brand-primary)]">✓</span>
+                      Drafts start closer to final because the model works from real brand memory.
+                    </li>
+                  </ul>
                 </div>
-              ))}
+              </div>
             </div>
           </div>
         </section>
 
-        <section className="px-6 py-20 lg:px-8">
-          <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-2">
-            <div className="rounded-[2rem] border border-brand bg-brand-surface p-8 shadow-brand-sm">
-              <SectionEyebrow>Why teams struggle</SectionEyebrow>
-              <h2 className="text-3xl font-bold tracking-[-0.03em] text-brand">Every session starts blank.</h2>
-              <ul className="mt-6 space-y-4 text-base leading-7 text-brand-muted">
-                <li>Teams re-explain tone, audience, and restrictions for every brand.</li>
-                <li>Campaign context gets copied from email into disconnected tools.</li>
-                <li>Outputs drift toward generic AI language instead of brand-specific voice.</li>
-              </ul>
-            </div>
-            <div className="rounded-[2rem] border border-[var(--brand-primary-soft)] bg-[linear-gradient(180deg,rgba(219,234,254,0.7),rgba(255,255,255,0.96))] p-8 shadow-brand-sm">
-              <SectionEyebrow>The BrandOS workflow</SectionEyebrow>
-              <h2 className="text-3xl font-bold tracking-[-0.03em] text-brand">
-                One system keeps each brand&apos;s context intact.
-              </h2>
-              <ul className="mt-6 space-y-4 text-base leading-7 text-brand-muted">
-                <li>Each brand keeps a persistent voice kit instead of starting from zero.</li>
-                <li>Tagged briefs become structured inputs before generation begins.</li>
-                <li>Drafts start closer to final because the model works from real brand memory.</li>
-              </ul>
-            </div>
-          </div>
-        </section>
-
-        <section id="how-it-works" className="px-6 py-20 lg:px-8">
-          <div className="mx-auto max-w-7xl">
-            <SectionEyebrow>How it works</SectionEyebrow>
-            <div className="max-w-3xl">
-              <h2 className="text-4xl font-bold tracking-[-0.04em] text-brand">
+        <section id="how-it-works" className="bg-slate-50 py-24">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="mb-16 max-w-3xl">
+              <SectionEyebrow>How it works</SectionEyebrow>
+              <h2 className="font-brand-heading mb-6 text-4xl font-bold leading-tight text-slate-900 lg:text-5xl">
                 From brand setup to on-brand drafts in one structured workflow
               </h2>
-              <p className="mt-4 text-lg leading-8 text-brand-muted">
-                BrandOS is built for marketers who need a clear, repeatable workflow rather than another blank AI
-                canvas.
+              <p className="text-lg text-slate-600">
+                BrandOS is built for marketers who need a clear, repeatable workflow rather than another blank AI canvas.
               </p>
             </div>
-            <div className="mt-12 grid gap-6 lg:grid-cols-3">
+
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:gap-8">
               {workflowSteps.map((step, index) => (
-                <div key={step.title} className="rounded-[1.75rem] border border-brand bg-brand-surface p-8 shadow-brand-sm">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--brand-primary-soft)] text-lg font-bold text-[var(--brand-primary)]">
+                <div key={step.title} className="rounded-3xl border border-[#e2e8f0] bg-white p-8 shadow-sm transition-shadow hover:shadow-md">
+                  <div className="mb-6 flex h-10 w-10 items-center justify-center rounded-full bg-[rgba(37,99,235,0.1)] text-lg font-bold text-[var(--brand-primary)]">
                     {index + 1}
                   </div>
-                  <h3 className="mt-6 text-2xl font-bold tracking-[-0.03em] text-brand">{step.title}</h3>
-                  <p className="mt-4 text-base leading-7 text-brand-muted">{step.body}</p>
+                  <h3 className="font-brand-heading mb-4 text-2xl font-bold text-slate-900">{step.title}</h3>
+                  <p className="leading-relaxed text-slate-600">{step.body}</p>
                 </div>
               ))}
             </div>
           </div>
         </section>
 
-        <section id="for-teams" className="px-6 py-20 lg:px-8">
-          <div className="mx-auto max-w-7xl">
-            <div className="max-w-3xl">
+        <section id="for-teams" className="py-24">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="mb-16 max-w-2xl">
               <SectionEyebrow>For teams</SectionEyebrow>
-              <h2 className="text-4xl font-bold tracking-[-0.04em] text-brand">One workspace. Distinct voices.</h2>
-              <p className="mt-4 max-w-2xl text-lg leading-8 text-brand-muted">
+              <h2 className="font-brand-heading mb-4 text-4xl font-bold leading-tight text-slate-900 lg:text-5xl">
+                One workspace. Distinct voices.
+              </h2>
+              <p className="text-lg text-slate-600">
                 Keep every brand&apos;s market, language, and tone separate without managing separate systems.
               </p>
             </div>
 
-            <div className="mt-12 grid gap-5 lg:grid-cols-3">
-              {brandCards.map((card, index) => (
+            <div className="mb-8 grid grid-cols-1 gap-6 lg:grid-cols-3 lg:gap-8">
+              {brandCards.map((card) => (
                 <div
-                  key={`team-${card.name}`}
-                  className={`rounded-[1.9rem] border p-6 shadow-brand-sm transition-transform duration-200 hover:-translate-y-1 ${
-                    index === 0
-                      ? 'border-[var(--brand-primary-soft)] bg-[linear-gradient(180deg,rgba(219,234,254,0.75),rgba(255,255,255,0.98))]'
-                      : 'border-brand bg-brand-surface'
-                  }`}
+                  key={card.name}
+                  className="group relative overflow-hidden rounded-3xl border border-[#e2e8f0] bg-white p-6 shadow-sm transition-colors hover:border-[rgba(37,99,235,0.45)] lg:p-8"
                 >
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--brand-primary)]/10 text-sm font-bold text-[var(--brand-primary)]">
-                      {card.name
-                        .split(' ')
-                        .map((part) => part[0])
-                        .join('')
-                        .slice(0, 2)}
+                  <div className="mb-8 flex items-start justify-between">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-sm font-bold text-slate-700">
+                      {card.initials}
                     </div>
-                    <div className="rounded-full bg-brand-surface px-3 py-1 text-xs font-semibold text-[var(--brand-primary)]">
-                      {card.status}
+                    <StatusChip tone={card.statusTone}>{card.status}</StatusChip>
+                  </div>
+                  <h3 className="font-brand-heading mb-6 text-2xl font-bold text-slate-900">{card.name}</h3>
+
+                  <div className="mb-6 space-y-3">
+                    <div className="flex items-center justify-between border-b border-[#e2e8f0] py-2 text-sm">
+                      <span className="text-slate-500">Market</span>
+                      <span className="font-medium text-slate-900">{card.market}</span>
+                    </div>
+                    <div className="flex items-center justify-between border-b border-[#e2e8f0] py-2 text-sm">
+                      <span className="text-slate-500">Language</span>
+                      <span className="font-medium text-slate-900">{card.language}</span>
                     </div>
                   </div>
 
-                  <h3 className="mt-6 text-2xl font-bold tracking-[-0.03em] text-brand">{card.name}</h3>
-
-                  <div className="mt-5 grid gap-3 rounded-2xl border border-brand bg-brand-surface/80 p-4 text-sm">
-                    <div className="flex items-center justify-between gap-4">
-                      <span className="text-brand-muted">Market</span>
-                      <span className="font-semibold text-brand">{card.market}</span>
-                    </div>
-                    <div className="flex items-center justify-between gap-4">
-                      <span className="text-brand-muted">Language</span>
-                      <span className="font-semibold text-brand">{card.language}</span>
-                    </div>
-                  </div>
-
-                  <div className="mt-5 flex flex-wrap gap-2">
+                  <div className="flex gap-2">
                     {card.tones.map((tone) => (
-                      <span
-                        key={`${card.name}-${tone}`}
-                        className="rounded-full bg-[var(--brand-primary-soft)] px-3 py-1 text-xs font-semibold text-[var(--brand-primary)]"
-                      >
+                      <span key={`${card.name}-${tone}`} className="rounded border border-[#e2e8f0] bg-slate-100 px-3 py-1 text-xs text-slate-600">
                         {tone}
                       </span>
                     ))}
@@ -376,48 +427,58 @@ export default function LandingPage() {
               ))}
             </div>
 
-            <div className="mt-8 rounded-[1.75rem] border border-brand bg-brand-surface-subtle px-6 py-5 shadow-brand-sm">
-              <p className="text-sm font-medium leading-7 text-brand-muted">
-                BrandOS keeps brand context separated, so outputs stay aligned instead of blending into one generic
-                voice.
+            <div className="rounded-2xl border border-[#e2e8f0] bg-slate-50 p-4 text-center">
+              <p className="text-sm text-slate-600">
+                BrandOS keeps brand context separated, so outputs stay aligned instead of blending into one generic voice.
               </p>
             </div>
           </div>
         </section>
 
-        <section className="px-6 py-20 lg:px-8">
-          <div className="mx-auto max-w-7xl">
-            <SectionEyebrow>Product detail</SectionEyebrow>
-            <div className="grid gap-6 lg:grid-cols-3">
+        <section className="border-t border-[#e2e8f0] bg-[rgba(248,250,252,0.8)] py-20">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <SectionEyebrow tone="muted">Product Detail</SectionEyebrow>
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:gap-8">
               {productDetails.map((detail) => (
-                <div key={detail.title} className="rounded-[1.75rem] border border-brand bg-brand-surface p-8 shadow-brand-sm">
-                  <h2 className="text-2xl font-bold tracking-[-0.03em] text-brand">{detail.title}</h2>
-                  <p className="mt-4 text-base leading-7 text-brand-muted">{detail.body}</p>
+                <div key={detail.title} className="rounded-3xl border border-[#e2e8f0] bg-white p-8">
+                  <h3 className="font-brand-heading mb-4 text-xl font-bold text-slate-900">{detail.title}</h3>
+                  <p className="text-sm leading-relaxed text-slate-600">{detail.body}</p>
                 </div>
               ))}
             </div>
           </div>
         </section>
 
-        <section className="px-6 pb-24 pt-8 lg:px-8">
-          <div className="mx-auto max-w-7xl rounded-[2rem] border border-brand bg-[linear-gradient(135deg,rgba(37,99,235,0.08),rgba(255,255,255,0.96))] p-8 shadow-brand lg:p-12">
-            <div className="max-w-3xl">
-              <SectionEyebrow>Start now</SectionEyebrow>
-              <h2 className="text-4xl font-bold tracking-[-0.04em] text-brand">Start building your first brand kit</h2>
-              <p className="mt-4 text-lg leading-8 text-brand-muted">
-                Enter BrandOS through setup, store your first brand&apos;s voice kit, and move into generation with
-                context already in place.
-              </p>
-            </div>
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <MarketingButton to="/signup">Start setup</MarketingButton>
-              <MarketingButton to="/signin" variant="secondary">
-                Sign in
-              </MarketingButton>
+        <section className="relative overflow-hidden py-24">
+          <div className="relative z-10 mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
+            <div className="relative overflow-hidden rounded-[3rem] border border-[rgba(37,99,235,0.2)] bg-[rgba(37,99,235,0.05)] p-12 text-center shadow-lg lg:p-20">
+              <div className="absolute inset-0 bg-[linear-gradient(180deg,transparent,rgba(37,99,235,0.05))]" />
+              <div className="relative z-10 flex flex-col items-center">
+                <SectionEyebrow tone="surface">Start Now</SectionEyebrow>
+                <h2 className="font-brand-heading mb-6 text-4xl font-bold text-slate-900 lg:text-5xl">
+                  Start building your first brand kit
+                </h2>
+                <p className="mx-auto mb-10 max-w-2xl text-lg text-slate-600">
+                  Enter BrandOS through setup, store your first brand&apos;s voice kit, and move into generation with context already in place.
+                </p>
+                <div className="flex flex-col justify-center gap-4 sm:flex-row">
+                  <MarketingButton to="/signup">Start setup</MarketingButton>
+                  <MarketingButton to="/signin" variant="secondary">
+                    Sign in
+                  </MarketingButton>
+                </div>
+              </div>
             </div>
           </div>
         </section>
       </main>
+
+      <footer className="border-t border-[#e2e8f0] bg-white py-8">
+        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-4 sm:px-6 md:flex-row lg:px-8">
+          <span className="font-brand-heading text-xl font-bold text-slate-900">BrandOS</span>
+          <p className="text-sm text-slate-500">© 2024 BrandOS. All rights reserved.</p>
+        </div>
+      </footer>
     </div>
   );
 }
