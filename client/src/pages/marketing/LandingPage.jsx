@@ -199,7 +199,7 @@ export default function LandingPage() {
               <div className="max-w-2xl">
                 <SectionEyebrow>Brand memory for enterprise content teams</SectionEyebrow>
                 <h1 className="font-brand-heading text-5xl font-bold leading-[1.1] tracking-[-0.04em] text-slate-900 sm:text-6xl lg:text-7xl">
-                  AI with brand memory for teams managing multiple brands
+                  One AI workspace that remembers every brand your team manages
                 </h1>
                 <p className="mb-10 mt-6 text-lg leading-relaxed text-slate-600 sm:text-xl">
                   BrandOS stores each brand&apos;s voice kit, turns tagged campaign briefs into structured inputs, and generates on-brand LinkedIn and blog drafts without re-explaining context every session.
@@ -355,7 +355,7 @@ export default function LandingPage() {
 
         <section id="how-it-works" className="bg-slate-50 py-24">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div className="mb-16 max-w-3xl">
+            <div className="mb-16 max-w-3xl text-center mx-auto">
               <SectionEyebrow>How it works</SectionEyebrow>
               <h2 className="font-brand-heading mb-6 text-4xl font-bold leading-tight text-slate-900 lg:text-5xl">
                 From brand setup to on-brand drafts in one structured workflow
@@ -381,7 +381,7 @@ export default function LandingPage() {
 
         <section id="for-teams" className="py-24">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div className="mb-16 max-w-2xl">
+            <div className="mb-16 max-w-2xl text-center mx-auto">
               <SectionEyebrow>For teams</SectionEyebrow>
               <h2 className="font-brand-heading mb-4 text-4xl font-bold leading-tight text-slate-900 lg:text-5xl">
                 One workspace. Distinct voices.
@@ -437,7 +437,9 @@ export default function LandingPage() {
 
         <section className="border-t border-[#e2e8f0] bg-[rgba(248,250,252,0.8)] py-20">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <SectionEyebrow tone="muted">Product Detail</SectionEyebrow>
+            <div className="mb-12 text-center">
+              <SectionEyebrow tone="muted">Product Detail</SectionEyebrow>
+            </div>
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:gap-8">
               {productDetails.map((detail) => (
                 <div key={detail.title} className="rounded-3xl border border-[#e2e8f0] bg-white p-8">
