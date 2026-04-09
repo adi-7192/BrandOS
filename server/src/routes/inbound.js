@@ -2,11 +2,12 @@ import { Router } from 'express';
 import pool from '../db/pool.js';
 import { verifyInboundWebhook } from '../services/inbound/verifyInboundWebhook.js';
 import { getReceivedEmail } from '../services/inbound/resendInbound.js';
-import { extractWorkspaceIdFromRecipient } from '../services/inbound/intakeAddress.js';
+import { extractWorkspaceIdFromRecipient, pickWorkspaceRecipient } from '../services/inbound/intakeAddress.js';
 import { matchBrandFromEmail } from '../services/inbound/matchBrandFromEmail.js';
 import { classifyInboundEmail } from '../services/inbound/classifyInboundEmail.js';
 import { extractBriefFromEmail } from '../services/extraction/briefExtraction.js';
 import { extractBrandUpdateProposal } from '../services/extraction/brandUpdateExtraction.js';
+import { normalizeInboundEmailContent } from '../services/inbound/normalizeInboundEmail.js';
 
 const router = Router();
 
@@ -41,7 +42,7 @@ router.post('/email', async (req, res, next) => {
 
     const emailId = event.data?.email_id;
     const recipients = event.data?.to || [];
-    const primaryRecipient = recipients[0] || '';
+    const primaryRecipient = pickWorkspaceRecipient(recipients);
     const workspaceId = extractWorkspaceIdFromRecipient(primaryRecipient);
 
     if (!emailId || !workspaceId) {
@@ -77,23 +78,28 @@ router.post('/email', async (req, res, next) => {
       [workspace.id]
     );
 
+    const normalizedBody = normalizeInboundEmailContent({
+      text: received.text,
+      html: received.html,
+    });
+
     const brand = matchBrandFromEmail({
       brands: brandsResult.rows,
       subject: received.subject,
-      text: received.text || received.html || '',
+      text: normalizedBody,
       from: received.from,
     });
 
-    const classificationResult = await classifyInboundEmail({
+    const classificationResult = await safeClassifyInboundEmail({
       subject: received.subject,
-      body: received.text || received.html || '',
+      body: normalizedBody,
       brandName: brand?.name || '',
     });
 
     const briefResult = brand
-      ? await extractBriefFromEmail({
+      ? await safeExtractBrief({
           subject: received.subject,
-          body: received.text || received.html || '',
+          body: normalizedBody,
           threadMessages: [],
           brandName: brand.name,
         })
@@ -103,13 +109,13 @@ router.post('/email', async (req, res, next) => {
           unmatchedFields: [],
           overallScore: 0,
           publishDate: '',
-          excerpt: (received.text || received.html || '').slice(0, 200),
+          excerpt: normalizedBody.slice(0, 200),
         };
 
     const brandUpdateProposal = brand
-      ? await extractBrandUpdateProposal({
+      ? await safeExtractBrandUpdateProposal({
           brandName: brand.name,
-          body: received.text || received.html || '',
+          body: normalizedBody,
           currentKit: {
             voiceAdjectives: brand.voice_adjectives || [],
             vocabulary: brand.vocabulary || [],
@@ -136,8 +142,8 @@ router.post('/email', async (req, res, next) => {
         $1,$2,$3,$4,$5,
         $6,$7,$8,$9,$10,
         $11,$12,$13,$14,
-        $15,$16,$17,
-        $18,$19,$20,$21,$22,$23,$24
+        $15,$16,
+        $17,$18,$19,$20,$21,$22,$23
       )`,
       [
         workspace.id,
@@ -147,7 +153,7 @@ router.post('/email', async (req, res, next) => {
         received.to || [],
         received.subject || null,
         received.from || null,
-        received.text || received.html || '',
+        normalizedBody,
         received.headers || {},
         briefResult.excerpt || '',
         resolvedClassification,
@@ -173,3 +179,42 @@ router.post('/email', async (req, res, next) => {
 });
 
 export default router;
+
+async function safeClassifyInboundEmail(input) {
+  try {
+    return await classifyInboundEmail(input);
+  } catch (err) {
+    console.warn('Inbound email classification failed:', err.message);
+    return {
+      classification: input.brandName ? 'campaign' : 'needs_routing',
+      summary: input.brandName
+        ? 'BrandOS found campaign details to review from this thread.'
+        : 'BrandOS could not confidently route this thread yet.',
+    };
+  }
+}
+
+async function safeExtractBrief(input) {
+  try {
+    return await extractBriefFromEmail(input);
+  } catch (err) {
+    console.warn('Inbound brief extraction failed:', err.message);
+    return {
+      extractedFields: {},
+      matchedFields: [],
+      unmatchedFields: [],
+      overallScore: 0,
+      publishDate: '',
+      excerpt: String(input.body || '').slice(0, 200),
+    };
+  }
+}
+
+async function safeExtractBrandUpdateProposal(input) {
+  try {
+    return await extractBrandUpdateProposal(input);
+  } catch (err) {
+    console.warn('Inbound brand-update extraction failed:', err.message);
+    return { summary: '', fields: {} };
+  }
+}

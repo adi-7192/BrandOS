@@ -160,8 +160,10 @@ router.post('/:id/route/confirm', async (req, res, next) => {
       : reviewBrandUpdates
         ? 'brand_update'
         : 'campaign';
-    const campaignActionStatus = createCampaign ? 'pending' : 'not_applicable';
-    const brandActionStatus = reviewBrandUpdates ? 'pending' : 'not_applicable';
+    const normalizedCreateCampaign = createCampaign || !reviewBrandUpdates;
+    const normalizedReviewBrandUpdates = Boolean(reviewBrandUpdates);
+    const campaignActionStatus = normalizedCreateCampaign ? 'pending' : 'not_applicable';
+    const brandActionStatus = normalizedReviewBrandUpdates ? 'pending' : 'not_applicable';
 
     await pool.query(
       `UPDATE inbox_cards
@@ -211,6 +213,9 @@ router.post('/:id/apply-brand-updates', async (req, res, next) => {
     const card = await getInboxCard(req.params.id, ws.id, client);
     if (!card) return res.status(404).json({ message: 'Inbox item not found.' });
     if (!card.brand_id) return res.status(400).json({ message: 'This inbox item is not matched to a brand yet.' });
+    if (!card.brand_update_proposal?.fields || Object.keys(card.brand_update_proposal.fields).length === 0) {
+      return res.status(400).json({ message: 'There are no proposed brand updates to apply for this thread yet.' });
+    }
 
     await client.query('BEGIN');
     await applyBrandUpdateProposal({

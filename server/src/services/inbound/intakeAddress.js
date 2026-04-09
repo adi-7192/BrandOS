@@ -18,3 +18,8 @@ export function extractWorkspaceIdFromRecipient(address = '') {
 
   return localPart.slice(prefix.length);
 }
+
+export function pickWorkspaceRecipient(recipients = []) {
+  const list = Array.isArray(recipients) ? recipients : [recipients];
+  return list.find((recipient) => extractWorkspaceIdFromRecipient(recipient)) || list[0] || '';
+}
