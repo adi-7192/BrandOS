@@ -5,6 +5,8 @@ import {
   buildConfidenceSamplePayload,
   buildConfidenceRegenerationPayload,
   canRegenerateConfidenceSample,
+  canApproveConfidenceReaction,
+  hasMeaningfulConfidenceEdit,
 } from './confidence-flow.js';
 
 test('buildConfidenceSamplePayload normalizes kit cards before requesting the sample', () => {
@@ -12,7 +14,7 @@ test('buildConfidenceSamplePayload normalizes kit cards before requesting the sa
     brandName: 'BHV Marais',
     kitCards: null,
     campaignType: 'Product launch',
-    funnelStage: 'Top of funnel — awareness',
+    funnelStages: ['Top of funnel — awareness', 'Mid funnel — consideration'],
     toneShift: 'Keep baseline — no shift',
     brandLanguage: 'French',
   });
@@ -29,7 +31,7 @@ test('buildConfidenceSamplePayload normalizes kit cards before requesting the sa
       },
     },
     campaignType: 'Product launch',
-    funnelStage: 'Top of funnel — awareness',
+    funnelStages: ['Top of funnel — awareness', 'Mid funnel — consideration'],
     toneShift: 'Keep baseline — no shift',
     brandLanguage: 'French',
   });
@@ -41,7 +43,7 @@ test('buildConfidenceRegenerationPayload includes critique chips, notes, and cur
       brandName: 'BHV Marais',
       kitCards: { voiceAdjectives: ['Warm'] },
       campaignType: 'Product launch',
-      funnelStage: 'Top of funnel — awareness',
+      funnelStages: ['Top of funnel — awareness', 'Mid funnel — consideration'],
       toneShift: 'Slightly more editorial',
       brandLanguage: 'French',
     },
@@ -64,7 +66,7 @@ test('buildConfidenceRegenerationPayload includes critique chips, notes, and cur
       },
     },
     campaignType: 'Product launch',
-    funnelStage: 'Top of funnel — awareness',
+    funnelStages: ['Top of funnel — awareness', 'Mid funnel — consideration'],
     toneShift: 'Slightly more editorial',
     brandLanguage: 'French',
     currentSample: 'Old draft',
@@ -88,7 +90,7 @@ test('canRegenerateConfidenceSample requires either critique chips or notes and 
     canRegenerateConfidenceSample({
       selectedChips: ['Wrong vocabulary'],
       freeText: '',
-      regenerateCount: 0,
+      regenerateCount: 3,
       regenerating: false,
     }),
     true
@@ -98,9 +100,57 @@ test('canRegenerateConfidenceSample requires either critique chips or notes and 
     canRegenerateConfidenceSample({
       selectedChips: [],
       freeText: 'Needs more urgency.',
-      regenerateCount: 1,
-      regenerating: false,
+      regenerateCount: 0,
+      regenerating: true,
     }),
     false
+  );
+});
+
+test('hasMeaningfulConfidenceEdit only returns true when the editable draft changes meaningfully', () => {
+  assert.equal(hasMeaningfulConfidenceEdit('Original sample', 'Original sample'), false);
+  assert.equal(hasMeaningfulConfidenceEdit('Original sample', '  Original sample  '), false);
+  assert.equal(hasMeaningfulConfidenceEdit('Original sample', 'Edited sample'), true);
+});
+
+test('canApproveConfidenceReaction allows almost-there after regeneration or meaningful edits', () => {
+  assert.equal(
+    canApproveConfidenceReaction({
+      reaction: 'positive',
+      regenerateCount: 0,
+      originalSample: 'Original sample',
+      currentSample: 'Original sample',
+    }),
+    true
+  );
+
+  assert.equal(
+    canApproveConfidenceReaction({
+      reaction: 'mixed',
+      regenerateCount: 0,
+      originalSample: 'Original sample',
+      currentSample: 'Original sample',
+    }),
+    false
+  );
+
+  assert.equal(
+    canApproveConfidenceReaction({
+      reaction: 'mixed',
+      regenerateCount: 1,
+      originalSample: 'Original sample',
+      currentSample: 'Original sample',
+    }),
+    true
+  );
+
+  assert.equal(
+    canApproveConfidenceReaction({
+      reaction: 'mixed',
+      regenerateCount: 0,
+      originalSample: 'Original sample',
+      currentSample: 'Edited sample',
+    }),
+    true
   );
 });

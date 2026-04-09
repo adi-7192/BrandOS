@@ -1,3 +1,5 @@
+import { normalizeFunnelStages, resolveProofStyle } from './brand-kit-fields.js';
+
 export function buildExtractKitRequest(state) {
   const websiteUrls = [...new Set(
     [state.websiteUrl, ...(state.websiteUrls || [])]
@@ -15,10 +17,9 @@ export function buildExtractKitRequest(state) {
     industrySector: state.industrySector,
     industryTarget: state.industryTarget,
     campaignType: state.campaignType,
-    funnelStage: state.funnelStage,
+    funnelStages: normalizeFunnelStages(state.funnelStages || state.funnelStage),
     toneShift: state.toneShift,
-    proofStyle: state.proofStyle,
-    contentRole: state.contentRole,
+    proofStyle: resolveProofStyle(state),
     contentGoal: state.contentGoal,
     publishingFrequency: state.publishingFrequency,
     voiceFormality: state.voiceFormality,

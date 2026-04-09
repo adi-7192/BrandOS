@@ -1,11 +1,12 @@
 import { normalizeKitCards } from './kit-review.js';
+import { normalizeFunnelStages } from './brand-kit-fields.js';
 
 export function buildConfidenceSamplePayload(state) {
   return {
     brandName: state.brandName,
     kitCards: normalizeKitCards(state.kitCards || {}),
     campaignType: state.campaignType,
-    funnelStage: state.funnelStage,
+    funnelStages: normalizeFunnelStages(state.funnelStages || state.funnelStage),
     toneShift: state.toneShift,
     brandLanguage: state.brandLanguage,
   };
@@ -21,6 +22,22 @@ export function buildConfidenceRegenerationPayload(state, { currentSample, selec
 }
 
 export function canRegenerateConfidenceSample({ selectedChips, freeText, regenerateCount, regenerating }) {
-  if (regenerating || regenerateCount >= 1) return false;
+  if (regenerating) return false;
   return selectedChips.length > 0 || String(freeText || '').trim().length > 0;
+}
+
+export function hasMeaningfulConfidenceEdit(originalSample, currentSample) {
+  return String(originalSample || '').trim() !== String(currentSample || '').trim();
+}
+
+export function canApproveConfidenceReaction({
+  reaction,
+  regenerateCount,
+  originalSample,
+  currentSample,
+}) {
+  if (reaction === 'positive') return true;
+  if (reaction !== 'mixed') return false;
+
+  return regenerateCount > 0 || hasMeaningfulConfidenceEdit(originalSample, currentSample);
 }

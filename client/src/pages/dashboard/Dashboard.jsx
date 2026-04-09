@@ -376,6 +376,7 @@ export default function Dashboard() {
                             <span className="rounded-full bg-[#f6f8fb] px-3 py-1 text-xs font-semibold text-slate-500">
                               {row.pendingBriefLabel}
                             </span>
+                            <Pill tone={row.guidelineTone}>{row.guidelineLabel}</Pill>
                             <span className="text-sm font-medium text-[var(--brand-primary)] group-hover:text-[var(--brand-primary-hover)]">
                               {row.actionLabel} →
                             </span>

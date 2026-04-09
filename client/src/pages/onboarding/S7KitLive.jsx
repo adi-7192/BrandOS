@@ -6,12 +6,14 @@ import Button from '../../components/ui/Button';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 import { KIT_LIVE_INTENT_QUESTION } from '../../lib/intent-capture';
+import { buildKitLiveNextSteps } from '../../lib/kit-live-flow';
 
 export default function S7KitLive() {
   const navigate = useNavigate();
   const ob = useOnboarding();
   const { user, refreshUser } = useAuth();
   const [intentHidden, setIntentHidden] = useState(false);
+  const nextSteps = buildKitLiveNextSteps();
 
   const chips = [
     ob.kitCards?.voiceAdjectives?.join(' · '),
@@ -86,10 +88,13 @@ export default function S7KitLive() {
       {/* Phase 3 signpost */}
       <div className="mt-8 rounded-xl bg-gray-50 border border-gray-200 p-4">
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">What's available next</p>
-        <ul className="space-y-2 text-sm text-gray-500">
-          <li>Connect Gmail to capture campaign briefs automatically · takes 2 min</li>
-          <li>Add the group layer — shared rules across all brands · in settings</li>
-          <li>Add your next brand — each additional brand takes ~5 minutes</li>
+        <ul className="space-y-3 text-sm text-gray-500">
+          {nextSteps.map((step) => (
+            <li key={step.title}>
+              <p className="font-medium text-gray-700">{step.title}</p>
+              <p className="mt-1 text-gray-500">{step.description}</p>
+            </li>
+          ))}
         </ul>
       </div>
     </OnboardingShell>

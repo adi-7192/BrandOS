@@ -23,10 +23,7 @@ export function normalizeKitCards(kitCards = {}) {
 export function updateKitCardArrayField(kitCards, field, rawValue) {
   return {
     ...normalizeKitCards(kitCards),
-    [field]: String(rawValue || '')
-      .split(',')
-      .map((entry) => entry.trim())
-      .filter(Boolean),
+    [field]: parseEditableTagList(rawValue),
   };
 }
 
@@ -40,4 +37,40 @@ export function updateKitCardChannelRule(kitCards, channel, value) {
       [channel]: value,
     },
   };
+}
+
+export function parseEditableTagList(rawValue) {
+  return [...new Set(
+    String(rawValue || '')
+      .split(/[\n,]/)
+      .map((entry) => entry.trim())
+      .filter(Boolean)
+  )];
+}
+
+export function captureKitCardSnapshot(kitCards, cardKey) {
+  const normalized = normalizeKitCards(kitCards);
+
+  switch (cardKey) {
+    case 'voice':
+      return normalized.voiceAdjectives;
+    case 'vocab':
+      return normalized.vocabulary;
+    case 'restricted':
+      return normalized.restrictedWords;
+    case 'channel':
+      return normalized.channelRules;
+    default:
+      return null;
+  }
+}
+
+export function shouldResetApprovedCard({ cardKey, approved, approvedSnapshots, currentCards }) {
+  if (!approved) return false;
+
+  const previousSnapshot = approvedSnapshots?.[cardKey];
+  if (!previousSnapshot) return false;
+
+  const currentSnapshot = captureKitCardSnapshot(currentCards, cardKey);
+  return JSON.stringify(previousSnapshot) !== JSON.stringify(currentSnapshot);
 }

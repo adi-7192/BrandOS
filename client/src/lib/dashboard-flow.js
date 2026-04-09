@@ -130,6 +130,8 @@ export function buildBrandPortfolioRows(summary) {
         statusLabel: isActive ? 'Active' : 'Draft',
         statusTone: isActive ? 'green' : 'amber',
         pendingBriefLabel: pendingBriefCount > 0 ? `${pendingBriefCount} pending brief${pendingBriefCount === 1 ? '' : 's'}` : 'Queue clear',
+        guidelineLabel: brand.hasGuidelineDocument ? 'Guideline loaded' : 'No guideline loaded',
+        guidelineTone: brand.hasGuidelineDocument ? 'blue' : 'neutral',
         pendingBriefCount,
         href: `/settings/brands/${brand.id}`,
         actionLabel: 'Open kit',

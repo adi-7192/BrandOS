@@ -1,5 +1,6 @@
 import { callAI } from './client.js';
 import { parseStructuredJson } from './structuredOutput.js';
+import { formatFunnelStages, normalizeFunnelStages } from '../../lib/brandKitFields.js';
 
 /**
  * Generate a confidence test sample post using kit + brief context.
@@ -8,6 +9,7 @@ export async function generateConfidenceSample({
   brandName,
   kitCards,
   campaignType,
+  funnelStages,
   funnelStage,
   toneShift,
   brandLanguage,
@@ -21,7 +23,7 @@ export async function generateConfidenceSample({
     brandName,
     kit,
     campaignType,
-    funnelStage,
+    funnelStages: funnelStages || funnelStage,
     toneShift,
     brandLanguage,
     currentSample,
@@ -165,6 +167,7 @@ function getWordTarget(frequency) {
 export function buildGenerationUserMessage({ brief, sections }) {
   const kit = brief.kit || {};
   const wordTarget = getWordTarget(brief.publishingFrequency);
+  const formattedFunnelStages = formatFunnelStages(normalizeFunnelStages(brief.funnelStages || brief.funnelStage), ', ');
 
   return `Generate content for ${brief.brandName}.
 
@@ -172,10 +175,9 @@ Campaign: ${brief.campaignName || ''}
 Campaign type: ${brief.campaignType || ''}
 Audience: ${brief.audienceType || brief.audience || ''}
 Tone shift: ${brief.toneShift || 'Keep baseline'}
-Funnel stage: ${brief.funnelStage || ''}
+Funnel stages: ${formattedFunnelStages || 'Not specified'}
 Content goal: ${brief.contentGoal || ''}
 Proof style: ${brief.proofStyle || 'Match the brand default'}
-Content role: ${brief.contentRole || 'Standard campaign content'}
 Voice formality (1 informal - 5 formal): ${brief.voiceFormality ?? 'Use the brand default'}
 Campaign core why: ${brief.campaignCoreWhy || ''}
 Key message (anchor for both formats): "${brief.keyMessage || ''}"
@@ -249,7 +251,7 @@ Content goal: ${brief.contentGoal || ''}
 Key message: ${brief.keyMessage || ''}
 Language: ${brief.language || 'English'}
 Proof style: ${brief.proofStyle || brief.kit?.proofStyle || 'Brand default'}
-Content role: ${brief.contentRole || brief.kit?.contentRole || 'Standard campaign content'}
+Funnel stages: ${formatFunnelStages(normalizeFunnelStages(brief.funnelStages || brief.funnelStage), ', ') || 'Not specified'}
 Brand voice: ${brief.kit?.voiceAdjectives?.join(', ') || ''}
 Vocabulary to use: ${brief.kit?.vocabulary?.join(', ') || ''}
 Restricted words to avoid: ${brief.kit?.restrictedWords?.join(', ') || 'none'}
@@ -347,6 +349,7 @@ export function buildConfidenceUserMessage({
   brandName,
   kit,
   campaignType,
+  funnelStages,
   funnelStage,
   toneShift,
   brandLanguage,
@@ -355,11 +358,12 @@ export function buildConfidenceUserMessage({
   feedbackNotes,
 }) {
   const hasFeedback = Array.isArray(feedbackChips) && feedbackChips.length > 0 || String(feedbackNotes || '').trim();
+  const formattedFunnelStages = formatFunnelStages(normalizeFunnelStages(funnelStages || funnelStage), ', ');
 
   if (hasFeedback && currentSample) {
     return `Refine this existing LinkedIn sample for ${brandName}.
 Campaign type: ${campaignType || 'Brand awareness'}
-Funnel stage: ${funnelStage || 'Top of funnel'}
+Funnel stages: ${formattedFunnelStages || 'Top of funnel'}
 Tone shift: ${toneShift || 'Keep baseline'}
 
 Current sample:
@@ -381,7 +385,7 @@ Requirements:
 
   return `Generate a sample LinkedIn post for ${brandName}.
 Campaign type: ${campaignType || 'Brand awareness'}
-Funnel stage: ${funnelStage || 'Top of funnel'}
+Funnel stages: ${formattedFunnelStages || 'Top of funnel'}
 Tone shift: ${toneShift || 'Keep baseline'}
 
 Requirements:

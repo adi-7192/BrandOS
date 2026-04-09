@@ -49,3 +49,16 @@ export function buildUpcomingDeadlineItems(rows = []) {
     })
     .slice(0, 6);
 }
+
+export function mapDashboardBrandRows(rows = []) {
+  return rows.map((row) => ({
+    id: row.id,
+    name: row.name,
+    market: row.market,
+    language: row.language,
+    updatedAt: row.updated_at,
+    voiceAdjectives: row.voice_adjectives || [],
+    pendingBriefCount: Number(row.pending_brief_count || 0),
+    hasGuidelineDocument: Boolean(row.guideline_file_name),
+  }));
+}

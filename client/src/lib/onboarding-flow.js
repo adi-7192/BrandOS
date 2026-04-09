@@ -1,4 +1,5 @@
 import { normalizeKitCards } from './kit-review.js';
+import { normalizeFunnelStages, resolveProofStyle } from './brand-kit-fields.js';
 
 export function buildOnboardingSavePayload(state) {
   return {
@@ -21,10 +22,9 @@ export function buildOnboardingSavePayload(state) {
     ageRange: state.ageRange,
     industrySector: state.industrySector,
     industryTarget: state.industryTarget,
-    funnelStage: state.funnelStage,
+    funnelStages: normalizeFunnelStages(state.funnelStages || state.funnelStage),
     toneShift: state.toneShift,
-    proofStyle: state.proofStyle,
-    contentRole: state.contentRole,
+    proofStyle: resolveProofStyle(state),
     contentGoal: state.contentGoal,
     publishingFrequency: state.publishingFrequency,
     voiceFormality: state.voiceFormality,

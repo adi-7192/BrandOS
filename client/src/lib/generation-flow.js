@@ -1,3 +1,5 @@
+import { formatFunnelStages, normalizeFunnelStages } from './brand-kit-fields.js';
+
 export function buildConfirmedBrief(brief, overrides) {
   return {
     ...brief,
@@ -63,6 +65,8 @@ export function buildGeneratingContext(brief) {
 
 export function buildManualBriefFromBrand(brand) {
   const kit = brand?.kit || {};
+  const funnelStages = normalizeFunnelStages(kit.funnelStages || kit.funnelStage);
+  const formattedFunnelStages = formatFunnelStages(funnelStages);
 
   return {
     mode: 'manual',
@@ -75,11 +79,11 @@ export function buildManualBriefFromBrand(brand) {
     audience: kit.audienceType || '',
     audienceType: kit.audienceType || '',
     toneShift: kit.toneShift || '',
-    funnelStage: kit.funnelStage || '',
+    funnelStages,
+    funnelStage: formattedFunnelStages,
     contentGoal: kit.contentGoal || '',
     publishingFrequency: kit.publishingFrequency || '',
     proofStyle: kit.proofStyle || '',
-    contentRole: kit.contentRole || '',
     voiceFormality: kit.voiceFormality ?? null,
     campaignCoreWhy: kit.campaignCoreWhy || '',
     keyMessage: '',
@@ -101,10 +105,10 @@ export function buildManualBriefFromBrand(brand) {
       ageRange: kit.ageRange || '',
       industrySector: kit.industrySector || '',
       industryTarget: kit.industryTarget || '',
-      funnelStage: kit.funnelStage || '',
+      funnelStages,
+      funnelStage: formattedFunnelStages,
       toneShift: kit.toneShift || '',
       proofStyle: kit.proofStyle || '',
-      contentRole: kit.contentRole || '',
       contentGoal: kit.contentGoal || '',
       publishingFrequency: kit.publishingFrequency || '',
       voiceFormality: kit.voiceFormality ?? null,

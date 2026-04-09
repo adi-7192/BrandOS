@@ -1,4 +1,5 @@
 import { normalizePublishDateValue } from '../extraction/publishDate.js';
+import { formatFunnelStages, normalizeFunnelStages } from '../../lib/brandKitFields.js';
 
 function unique(values) {
   return [...new Set(values.filter(Boolean))];
@@ -28,6 +29,12 @@ export function buildCanonicalBrief(cards, sourceCardIds = []) {
   const merged = mergeCards(cards);
   const lowConfidence = Number(merged.overall_score || 1) < 0.4;
   const extracted = merged.extracted || {};
+  const kitFunnelStages = normalizeFunnelStages(merged.funnel_stages || merged.funnel_stage);
+  const extractedFunnelStages = normalizeFunnelStages(
+    getOptionalExtractedField(extracted, 'funnelStages', 'funnel_stages')
+  );
+  const funnelStages = extractedFunnelStages.length > 0 ? extractedFunnelStages : kitFunnelStages;
+  const extractedFunnelStage = getExtractedField(extracted, 'funnelStage', 'funnel_stage');
 
   const kit = {
     version: merged.version || 1,
@@ -43,10 +50,10 @@ export function buildCanonicalBrief(cards, sourceCardIds = []) {
     ageRange: merged.age_range || '',
     industrySector: merged.industry_sector || '',
     industryTarget: merged.industry_target || '',
-    funnelStage: merged.funnel_stage || '',
+    funnelStages: kitFunnelStages,
+    funnelStage: formatFunnelStages(kitFunnelStages) || merged.funnel_stage || '',
     toneShift: merged.tone_shift || '',
     proofStyle: merged.proof_style || '',
-    contentRole: merged.content_role || '',
     contentGoal: merged.content_goal || '',
     publishingFrequency: merged.publishing_frequency || '',
     voiceFormality: merged.formality_level ?? null,
@@ -73,11 +80,11 @@ export function buildCanonicalBrief(cards, sourceCardIds = []) {
     audience: getExtractedField(extracted, 'audience') || kit.audienceType || '',
     audienceType: getExtractedField(extracted, 'audienceType', 'audience_type') || kit.audienceType || '',
     toneShift: getExtractedField(extracted, 'toneShift', 'tone_shift') || kit.toneShift || '',
-    funnelStage: getExtractedField(extracted, 'funnelStage', 'funnel_stage') || kit.funnelStage || '',
+    funnelStages,
+    funnelStage: extractedFunnelStage || formatFunnelStages(funnelStages) || kit.funnelStage || '',
     contentGoal: getExtractedField(extracted, 'contentGoal', 'content_goal') || kit.contentGoal || '',
     publishingFrequency: getExtractedField(extracted, 'publishingFrequency', 'publishing_frequency') || kit.publishingFrequency || '',
     proofStyle: getExtractedField(extracted, 'proofStyle', 'proof_style') || kit.proofStyle || '',
-    contentRole: getExtractedField(extracted, 'contentRole', 'content_role') || kit.contentRole || '',
     voiceFormality: getOptionalExtractedField(extracted, 'voiceFormality', 'voice_formality') ?? kit.voiceFormality,
     campaignCoreWhy: getExtractedField(extracted, 'campaignCoreWhy', 'campaign_core_why') || kit.campaignCoreWhy || '',
     keyMessage: getExtractedField(extracted, 'keyMessage', 'key_message') || merged.excerpt || merged.email_subject || '',

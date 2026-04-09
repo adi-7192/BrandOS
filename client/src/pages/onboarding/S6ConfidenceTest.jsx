@@ -8,10 +8,12 @@ import Button from '../../components/ui/Button';
 import api from '../../services/api';
 import { buildOnboardingSavePayload } from '../../lib/onboarding-flow';
 import {
+  canApproveConfidenceReaction,
   buildConfidenceRegenerationPayload,
   buildConfidenceSamplePayload,
   canRegenerateConfidenceSample,
 } from '../../lib/confidence-flow';
+import { formatFunnelStages } from '../../lib/brand-kit-fields';
 
 const REGENERATE_CHIPS = ['Tone too formal', 'Tone too casual', 'Wrong vocabulary', 'Too long', 'Too short', 'Weak opening', 'CTA missing'];
 
@@ -19,7 +21,8 @@ export default function S6ConfidenceTest() {
   const navigate = useNavigate();
   const ob = useOnboarding();
   const { refreshUser } = useAuth();
-  const [samplePost, setSamplePost] = useState('');
+  const [generatedSample, setGeneratedSample] = useState('');
+  const [sampleDraft, setSampleDraft] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
@@ -33,9 +36,12 @@ export default function S6ConfidenceTest() {
     const generate = async () => {
       try {
         const res = await api.post('/onboarding/confidence-sample', buildConfidenceSamplePayload(ob));
-        setSamplePost(res.data.samplePost);
+        setGeneratedSample(res.data.samplePost);
+        setSampleDraft(res.data.samplePost);
       } catch {
-        setSamplePost('Sample post generation failed. Please try editing the kit directly.');
+        const fallback = 'Sample post generation failed. Please try editing the kit directly.';
+        setGeneratedSample(fallback);
+        setSampleDraft(fallback);
       } finally {
         setLoading(false);
       }
@@ -55,12 +61,13 @@ export default function S6ConfidenceTest() {
       const res = await api.post(
         '/onboarding/confidence-sample',
         buildConfidenceRegenerationPayload(ob, {
-          currentSample: samplePost,
+          currentSample: sampleDraft,
           selectedChips,
           freeText,
         })
       );
-      setSamplePost(res.data.samplePost);
+      setGeneratedSample(res.data.samplePost);
+      setSampleDraft(res.data.samplePost);
       setRegenerateCount((count) => count + 1);
     } catch (err) {
       setSaveError(err.response?.data?.message || 'Failed to regenerate the sample. Please try editing the kit directly.');
@@ -83,7 +90,12 @@ export default function S6ConfidenceTest() {
     }
   };
 
-  const approveEnabled = reaction === 'positive' || (reaction === 'mixed' && regenerateCount > 0);
+  const approveEnabled = canApproveConfidenceReaction({
+    reaction,
+    regenerateCount,
+    originalSample: generatedSample,
+    currentSample: sampleDraft,
+  });
   const regenerateEnabled = canRegenerateConfidenceSample({ selectedChips, freeText, regenerateCount, regenerating });
 
   return (
@@ -105,17 +117,23 @@ export default function S6ConfidenceTest() {
               <span className="chip chip-purple">{ob.brandName}</span>
               <span>LinkedIn</span>
               {ob.campaignType && <span>· {ob.campaignType}</span>}
-              {ob.funnelStage && <span>· {ob.funnelStage.split(' — ')[0]}</span>}
+              {ob.funnelStages?.length > 0 && <span>· {formatFunnelStages(ob.funnelStages, ', ')}</span>}
               <span>· 0 restricted words</span>
             </div>
-            <p className="text-sm text-gray-800 whitespace-pre-wrap">{samplePost}</p>
+            <textarea
+              rows={8}
+              value={sampleDraft}
+              onChange={(e) => setSampleDraft(e.target.value)}
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-800 resize-y focus:border-gray-900 focus:outline-none"
+            />
+            <p className="mt-2 text-xs text-gray-400">You can edit this sample directly before asking AI to refine it again.</p>
           </div>
 
           {/* Reactions */}
           <div className="grid grid-cols-3 gap-2 mb-5">
             {[
               { key: 'positive', label: 'This sounds right' },
-              { key: 'mixed', label: 'Close but not quite' },
+              { key: 'mixed', label: 'Almost there' },
               { key: 'negative', label: "Doesn't sound like us" },
             ].map(r => (
               <button
@@ -160,8 +178,9 @@ export default function S6ConfidenceTest() {
               />
               <Button variant="secondary" className="mt-3 text-sm" disabled={!regenerateEnabled}
                 onClick={handleRegenerate}>
-                {regenerating ? 'Regenerating…' : regenerateCount >= 1 ? 'Regenerated once' : 'Regenerate'}
+                {regenerating ? 'Regenerating…' : 'Regenerate'}
               </Button>
+              <p className="mt-2 text-xs text-gray-400">Each regeneration uses your latest edited draft plus the feedback you selected here.</p>
             </div>
           )}
 

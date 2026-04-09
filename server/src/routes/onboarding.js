@@ -7,6 +7,7 @@ import { generateConfidenceSample } from '../services/ai/generation.js';
 import { extractGuidelineText } from '../services/extraction/guidelineText.js';
 import { crawlWebsiteSources, normalizeSeedUrls, parseWebsiteUrlsInput } from '../services/extraction/websiteSource.js';
 import { uploadBrandGuideline } from '../services/storage/supabaseStorage.js';
+import { normalizeFunnelStages, resolveProofStyle } from '../lib/brandKitFields.js';
 
 const router = Router();
 const upload = multer({
@@ -103,6 +104,8 @@ router.post('/save-kit', async (req, res, next) => {
       guidelineTextExcerpt,
       ...kitParams
     } = req.body;
+    const funnelStages = normalizeFunnelStages(kitParams.funnelStages || kitParams.funnelStage);
+    const proofStyle = resolveProofStyle(kitParams);
 
     // Get or create workspace
     const wsResult = await pool.query('SELECT * FROM workspaces WHERE user_id = $1', [req.user.id]);
@@ -137,8 +140,8 @@ router.post('/save-kit', async (req, res, next) => {
         brand_id, voice_adjectives, vocabulary, restricted_words,
         channel_rules_linkedin, channel_rules_blog, content_goal,
         publishing_frequency, audience_type, buyer_seniority,
-        age_range, industry_sector, industry_target, funnel_stage,
-        tone_shift, proof_style, content_role, formality_level,
+        age_range, industry_sector, industry_target, funnel_stages, funnel_stage,
+        tone_shift, proof_style, formality_level,
         campaign_core_why, past_content_examples, website_url, website_urls, website_summary,
         guideline_file_url, guideline_file_name, guideline_storage_path, guideline_text_excerpt
       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27)`,
@@ -156,10 +159,10 @@ router.post('/save-kit', async (req, res, next) => {
         kitParams.ageRange,
         kitParams.industrySector,
         kitParams.industryTarget,
-        kitParams.funnelStage,
+        funnelStages,
+        funnelStages.join(' · ') || null,
         kitParams.toneShift,
-        kitParams.proofStyle,
-        kitParams.contentRole,
+        proofStyle || null,
         kitParams.voiceFormality,
         kitParams.campaignCoreWhy,
         kitParams.pastContentExamples,

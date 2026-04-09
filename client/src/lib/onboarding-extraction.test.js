@@ -11,6 +11,9 @@ test('buildExtractKitRequest returns JSON payload when no guideline file is pres
     pastContentExamples: 'Example',
     brandGuidelinesFile: null,
     audienceType: 'Urban creatives',
+    funnelStages: ['Top of funnel — awareness', 'Mid funnel — consideration'],
+    proofStyle: 'Other',
+    proofStyleOther: 'Founder quote-led with one strong stat',
   });
 
   assert.equal(request.isMultipart, false);
@@ -19,6 +22,8 @@ test('buildExtractKitRequest returns JSON payload when no guideline file is pres
   assert.equal(request.data.websiteUrl, 'https://example.com');
   assert.deepEqual(request.data.websiteUrls, ['https://example.com', 'https://example.com/about']);
   assert.equal(request.data.audienceType, 'Urban creatives');
+  assert.deepEqual(request.data.funnelStages, ['Top of funnel — awareness', 'Mid funnel — consideration']);
+  assert.equal(request.data.proofStyle, 'Founder quote-led with one strong stat');
 });
 
 test('buildExtractKitRequest returns multipart payload when a guideline file is present', () => {
@@ -33,6 +38,9 @@ test('buildExtractKitRequest returns multipart payload when a guideline file is 
     pastContentExamples: 'Example',
     brandGuidelinesFile: file,
     audienceType: 'Urban creatives',
+    funnelStages: ['Top of funnel — awareness', 'Mid funnel — consideration'],
+    proofStyle: 'Other',
+    proofStyleOther: 'Founder quote-led with one strong stat',
   });
 
   assert.equal(request.isMultipart, true);
@@ -43,5 +51,7 @@ test('buildExtractKitRequest returns multipart payload when a guideline file is 
   assert.equal(request.data.get('websiteUrls'), JSON.stringify(['https://example.com', 'https://example.com/about']));
   assert.equal(request.data.get('pastContentExamples'), 'Example');
   assert.equal(request.data.get('audienceType'), 'Urban creatives');
+  assert.equal(request.data.get('funnelStages'), JSON.stringify(['Top of funnel — awareness', 'Mid funnel — consideration']));
+  assert.equal(request.data.get('proofStyle'), 'Founder quote-led with one strong stat');
   assert.equal(request.data.get('brandGuidelinesFile').name, 'brand-guide.docx');
 });

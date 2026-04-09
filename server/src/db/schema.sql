@@ -146,6 +146,7 @@ CREATE TABLE IF NOT EXISTS brand_kits (
   age_range TEXT,
   industry_sector TEXT,
   industry_target TEXT,
+  funnel_stages TEXT[] DEFAULT '{}',
   funnel_stage TEXT,
   tone_shift TEXT,
   proof_style TEXT,
@@ -166,6 +167,12 @@ CREATE TABLE IF NOT EXISTS brand_kits (
 );
 
 DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'brand_kits' AND column_name = 'funnel_stages'
+  ) THEN
+    ALTER TABLE brand_kits ADD COLUMN funnel_stages TEXT[] DEFAULT '{}';
+  END IF;
   IF NOT EXISTS (
     SELECT 1 FROM information_schema.columns
     WHERE table_name = 'brand_kits' AND column_name = 'website_urls'

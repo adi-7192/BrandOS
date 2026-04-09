@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import pool from '../db/pool.js';
 import { authenticate } from '../middleware/auth.js';
-import { buildUpcomingDeadlineItems } from '../services/dashboardSummary.js';
+import { buildUpcomingDeadlineItems, mapDashboardBrandRows } from '../services/dashboardSummary.js';
 
 const router = Router();
 router.use(authenticate);
@@ -33,6 +33,7 @@ router.get('/summary', async (req, res, next) => {
       pool.query(
         `SELECT b.id, b.name, b.market, b.language, b.updated_at,
                 COALESCE(k.voice_adjectives, '{}') AS voice_adjectives,
+                k.guideline_file_name,
                 COUNT(ic.id) FILTER (WHERE ic.status = 'pending') AS pending_brief_count
          FROM brands b
          LEFT JOIN brand_kits k ON k.brand_id = b.id AND k.is_active = TRUE
@@ -193,15 +194,7 @@ router.get('/summary', async (req, res, next) => {
           versionNumber: row.version_number,
           createdAt: row.created_at,
         })),
-        brands: brands.rows.map((row) => ({
-          id: row.id,
-          name: row.name,
-          market: row.market,
-          language: row.language,
-          updatedAt: row.updated_at,
-          voiceAdjectives: row.voice_adjectives || [],
-          pendingBriefCount: Number(row.pending_brief_count || 0),
-        })),
+        brands: mapDashboardBrandRows(brands.rows),
         upcomingDeadlines: buildUpcomingDeadlineItems(upcomingDeadlines.rows),
         setup: {
           hasBrands: Number(countsRow.brand_count || 0) > 0,

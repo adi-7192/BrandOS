@@ -17,7 +17,7 @@ test('buildConfidenceUserMessage creates an initial confidence sample prompt', (
       restrictedWords: ['cheap'],
     },
     campaignType: 'Product launch',
-    funnelStage: 'Top of funnel',
+    funnelStages: ['Top of funnel', 'Mid funnel'],
     toneShift: 'Keep baseline',
     brandLanguage: 'French',
   });
@@ -26,6 +26,7 @@ test('buildConfidenceUserMessage creates an initial confidence sample prompt', (
   assert.match(message, /Strictly follow the brand voice: Warm, Intimate/);
   assert.match(message, /Use vocabulary: craft, neighbourhood/);
   assert.match(message, /NEVER use these words: cheap/);
+  assert.match(message, /Funnel stages: Top of funnel, Mid funnel/);
 });
 
 test('buildConfidenceUserMessage includes critique when regenerating a sample', () => {
@@ -37,7 +38,7 @@ test('buildConfidenceUserMessage includes critique when regenerating a sample', 
       restrictedWords: ['cheap'],
     },
     campaignType: 'Product launch',
-    funnelStage: 'Top of funnel',
+    funnelStages: ['Top of funnel', 'Mid funnel'],
     toneShift: 'Slightly more editorial',
     brandLanguage: 'French',
     currentSample: 'Old draft',
@@ -50,6 +51,7 @@ test('buildConfidenceUserMessage includes critique when regenerating a sample', 
   assert.match(message, /Feedback to address: Too long, CTA missing/);
   assert.match(message, /Additional notes: Needs more intimacy\./);
   assert.match(message, /Keep the same underlying campaign intent while improving the draft/);
+  assert.match(message, /Funnel stages: Top of funnel, Mid funnel/);
 });
 
 test('buildGenerationUserMessage includes brand memory fields beyond voice and restricted words', () => {
@@ -60,12 +62,12 @@ test('buildGenerationUserMessage includes brand memory fields beyond voice and r
       campaignType: 'Product launch',
       audience: 'Design-aware Parisians',
       toneShift: 'More editorial',
-      funnelStage: 'Top of funnel',
+      funnelStages: ['Top of funnel', 'Mid funnel'],
+      funnelStage: 'Top of funnel · Mid funnel',
       contentGoal: 'Brand visibility',
       keyMessage: 'Craft-led summer series',
       language: 'French',
       proofStyle: 'Data-led',
-      contentRole: 'Standalone / organic reach',
       voiceFormality: 3,
       campaignCoreWhy: 'Position the series as a local cultural moment.',
       publishingFrequency: 'Weekly',
@@ -87,7 +89,7 @@ test('buildGenerationUserMessage includes brand memory fields beyond voice and r
   });
 
   assert.match(message, /Proof style: Data-led/);
-  assert.match(message, /Content role: Standalone \/ organic reach/);
+  assert.match(message, /Funnel stages: Top of funnel, Mid funnel/);
   assert.match(message, /Voice formality \(1 informal - 5 formal\): 3/);
   assert.match(message, /Campaign core why: Position the series as a local cultural moment\./);
   assert.match(message, /Brand-specific LinkedIn rule: Hook in line 1 · Keep it punchy/);
@@ -122,6 +124,7 @@ test('buildPreviewSuggestionUserMessage asks the model to prefill editable previ
   assert.match(message, /Campaign: Virtual Try-On Launch/);
   assert.match(message, /Audience: E-commerce teams/);
   assert.match(message, /Key message: Shoppers can try styles before they buy\./);
+  assert.match(message, /Proof style: Brand default/);
   assert.match(message, /Return ONLY a JSON object/);
   assert.match(message, /"hook": "opening line suggestion"/);
 });

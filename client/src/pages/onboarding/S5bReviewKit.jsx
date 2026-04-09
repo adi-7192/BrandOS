@@ -6,7 +6,9 @@ import KitProgressBar from '../../components/layout/KitProgressBar';
 import Button from '../../components/ui/Button';
 import Textarea from '../../components/ui/Textarea';
 import {
+  captureKitCardSnapshot,
   normalizeKitCards,
+  shouldResetApprovedCard,
   updateKitCardArrayField,
   updateKitCardChannelRule,
 } from '../../lib/kit-review';
@@ -26,7 +28,7 @@ function KitCard({ title, badge, children, onApprove, approved, reviewed, onOpen
         <div className="flex items-center gap-2">
           <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
           <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${approved ? 'bg-teal-100 text-teal-700' : 'bg-gray-100 text-gray-500'}`}>
-            {approved ? 'Approved ✓' : badge}
+            {approved ? 'Approved ✓' : reviewed ? 'Needs approval' : badge}
           </span>
         </div>
         <span className="text-gray-400 text-sm">{open ? '▲' : '▼'}</span>
@@ -35,7 +37,6 @@ function KitCard({ title, badge, children, onApprove, approved, reviewed, onOpen
         <div className="mt-3 border-t border-gray-100 pt-3">
           {children}
           <div className="mt-3 flex gap-2">
-            <button className="text-sm text-gray-500 hover:underline">Edit</button>
             <Button variant="teal" className="text-xs px-3 py-1" onClick={onApprove}>
               {approved ? 'Approved ✓' : 'Approve'}
             </Button>
@@ -57,6 +58,7 @@ export default function S5bReviewKit() {
     update,
   } = useOnboarding();
   const [approved, setApproved] = useState({ voice: false, vocab: false, restricted: false, channel: false });
+  const [approvedSnapshots, setApprovedSnapshots] = useState({});
   const [reviewed, setReviewed] = useState({ voice: false, vocab: false, restricted: false, channel: false });
   const [addCoreWhy, setAddCoreWhy] = useState(Boolean(campaignCoreWhy));
   const [coreWhy, setCoreWhy] = useState(campaignCoreWhy || '');
@@ -81,9 +83,27 @@ export default function S5bReviewKit() {
   );
   const lowConfidence = s4aSkipped;
 
-  const approve = (key) => setApproved(a => ({ ...a, [key]: true }));
+  const approve = (key) => {
+    setApproved((prev) => ({ ...prev, [key]: true }));
+    setApprovedSnapshots((prev) => ({
+      ...prev,
+      [key]: captureKitCardSnapshot(cards, key),
+    }));
+  };
   const markReviewed = (key) => setReviewed(r => ({ ...r, [key]: true }));
   const syncKitCards = (nextKitCards) => update({ kitCards: nextKitCards });
+  const applyCardEdit = (cardKey, nextKitCards) => {
+    syncKitCards(nextKitCards);
+
+    if (shouldResetApprovedCard({
+      cardKey,
+      approved: approved[cardKey],
+      approvedSnapshots,
+      currentCards: nextKitCards,
+    })) {
+      setApproved((prev) => ({ ...prev, [cardKey]: false }));
+    }
+  };
 
   const allReviewed = Object.values(reviewed).every(Boolean);
 
@@ -123,7 +143,7 @@ export default function S5bReviewKit() {
               label="Edit adjectives"
               rows={2}
               value={cards.voiceAdjectives.join(', ')}
-              onChange={(e) => syncKitCards(updateKitCardArrayField(cards, 'voiceAdjectives', e.target.value))}
+              onChange={(e) => applyCardEdit('voice', updateKitCardArrayField(cards, 'voiceAdjectives', e.target.value))}
               placeholder="Comma separated adjectives"
             />
           </div>
@@ -141,7 +161,7 @@ export default function S5bReviewKit() {
               label="Edit vocabulary"
               rows={2}
               value={cards.vocabulary.join(', ')}
-              onChange={(e) => syncKitCards(updateKitCardArrayField(cards, 'vocabulary', e.target.value))}
+              onChange={(e) => applyCardEdit('vocab', updateKitCardArrayField(cards, 'vocabulary', e.target.value))}
               placeholder="Comma separated words or phrases"
             />
           </div>
@@ -160,7 +180,7 @@ export default function S5bReviewKit() {
               label="Edit restricted words"
               rows={2}
               value={cards.restrictedWords.join(', ')}
-              onChange={(e) => syncKitCards(updateKitCardArrayField(cards, 'restrictedWords', e.target.value))}
+              onChange={(e) => applyCardEdit('restricted', updateKitCardArrayField(cards, 'restrictedWords', e.target.value))}
               placeholder="Comma separated blocked words"
             />
           </div>
@@ -177,13 +197,13 @@ export default function S5bReviewKit() {
               label="LinkedIn rule"
               rows={2}
               value={cards.channelRules?.linkedin}
-              onChange={(e) => syncKitCards(updateKitCardChannelRule(cards, 'linkedin', e.target.value))}
+              onChange={(e) => applyCardEdit('channel', updateKitCardChannelRule(cards, 'linkedin', e.target.value))}
             />
             <Textarea
               label="Blog rule"
               rows={2}
               value={cards.channelRules?.blog}
-              onChange={(e) => syncKitCards(updateKitCardChannelRule(cards, 'blog', e.target.value))}
+              onChange={(e) => applyCardEdit('channel', updateKitCardChannelRule(cards, 'blog', e.target.value))}
             />
           </div>
         </KitCard>

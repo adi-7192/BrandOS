@@ -2,76 +2,68 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
-  DEFAULT_KIT_CARDS,
-  normalizeKitCards,
+  captureKitCardSnapshot,
+  shouldResetApprovedCard,
   updateKitCardArrayField,
-  updateKitCardChannelRule,
 } from './kit-review.js';
 
-test('normalizeKitCards fills missing kit card fields with safe defaults', () => {
-  assert.deepEqual(
-    normalizeKitCards({
-      voiceAdjectives: ['Warm'],
-    }),
+test('updateKitCardArrayField supports comma-separated and newline-separated tag edits', () => {
+  const next = updateKitCardArrayField(
     {
       voiceAdjectives: ['Warm'],
-      vocabulary: DEFAULT_KIT_CARDS.vocabulary,
-      restrictedWords: DEFAULT_KIT_CARDS.restrictedWords,
-      channelRules: {
-        linkedin: DEFAULT_KIT_CARDS.channelRules.linkedin,
-        blog: DEFAULT_KIT_CARDS.channelRules.blog,
-      },
-    }
-  );
-});
-
-test('updateKitCardArrayField trims and filters empty values', () => {
-  assert.deepEqual(
-    updateKitCardArrayField(
-      {
-        voiceAdjectives: ['Warm'],
-        vocabulary: [],
-        restrictedWords: [],
-        channelRules: { linkedin: '', blog: '' },
-      },
-      'restrictedWords',
-      ' cheap, free ,, guarantee '
-    ),
-    {
-      voiceAdjectives: ['Warm'],
-      vocabulary: [],
-      restrictedWords: ['cheap', 'free', 'guarantee'],
-      channelRules: {
-        linkedin: DEFAULT_KIT_CARDS.channelRules.linkedin,
-        blog: DEFAULT_KIT_CARDS.channelRules.blog,
-      },
-    }
-  );
-});
-
-test('updateKitCardChannelRule updates one channel rule without losing the other', () => {
-  assert.deepEqual(
-    updateKitCardChannelRule(
-      {
-        voiceAdjectives: ['Warm'],
-        vocabulary: ['craft'],
-        restrictedWords: ['cheap'],
-        channelRules: {
-          linkedin: 'Short and direct',
-          blog: 'Use subheadings',
-        },
-      },
-      'blog',
-      'Use subheadings and examples'
-    ),
-    {
-      voiceAdjectives: ['Warm'],
-      vocabulary: ['craft'],
+      vocabulary: ['community'],
       restrictedWords: ['cheap'],
       channelRules: {
-        linkedin: 'Short and direct',
-        blog: 'Use subheadings and examples',
+        linkedin: 'Keep it short',
+        blog: 'Use subheadings',
       },
-    }
+    },
+    'vocabulary',
+    'founder story, proof-led insight\n customer quote , founder story'
+  );
+
+  assert.deepEqual(next.vocabulary, [
+    'founder story',
+    'proof-led insight',
+    'customer quote',
+  ]);
+});
+
+test('shouldResetApprovedCard only resets the edited card when its approved snapshot changes', () => {
+  const originalCards = {
+    voiceAdjectives: ['Warm', 'Intimate'],
+    vocabulary: ['craft', 'community'],
+    restrictedWords: ['cheap'],
+    channelRules: {
+      linkedin: 'Hook in line 1',
+      blog: 'Use subheadings',
+    },
+  };
+
+  const approvedSnapshots = {
+    voice: captureKitCardSnapshot(originalCards, 'voice'),
+    vocab: captureKitCardSnapshot(originalCards, 'vocab'),
+  };
+
+  const editedCards = updateKitCardArrayField(originalCards, 'vocabulary', 'craft, community, editorial retail');
+
+  assert.equal(
+    shouldResetApprovedCard({
+      cardKey: 'voice',
+      approved: true,
+      approvedSnapshots,
+      currentCards: editedCards,
+    }),
+    false
+  );
+
+  assert.equal(
+    shouldResetApprovedCard({
+      cardKey: 'vocab',
+      approved: true,
+      approvedSnapshots,
+      currentCards: editedCards,
+    }),
+    true
   );
 });

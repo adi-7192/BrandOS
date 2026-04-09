@@ -1,5 +1,6 @@
 import { callAI } from './client.js';
 import { parseStructuredJson } from './structuredOutput.js';
+import { formatFunnelStages, normalizeFunnelStages } from '../../lib/brandKitFields.js';
 
 const SYSTEM_PROMPT = `You are an expert brand strategist extracting a brand voice kit from seed content.
 Extract the following from the provided inputs and return a JSON object only — no preamble.
@@ -21,7 +22,7 @@ Rules:
 - Restricted words are words that clash with this brand's positioning
 - Channel rules must include word limits appropriate for publishing frequency
 - If there is an uploaded guideline excerpt, treat it as a high-authority source of explicit rules
-- Audience, campaign type, funnel stage, proof style, and role in the sales cycle should influence how specific the rules feel
+- Audience, campaign type, funnel stages, and proof style should influence how specific the rules feel
 - If formality is provided, reflect it in the voice and channel rules
 - Respond ONLY with the JSON object. No markdown fences.`;
 
@@ -75,6 +76,7 @@ export function buildKitExtractionUserMessage(params) {
     industrySector,
     industryTarget,
     campaignType,
+    funnelStages,
     funnelStage,
     contentGoal,
     publishingFrequency,
@@ -82,9 +84,9 @@ export function buildKitExtractionUserMessage(params) {
     primaryMarket,
     toneShift,
     proofStyle,
-    contentRole,
     voiceFormality,
   } = params;
+  const formattedFunnelStages = formatFunnelStages(normalizeFunnelStages(funnelStages || funnelStage), ', ');
 
   return `Brand: ${brandName}
 Market: ${primaryMarket || 'Not specified'}
@@ -94,11 +96,10 @@ Age range: ${ageRange || 'Not specified'}
 Industry sector: ${industrySector || 'Not specified'}
 Target industry: ${industryTarget || 'Not specified'}
 Campaign type: ${campaignType || 'Not specified'}
-Funnel stage: ${funnelStage || 'Not specified'}
+Funnel stages: ${formattedFunnelStages || 'Not specified'}
 Content goal: ${contentGoal || 'Not specified'}
 Tone shift: ${toneShift || 'Keep baseline'}
 Proof style: ${proofStyle || 'Not specified'}
-Content role: ${contentRole || 'Not specified'}
 Formality level: ${voiceFormality ?? 'Balanced'}
 Publishing frequency: ${publishingFrequency || 'Weekly'}
 

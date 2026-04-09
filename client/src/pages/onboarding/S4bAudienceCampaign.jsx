@@ -6,6 +6,11 @@ import KitProgressBar from '../../components/layout/KitProgressBar';
 import Dropdown from '../../components/ui/Dropdown';
 import Input from '../../components/ui/Input';
 import Button from '../../components/ui/Button';
+import {
+  FUNNEL_STAGE_OPTIONS,
+  PROOF_STYLE_OPTIONS,
+  normalizeFunnelStages,
+} from '../../lib/brand-kit-fields';
 
 export default function S4bAudienceCampaign() {
   const navigate = useNavigate();
@@ -14,6 +19,7 @@ export default function S4bAudienceCampaign() {
   const [formality, setFormality] = useState(ob.voiceFormality ?? 3);
 
   const formalityLabel = ['Conversational', 'Leans conversational', 'Balanced', 'Leans formal', 'Formal'][formality - 1];
+  const selectedFunnelStages = normalizeFunnelStages(ob.funnelStages);
 
   const canSubmit = ob.publishingFrequency !== '';
 
@@ -25,6 +31,21 @@ export default function S4bAudienceCampaign() {
   };
 
   const f = (key) => ({ value: ob[key], onChange: (e) => ob.update({ [key]: e.target.value }) });
+  const toggleFunnelStage = (option) => {
+    const nextStages = selectedFunnelStages.includes(option)
+      ? selectedFunnelStages.filter((entry) => entry !== option)
+      : [...selectedFunnelStages, option];
+
+    ob.update({ funnelStages: nextStages });
+  };
+
+  const handleProofStyleChange = (event) => {
+    const nextValue = event.target.value;
+    ob.update({
+      proofStyle: nextValue,
+      proofStyleOther: nextValue === 'Other' ? ob.proofStyleOther : '',
+    });
+  };
 
   return (
     <OnboardingShell phase="Phase 2 · build brand kit">
@@ -56,25 +77,54 @@ export default function S4bAudienceCampaign() {
           <div className="flex flex-col gap-4">
             <Dropdown label="Campaign type" {...f('campaignType')} tooltip="A product launch needs 'what' and 'why now'. Thought leadership needs a strong POV with no hard sell."
               options={['Product launch', 'Brand awareness', 'Seasonal', 'Thought leadership', 'PR and press', 'Community']} />
-            <Dropdown label="Funnel stage" {...f('funnelStage')} tooltip="The single biggest lever for B2B content effectiveness."
-              options={['Top of funnel — awareness (reaching new audiences)', 'Mid funnel — consideration (nurturing interest)', 'Bottom of funnel — decision (driving a specific action)']} />
+            <div className="flex flex-col gap-1">
+              <label className="flex items-center gap-1 text-sm font-medium text-gray-700">
+                Funnel stages
+                <span className="group relative ml-1 cursor-help text-gray-400 hover:text-gray-600">
+                  ?
+                  <span className="absolute left-0 top-6 z-10 hidden w-64 rounded-md bg-gray-900 p-2 text-xs text-white group-hover:block">
+                    Pick every stage this brand usually writes for. Multi-select helps BrandOS avoid forcing one campaign shape onto every generation.
+                  </span>
+                </span>
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {FUNNEL_STAGE_OPTIONS.map((option) => {
+                  const active = selectedFunnelStages.includes(option);
+                  return (
+                    <button
+                      key={option}
+                      type="button"
+                      onClick={() => toggleFunnelStage(option)}
+                      className={`rounded-full border px-3 py-2 text-sm transition-colors ${
+                        active
+                          ? 'border-gray-900 bg-gray-900 text-white'
+                          : 'border-gray-300 bg-white text-gray-700 hover:border-gray-500'
+                      }`}
+                    >
+                      {option}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
             <Dropdown label="Tone shift" {...f('toneShift')} tooltip="Layered on top of brand voice — does not replace it."
               options={['More urgent', 'More celebratory', 'More intimate', 'More authoritative', 'More playful', 'Keep baseline — no shift']} />
-            <Dropdown label="Proof point style" {...f('proofStyle')} tooltip="B2B buyers trust differently. Mixing styles without intention reads as unfocused."
-              options={['Data-led — statistics and research', 'Case study-led — client stories and results', 'Opinion-led — strong point of view', 'Mixed — combination of all three']} />
-
-            {/* Content role with inline info box */}
-            <div>
-              <div className="rounded-lg bg-purple-50 border border-purple-200 p-3 mb-2 text-xs text-purple-800">
-                <ul className="space-y-1 list-disc list-inside">
-                  <li>Language permission level — standalone organic never pitches. Sales enablement can be direct about outcomes.</li>
-                  <li>Social proof usage — ABM references specific industry pain points. Organic stays broad.</li>
-                  <li>Closing structure — organic ends with a thought or question. Sales enablement ends with a clear action.</li>
-                </ul>
-              </div>
-              <Dropdown label="Content role in the sales cycle" {...f('contentRole')}
-                options={['Standalone / organic reach', 'Sales enablement', 'Account-based (ABM)', 'Partner / co-marketing']} />
-            </div>
+            <Dropdown
+              label="Proof point style"
+              value={ob.proofStyle}
+              onChange={handleProofStyleChange}
+              tooltip="Choose the kind of evidence that should make the content feel credible. Use Other when your team has a specific proof pattern."
+              options={PROOF_STYLE_OPTIONS}
+            />
+            {ob.proofStyle === 'Other' && (
+              <Input
+                label="Describe your proof point style"
+                placeholder="e.g. Founder quote first, then one concrete stat"
+                value={ob.proofStyleOther}
+                onChange={(e) => ob.update({ proofStyleOther: e.target.value })}
+                tooltip="This custom proof style will be stored and fed into generation prompts exactly as you write it."
+              />
+            )}
           </div>
         </section>
 

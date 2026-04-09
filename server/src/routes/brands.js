@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import pool from '../db/pool.js';
 import { authenticate } from '../middleware/auth.js';
+import { formatFunnelStages, normalizeFunnelStages } from '../lib/brandKitFields.js';
 
 const router = Router();
 router.use(authenticate);
@@ -12,8 +13,8 @@ router.get('/', async (req, res, next) => {
     const { rows } = await pool.query(
       `SELECT b.*, k.voice_adjectives, k.vocabulary, k.restricted_words, k.content_goal,
               k.audience_type, k.buyer_seniority, k.age_range,
-              k.industry_sector, k.industry_target, k.funnel_stage,
-              k.tone_shift, k.proof_style, k.content_role,
+              k.industry_sector, k.industry_target, k.funnel_stages, k.funnel_stage,
+              k.tone_shift, k.proof_style,
               k.publishing_frequency, k.formality_level, k.campaign_core_why,
               k.past_content_examples, k.website_url, k.website_urls, k.website_summary,
               k.guideline_file_url, k.guideline_file_name, k.guideline_storage_path, k.guideline_text_excerpt,
@@ -35,8 +36,8 @@ router.get('/:id', async (req, res, next) => {
       `SELECT b.*, k.voice_adjectives, k.vocabulary, k.restricted_words,
               k.channel_rules_linkedin, k.channel_rules_blog, k.content_goal,
               k.audience_type, k.buyer_seniority, k.age_range,
-              k.industry_sector, k.industry_target, k.funnel_stage,
-              k.tone_shift, k.proof_style, k.content_role,
+              k.industry_sector, k.industry_target, k.funnel_stages, k.funnel_stage,
+              k.tone_shift, k.proof_style,
               k.publishing_frequency, k.formality_level, k.campaign_core_why,
               k.past_content_examples, k.website_url, k.website_urls, k.website_summary,
               k.guideline_file_url, k.guideline_file_name, k.guideline_storage_path, k.guideline_text_excerpt,
@@ -57,6 +58,8 @@ async function getWorkspace(userId) {
 }
 
 function formatBrand(row) {
+  const funnelStages = normalizeFunnelStages(row.funnel_stages || row.funnel_stage);
+
   return {
     id: row.id,
     name: row.name,
@@ -75,10 +78,10 @@ function formatBrand(row) {
       ageRange: row.age_range,
       industrySector: row.industry_sector,
       industryTarget: row.industry_target,
-      funnelStage: row.funnel_stage,
+      funnelStages,
+      funnelStage: formatFunnelStages(funnelStages) || row.funnel_stage,
       toneShift: row.tone_shift,
       proofStyle: row.proof_style,
-      contentRole: row.content_role,
       voiceFormality: row.formality_level,
       campaignCoreWhy: row.campaign_core_why,
       pastContentExamples: row.past_content_examples,

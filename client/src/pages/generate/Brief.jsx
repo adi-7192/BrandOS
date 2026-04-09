@@ -245,7 +245,7 @@ export default function Brief() {
               <ContextItem label="Language" value={brief?.language || 'English'} />
               <ContextItem label="Brand voice" value={brief?.kit?.voiceAdjectives?.join(' · ') || 'Pending'} />
               <ContextItem label="Guardrails" value={`${brief?.kit?.restrictedWords?.length || 0} restricted words`} />
-              <ContextItem label="Content role" value={brief?.contentRole || brief?.kit?.contentRole || 'Standard campaign content'} />
+              <ContextItem label="Funnel stages" value={brief?.funnelStage || brief?.kit?.funnelStage || 'Not set'} />
               <ContextItem label="Proof style" value={brief?.proofStyle || brief?.kit?.proofStyle || 'Brand default'} />
               <ContextItem label="Publishing cadence" value={brief?.publishingFrequency || brief?.kit?.publishingFrequency || 'Not set'} />
             </div>
