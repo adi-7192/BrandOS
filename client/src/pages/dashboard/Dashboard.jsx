@@ -10,19 +10,13 @@ import {
   buildDraftOutputState,
   buildRecentActivity,
   buildUpcomingDeadlineItems,
+  getEmptyDashboardSummary,
+  normalizeDashboardSummary,
 } from '../../lib/dashboard-flow';
 import { buildSessionRoute } from '../../lib/generation-session';
 import { PLATFORM_NAV_ITEMS } from '../../lib/platform-nav';
 
-const emptySummary = {
-  counts: { brands: 0, pendingBriefs: 0, recentDrafts: 0, inProgressSessions: 0, brandsInPipeline: 0 },
-  pendingBriefs: [],
-  recentSessions: [],
-  recentDrafts: [],
-  brands: [],
-  upcomingDeadlines: [],
-  setup: { hasBrands: false, hasPendingBriefs: false, hasRecentSessions: false, hasRecentDrafts: false, gmailAvailable: false },
-};
+const emptySummary = getEmptyDashboardSummary();
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -32,8 +26,8 @@ export default function Dashboard() {
 
   useEffect(() => {
     api.get('/dashboard/summary')
-      .then((res) => setSummary(res.data.summary))
-      .catch(() => setSummary(emptySummary))
+      .then((res) => setSummary(normalizeDashboardSummary(res.data.summary)))
+      .catch(() => setSummary(getEmptyDashboardSummary()))
       .finally(() => setLoading(false));
   }, []);
 

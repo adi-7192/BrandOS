@@ -1,3 +1,57 @@
+const EMPTY_DASHBOARD_SUMMARY = {
+  counts: {
+    brands: 0,
+    pendingBriefs: 0,
+    recentDrafts: 0,
+    inProgressSessions: 0,
+    brandsInPipeline: 0,
+  },
+  pendingBriefs: [],
+  recentSessions: [],
+  recentDrafts: [],
+  brands: [],
+  upcomingDeadlines: [],
+  setup: {
+    hasBrands: false,
+    hasPendingBriefs: false,
+    hasRecentSessions: false,
+    hasRecentDrafts: false,
+    gmailAvailable: false,
+  },
+};
+
+export function normalizeDashboardSummary(summary) {
+  const input = summary && typeof summary === 'object' ? summary : {};
+  const counts = input.counts && typeof input.counts === 'object' ? input.counts : {};
+  const setup = input.setup && typeof input.setup === 'object' ? input.setup : {};
+
+  return {
+    counts: {
+      brands: Number(counts.brands || 0),
+      pendingBriefs: Number(counts.pendingBriefs || 0),
+      recentDrafts: Number(counts.recentDrafts || 0),
+      inProgressSessions: Number(counts.inProgressSessions || 0),
+      brandsInPipeline: Number(counts.brandsInPipeline || 0),
+    },
+    pendingBriefs: Array.isArray(input.pendingBriefs) ? input.pendingBriefs : [],
+    recentSessions: Array.isArray(input.recentSessions) ? input.recentSessions : [],
+    recentDrafts: Array.isArray(input.recentDrafts) ? input.recentDrafts : [],
+    brands: Array.isArray(input.brands) ? input.brands : [],
+    upcomingDeadlines: Array.isArray(input.upcomingDeadlines) ? input.upcomingDeadlines : [],
+    setup: {
+      hasBrands: Boolean(setup.hasBrands),
+      hasPendingBriefs: Boolean(setup.hasPendingBriefs),
+      hasRecentSessions: Boolean(setup.hasRecentSessions),
+      hasRecentDrafts: Boolean(setup.hasRecentDrafts),
+      gmailAvailable: Boolean(setup.gmailAvailable),
+    },
+  };
+}
+
+export function getEmptyDashboardSummary() {
+  return normalizeDashboardSummary(EMPTY_DASHBOARD_SUMMARY);
+}
+
 export function buildDashboardStats(summary) {
   const counts = summary?.counts || {};
   const brandCount = Number(counts.brands || 0);

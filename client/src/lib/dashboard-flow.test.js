@@ -9,7 +9,41 @@ import {
   buildDraftOutputState,
   buildRecentActivity,
   buildUpcomingDeadlineItems,
+  normalizeDashboardSummary,
 } from './dashboard-flow.js';
+
+test('normalizeDashboardSummary fills missing nested dashboard data so the page does not crash on partial API responses', () => {
+  assert.deepEqual(
+    normalizeDashboardSummary({
+      counts: {
+        brands: 3,
+      },
+      brands: null,
+      pendingBriefs: undefined,
+    }),
+    {
+      counts: {
+        brands: 3,
+        pendingBriefs: 0,
+        recentDrafts: 0,
+        inProgressSessions: 0,
+        brandsInPipeline: 0,
+      },
+      pendingBriefs: [],
+      recentSessions: [],
+      recentDrafts: [],
+      brands: [],
+      upcomingDeadlines: [],
+      setup: {
+        hasBrands: false,
+        hasPendingBriefs: false,
+        hasRecentSessions: false,
+        hasRecentDrafts: false,
+        gmailAvailable: false,
+      },
+    }
+  );
+});
 
 test('buildDashboardStats returns the refreshed KPI row', () => {
   const stats = buildDashboardStats({
