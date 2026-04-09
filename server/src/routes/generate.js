@@ -4,6 +4,7 @@ import { authenticate } from '../middleware/auth.js';
 import { buildCanonicalBrief } from '../services/ai/briefBuilder.js';
 import { generateContent, generatePreviewSuggestions, iterateContent, rewriteSelection } from '../services/ai/generation.js';
 import { mapGenerationSessionRow } from '../services/generationSessions.js';
+import { normalizePublishDateValue } from '../services/extraction/publishDate.js';
 
 const router = Router();
 router.use(authenticate);
@@ -70,12 +71,13 @@ router.post('/sessions', async (req, res, next) => {
       activeTab = 'linkedin',
       lastInstruction = '',
     } = req.body;
+    const publishDate = normalizePublishDateValue(briefPayload?.publishDate || '');
 
     const { rows } = await pool.query(
       `INSERT INTO generation_sessions (
         user_id, brand_id, session_title, source, source_card_ids, status, current_step,
-        brief_payload, preview_payload, output_payload, active_tab, last_instruction
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+        publish_date, brief_payload, preview_payload, output_payload, active_tab, last_instruction
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
       RETURNING *`,
       [
         req.user.id,
@@ -85,6 +87,7 @@ router.post('/sessions', async (req, res, next) => {
         sourceCardIds,
         status,
         currentStep,
+        publishDate || null,
         briefPayload,
         previewPayload,
         outputPayload,
@@ -115,6 +118,7 @@ router.patch('/sessions/:id', async (req, res, next) => {
       activeTab: req.body.activeTab ?? existing.active_tab,
       lastInstruction: req.body.lastInstruction ?? existing.last_instruction,
     };
+    const publishDate = normalizePublishDateValue(nextPayload.briefPayload?.publishDate || existing.publish_date || '');
 
     await pool.query(
       `UPDATE generation_sessions
@@ -123,19 +127,21 @@ router.patch('/sessions/:id', async (req, res, next) => {
            source_card_ids = $3,
            status = $4,
            current_step = $5,
-           brief_payload = $6,
-           preview_payload = $7,
-           output_payload = $8,
-           active_tab = $9,
-           last_instruction = $10,
+           publish_date = $6,
+           brief_payload = $7,
+           preview_payload = $8,
+           output_payload = $9,
+           active_tab = $10,
+           last_instruction = $11,
            updated_at = NOW()
-       WHERE id = $11 AND user_id = $12`,
+       WHERE id = $12 AND user_id = $13`,
       [
         nextPayload.sessionTitle || null,
         nextPayload.source,
         nextPayload.sourceCardIds,
         nextPayload.status,
         nextPayload.currentStep,
+        publishDate || null,
         nextPayload.briefPayload,
         nextPayload.previewPayload,
         nextPayload.outputPayload,

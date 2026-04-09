@@ -217,9 +217,19 @@ CREATE TABLE IF NOT EXISTS inbox_cards (
   unmatched_fields TEXT[] DEFAULT '{}',
   overall_score NUMERIC(4,3),
   thread_id TEXT,
+  publish_date DATE,
   status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'used', 'dismissed')),
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'inbox_cards' AND column_name = 'publish_date'
+  ) THEN
+    ALTER TABLE inbox_cards ADD COLUMN publish_date DATE;
+  END IF;
+END $$;
 
 -- In-progress generation sessions
 CREATE TABLE IF NOT EXISTS generation_sessions (
@@ -231,6 +241,7 @@ CREATE TABLE IF NOT EXISTS generation_sessions (
   source_card_ids TEXT[] DEFAULT '{}',
   status TEXT DEFAULT 'in_progress' CHECK (status IN ('in_progress', 'saved', 'completed', 'abandoned')),
   current_step TEXT DEFAULT 'brief' CHECK (current_step IN ('brief', 'preview', 'creating', 'output')),
+  publish_date DATE,
   brief_payload JSONB DEFAULT '{}'::jsonb,
   preview_payload JSONB DEFAULT '{}'::jsonb,
   output_payload JSONB DEFAULT '{}'::jsonb,
@@ -239,6 +250,15 @@ CREATE TABLE IF NOT EXISTS generation_sessions (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'generation_sessions' AND column_name = 'publish_date'
+  ) THEN
+    ALTER TABLE generation_sessions ADD COLUMN publish_date DATE;
+  END IF;
+END $$;
 
 -- Drafts
 CREATE TABLE IF NOT EXISTS drafts (

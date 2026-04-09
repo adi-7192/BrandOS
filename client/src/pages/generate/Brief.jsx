@@ -49,6 +49,7 @@ export default function Brief() {
   const [brief, setBrief] = useState(null);
   const [campaignName, setCampaignName] = useState('');
   const [campaignType, setCampaignType] = useState('');
+  const [publishDate, setPublishDate] = useState('');
   const [audienceType, setAudienceType] = useState('');
   const [contentGoal, setContentGoal] = useState('');
   const [toneShift, setToneShift] = useState('');
@@ -64,6 +65,7 @@ export default function Brief() {
   const seedFields = (nextBrief) => {
     setCampaignName(nextBrief?.campaignName || '');
     setCampaignType(nextBrief?.campaignType || '');
+    setPublishDate(nextBrief?.publishDate || '');
     setAudienceType(nextBrief?.audienceType || nextBrief?.audience || '');
     setContentGoal(nextBrief?.contentGoal || '');
     setToneShift(nextBrief?.toneShift || '');
@@ -133,6 +135,7 @@ export default function Brief() {
   const nextBrief = brief ? buildConfirmedBrief(brief, {
     campaignName,
     campaignType,
+    publishDate,
     audienceType,
     contentGoal,
     toneShift,
@@ -187,7 +190,7 @@ export default function Brief() {
     }, 700);
 
     return () => clearTimeout(timer);
-  }, [audienceType, campaignName, campaignType, contentGoal, keyMessage, loading, nextBrief, sessionId, toneShift]);
+  }, [audienceType, campaignName, campaignType, contentGoal, keyMessage, loading, nextBrief, publishDate, sessionId, toneShift]);
 
   const handleContinue = async () => {
     const persisted = await persistSession({ nextStep: 'preview' });
@@ -263,6 +266,16 @@ export default function Brief() {
                 onChange={(e) => setCampaignType(e.target.value)}
                 options={['Product launch', 'Brand awareness', 'Seasonal campaign', 'Event promotion', 'Thought leadership', 'Customer story', 'Other']}
               />
+            </FieldBlock>
+
+            <FieldBlock label="Publish date" source={brief?.publishDate && !isManualMode ? 'inbox' : 'user-provided'}>
+              <input
+                type="date"
+                value={publishDate}
+                onChange={(e) => setPublishDate(e.target.value)}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:outline-none"
+              />
+              <p className="text-xs text-gray-400 mt-1">Use the campaign&apos;s go-live date so the dashboard can flag upcoming deadlines correctly.</p>
             </FieldBlock>
 
             <FieldBlock label="Audience" source={brief?.audience ? 'inbox' : 'user-provided'}>
@@ -343,6 +356,7 @@ function buildFieldSnapshot(brief) {
   return JSON.stringify({
     campaignName: brief?.campaignName || '',
     campaignType: brief?.campaignType || '',
+    publishDate: brief?.publishDate || '',
     audienceType: brief?.audienceType || brief?.audience || '',
     contentGoal: brief?.contentGoal || '',
     toneShift: brief?.toneShift || '',

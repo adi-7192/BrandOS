@@ -1,13 +1,15 @@
 import { callAI } from '../ai/client.js';
 import { parseStructuredJson } from '../ai/structuredOutput.js';
+import { normalizePublishDateValue } from './publishDate.js';
 
 const FIELD_WEIGHTS = {
-  key_message: 0.25,
-  campaign_type: 0.20,
-  audience: 0.20,
-  tone_shift: 0.15,
+  key_message: 0.22,
+  campaign_type: 0.18,
+  audience: 0.18,
+  tone_shift: 0.12,
   content_goal: 0.15,
   cta_intent: 0.05,
+  publish_date: 0.10,
 };
 
 /**
@@ -35,6 +37,7 @@ Fields to extract:
 - tone_shift: Any tone direction (urgent, celebratory, intimate, authoritative, playful, or null for baseline)
 - content_goal: What this content should achieve (lead generation, brand visibility, thought leadership, PR)
 - cta_intent: What action the content should drive (or null)
+- publish_date: The publish or go-live date for this content in YYYY-MM-DD format if the email states one clearly, otherwise null
 
 Return ONLY a JSON object:
 {
@@ -43,7 +46,8 @@ Return ONLY a JSON object:
   "audience": { "value": "...", "confidence": 0.7, "sourceQuote": "..." },
   "tone_shift": { "value": "...", "confidence": 0.6, "sourceQuote": "..." },
   "content_goal": { "value": "...", "confidence": 0.5, "sourceQuote": "..." },
-  "cta_intent": { "value": "...", "confidence": 0.4, "sourceQuote": "..." }
+  "cta_intent": { "value": "...", "confidence": 0.4, "sourceQuote": "..." },
+  "publish_date": { "value": "2026-06-10", "confidence": 0.7, "sourceQuote": "..." }
 }`;
 
   const raw = await callAI(
@@ -61,6 +65,14 @@ Return ONLY a JSON object:
   for (const field of Object.keys(extracted)) {
     if (!extracted[field].sourceQuote) {
       extracted[field].confidence = Math.min(extracted[field].confidence || 0, 0.6);
+    }
+  }
+
+  if (extracted.publish_date) {
+    extracted.publish_date.value = normalizePublishDateValue(extracted.publish_date.value);
+    if (!extracted.publish_date.value) {
+      extracted.publish_date.confidence = 0;
+      extracted.publish_date.sourceQuote = '';
     }
   }
 
@@ -89,6 +101,7 @@ Return ONLY a JSON object:
     matchedFields,
     unmatchedFields,
     overallScore: Math.round(overallScore * 1000) / 1000,
+    publishDate: flatExtracted.publish_date || '',
     excerpt: body?.slice(0, 200),
   };
 }

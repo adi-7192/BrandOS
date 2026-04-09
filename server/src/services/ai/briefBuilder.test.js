@@ -18,6 +18,7 @@ test('buildCanonicalBrief merges extracted fields with active kit context', () =
         campaignType: 'Product launch',
         audience: 'Design-aware Parisians',
         keyMessage: 'Craft-led summer series',
+        publish_date: '2026-06-10',
       },
       voice_adjectives: ['Warm', 'Intimate'],
       vocabulary: ['craft', 'neighbourhood'],
@@ -55,6 +56,7 @@ test('buildCanonicalBrief merges extracted fields with active kit context', () =
     language: 'French',
     campaignName: 'Summer workshop series',
     campaignType: 'Product launch',
+    publishDate: '2026-06-10',
     audience: 'Design-aware Parisians',
     audienceType: '28-40 urban creatives',
     toneShift: 'Keep baseline',
@@ -136,6 +138,7 @@ test('buildCanonicalBrief prefers extracted updates across multiple cards and fl
   ], ['card-1', 'card-2']);
 
   assert.equal(brief.campaignType, 'Awareness');
+  assert.equal(brief.publishDate, '');
   assert.equal(brief.keyMessage, 'Most recent message');
   assert.equal(brief.audience, 'Creative audience');
   assert.equal(brief.lowConfidence, true);

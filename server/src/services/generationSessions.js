@@ -10,6 +10,7 @@ export function mapGenerationSessionRow(row) {
     sourceCardIds: row.source_card_ids || [],
     status: row.status,
     currentStep: row.current_step,
+    publishDate: row.publish_date || '',
     briefPayload: row.brief_payload || {},
     previewPayload: row.preview_payload || {},
     outputPayload: row.output_payload || {},

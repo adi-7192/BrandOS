@@ -70,6 +70,7 @@ function formatCard(row) {
     matchedFields: row.matched_fields,
     unmatchedFields: row.unmatched_fields,
     overallScore: row.overall_score,
+    publishDate: row.publish_date || '',
     status: row.status,
     createdAt: row.created_at,
     extractedFields: row.extracted_fields,

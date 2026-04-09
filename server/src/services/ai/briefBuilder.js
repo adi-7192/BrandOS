@@ -1,3 +1,5 @@
+import { normalizePublishDateValue } from '../extraction/publishDate.js';
+
 function unique(values) {
   return [...new Set(values.filter(Boolean))];
 }
@@ -63,19 +65,22 @@ export function buildCanonicalBrief(cards, sourceCardIds = []) {
     brandId: merged.brand_id,
     brandName: merged.brand_name,
     language: merged.language,
-    campaignName: extracted.campaignName || merged.email_subject || 'Untitled campaign',
-    campaignType: extracted.campaignType || '',
-    audience: extracted.audience || kit.audienceType || '',
-    audienceType: extracted.audienceType || kit.audienceType || '',
-    toneShift: extracted.toneShift || kit.toneShift || '',
-    funnelStage: extracted.funnelStage || kit.funnelStage || '',
-    contentGoal: extracted.contentGoal || kit.contentGoal || '',
-    publishingFrequency: extracted.publishingFrequency || kit.publishingFrequency || '',
-    proofStyle: extracted.proofStyle || kit.proofStyle || '',
-    contentRole: extracted.contentRole || kit.contentRole || '',
-    voiceFormality: extracted.voiceFormality ?? kit.voiceFormality,
-    campaignCoreWhy: extracted.campaignCoreWhy || kit.campaignCoreWhy || '',
-    keyMessage: extracted.keyMessage || merged.excerpt || merged.email_subject || '',
+    campaignName: getExtractedField(extracted, 'campaignName', 'campaign_name') || merged.email_subject || 'Untitled campaign',
+    campaignType: getExtractedField(extracted, 'campaignType', 'campaign_type') || '',
+    publishDate: normalizePublishDateValue(
+      getExtractedField(extracted, 'publishDate', 'publish_date') || merged.publish_date || ''
+    ),
+    audience: getExtractedField(extracted, 'audience') || kit.audienceType || '',
+    audienceType: getExtractedField(extracted, 'audienceType', 'audience_type') || kit.audienceType || '',
+    toneShift: getExtractedField(extracted, 'toneShift', 'tone_shift') || kit.toneShift || '',
+    funnelStage: getExtractedField(extracted, 'funnelStage', 'funnel_stage') || kit.funnelStage || '',
+    contentGoal: getExtractedField(extracted, 'contentGoal', 'content_goal') || kit.contentGoal || '',
+    publishingFrequency: getExtractedField(extracted, 'publishingFrequency', 'publishing_frequency') || kit.publishingFrequency || '',
+    proofStyle: getExtractedField(extracted, 'proofStyle', 'proof_style') || kit.proofStyle || '',
+    contentRole: getExtractedField(extracted, 'contentRole', 'content_role') || kit.contentRole || '',
+    voiceFormality: getOptionalExtractedField(extracted, 'voiceFormality', 'voice_formality') ?? kit.voiceFormality,
+    campaignCoreWhy: getExtractedField(extracted, 'campaignCoreWhy', 'campaign_core_why') || kit.campaignCoreWhy || '',
+    keyMessage: getExtractedField(extracted, 'keyMessage', 'key_message') || merged.excerpt || merged.email_subject || '',
     lowConfidence,
     sourceCardIds,
     sourceThreadIds: unique(cards.map((card) => card.thread_id)),
@@ -83,4 +88,26 @@ export function buildCanonicalBrief(cards, sourceCardIds = []) {
     restrictedWords: kit.restrictedWords,
     kit,
   };
+}
+
+function getExtractedField(extracted, ...keys) {
+  for (const key of keys) {
+    const value = extracted?.[key];
+    if (value !== undefined && value !== null && value !== '') {
+      return value;
+    }
+  }
+
+  return '';
+}
+
+function getOptionalExtractedField(extracted, ...keys) {
+  for (const key of keys) {
+    const value = extracted?.[key];
+    if (value !== undefined && value !== null && value !== '') {
+      return value;
+    }
+  }
+
+  return undefined;
 }
