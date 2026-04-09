@@ -396,3 +396,39 @@ test('buildDraftOutputState maps a saved draft into output route state', () => {
     },
   });
 });
+
+test('buildUpcomingDeadlineItems ignores malformed publish dates instead of crashing the overview page', () => {
+  const items = buildUpcomingDeadlineItems({
+    upcomingDeadlines: [
+      {
+        id: 'bad-date',
+        kind: 'brief',
+        title: 'Broken deadline',
+        brandName: 'Atlas',
+        publishDate: 'not-a-date',
+        stateLabel: 'Pending brief',
+      },
+      {
+        id: 'good-date',
+        kind: 'session',
+        title: 'Valid deadline',
+        brandName: 'Northstar',
+        publishDate: '2026-04-12',
+        stateLabel: 'In progress',
+      },
+    ],
+  }, new Date('2026-04-09T09:00:00.000Z'));
+
+  assert.deepEqual(items, [
+    {
+      id: 'good-date',
+      kind: 'session',
+      title: 'Valid deadline',
+      brandName: 'Northstar',
+      publishDate: '2026-04-12',
+      stateLabel: 'In progress',
+      urgencyLabel: 'Due in 3 days',
+      urgencyTone: 'amber',
+    },
+  ]);
+});

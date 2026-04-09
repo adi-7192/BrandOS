@@ -689,7 +689,7 @@ function formatRelativeTime(value) {
 function formatDeadlineDate(value) {
   const date = new Date(`${value}T00:00:00.000Z`);
   if (Number.isNaN(date.getTime())) {
-    return '';
+    return 'Publish date pending';
   }
 
   return new Intl.DateTimeFormat('en-US', {

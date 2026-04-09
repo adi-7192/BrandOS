@@ -95,7 +95,7 @@ export function buildDashboardStats(summary) {
 
 export function buildUpcomingDeadlineItems(summary, now = new Date()) {
   return [...(summary?.upcomingDeadlines || [])]
-    .filter((item) => item.publishDate)
+    .filter((item) => isValidDateInput(item.publishDate))
     .sort((a, b) => getTimestamp(a.publishDate) - getTimestamp(b.publishDate))
     .slice(0, 6)
     .map((item) => {
@@ -270,6 +270,13 @@ function getBriefQualityLabel(matchedFieldCount) {
 
 function getDeadlineUrgency(publishDate, now) {
   const date = new Date(`${publishDate}T00:00:00.000Z`);
+  if (Number.isNaN(date.getTime())) {
+    return {
+      urgencyLabel: 'Publish date pending',
+      urgencyTone: 'neutral',
+    };
+  }
+
   const today = new Date(Date.UTC(
     now.getUTCFullYear(),
     now.getUTCMonth(),
@@ -307,5 +314,14 @@ function getDeadlineUrgency(publishDate, now) {
 }
 
 function formatCalendarDate(value) {
+  if (!(value instanceof Date) || Number.isNaN(value.getTime())) {
+    return 'soon';
+  }
+
   return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }).format(value);
+}
+
+function isValidDateInput(value) {
+  if (!value) return false;
+  return !Number.isNaN(new Date(`${value}T00:00:00.000Z`).getTime());
 }
