@@ -98,8 +98,8 @@ export default function Creating() {
   }, [navigate, sessionIdParam, state]);
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <TopNav />
+    <div className="min-h-screen bg-[var(--brand-bg)]">
+      <TopNav eyebrow="Campaign flow" meta="Generating content" />
       <div className="max-w-2xl mx-auto px-6 py-8">
         <div className="flex items-center gap-2 text-xs text-gray-400 mb-8">
           <span>Brief</span><span>→</span><span>Preview</span><span>→</span>

@@ -12,6 +12,7 @@ import {
   buildUpcomingDeadlineItems,
 } from '../../lib/dashboard-flow';
 import { buildSessionRoute } from '../../lib/generation-session';
+import { PLATFORM_NAV_ITEMS } from '../../lib/platform-nav';
 
 const emptySummary = {
   counts: { brands: 0, pendingBriefs: 0, recentDrafts: 0, inProgressSessions: 0, brandsInPipeline: 0 },
@@ -22,13 +23,6 @@ const emptySummary = {
   upcomingDeadlines: [],
   setup: { hasBrands: false, hasPendingBriefs: false, hasRecentSessions: false, hasRecentDrafts: false, gmailAvailable: false },
 };
-
-const navItems = [
-  { to: '/dashboard', label: 'Overview', icon: 'grid', end: true },
-  { to: '/settings/brands', label: 'Brand Kits', icon: 'layers', end: false },
-  { to: '/inbox', label: 'Inbox', icon: 'inbox', end: true },
-  { to: '/settings', label: 'Settings', icon: 'settings', end: true },
-];
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -168,7 +162,7 @@ export default function Dashboard() {
             <div className="overflow-x-auto px-3 py-5 lg:overflow-visible">
               <p className="px-3 pb-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#657089]">Main</p>
               <div className="flex gap-2 lg:flex-col">
-                {navItems.map((item) => (
+                {PLATFORM_NAV_ITEMS.map((item) => (
                   <NavLink
                     key={item.to}
                     to={item.to}
@@ -183,7 +177,7 @@ export default function Dashboard() {
                   >
                     {({ isActive }) => (
                       <>
-                        <SidebarIcon name={item.icon} active={isActive} />
+                        <SidebarIcon name={getSidebarIconName(item.to)} active={isActive} />
                         <span>{item.label}</span>
                       </>
                     )}
@@ -492,6 +486,13 @@ export default function Dashboard() {
       </div>
     </div>
   );
+}
+
+function getSidebarIconName(path) {
+  if (path === '/dashboard') return 'grid';
+  if (path === '/settings/brands') return 'layers';
+  if (path === '/inbox') return 'inbox';
+  return 'settings';
 }
 
 function ActionCard({ title, count, delay, children }) {

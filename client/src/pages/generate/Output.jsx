@@ -296,8 +296,8 @@ export default function Output() {
   }, [activeTab]);
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <TopNav />
+    <div className="min-h-screen bg-[var(--brand-bg)]">
+      <TopNav eyebrow="Campaign flow" meta="Generated content ready to review" />
       <div className="max-w-3xl mx-auto px-6 py-8">
         {/* Tabs */}
         <div className="flex gap-2 mb-5">

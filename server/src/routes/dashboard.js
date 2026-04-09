@@ -39,7 +39,7 @@ router.get('/summary', async (req, res, next) => {
          LEFT JOIN brand_kits k ON k.brand_id = b.id AND k.is_active = TRUE
          LEFT JOIN inbox_cards ic ON ic.brand_id = b.id
          WHERE b.workspace_id = $1
-         GROUP BY b.id, k.voice_adjectives
+         GROUP BY b.id, k.voice_adjectives, k.guideline_file_name
          ORDER BY b.updated_at DESC`,
         [workspace.id]
       ),

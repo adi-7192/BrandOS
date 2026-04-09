@@ -1,12 +1,6 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-
-const navItems = [
-  { to: '/dashboard', label: 'Overview', icon: 'grid', end: true },
-  { to: '/settings/brands', label: 'Brand Kits', icon: 'layers', end: false },
-  { to: '/inbox', label: 'Inbox', icon: 'inbox', end: true },
-  { to: '/settings', label: 'Settings', icon: 'settings', end: true },
-];
+import { PLATFORM_NAV_ITEMS } from '../../lib/platform-nav';
 
 export default function AppShell({ children }) {
   const navigate = useNavigate();
@@ -37,7 +31,7 @@ export default function AppShell({ children }) {
             <div className="overflow-x-auto px-3 py-5 lg:overflow-visible">
               <p className="px-3 pb-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#657089]">Main</p>
               <div className="flex gap-2 lg:flex-col">
-                {navItems.map((item) => (
+                {PLATFORM_NAV_ITEMS.map((item) => (
                   <NavLink
                     key={item.to}
                     to={item.to}
@@ -52,7 +46,7 @@ export default function AppShell({ children }) {
                   >
                     {({ isActive }) => (
                       <>
-                        <SidebarIcon name={item.icon} active={isActive} />
+                        <SidebarIcon name={getSidebarIconName(item.to)} active={isActive} />
                         <span>{item.label}</span>
                       </>
                     )}
@@ -94,6 +88,13 @@ function SidebarIcon({ name, active }) {
   const stroke = active ? '#ffffff' : '#a9b4c7';
   const className = 'h-5 w-5 shrink-0';
   return <IconSvg name={name} stroke={stroke} className={className} />;
+}
+
+function getSidebarIconName(path) {
+  if (path === '/dashboard') return 'grid';
+  if (path === '/settings/brands') return 'layers';
+  if (path === '/inbox') return 'inbox';
+  return 'settings';
 }
 
 function IconSvg({ name, stroke, className }) {
