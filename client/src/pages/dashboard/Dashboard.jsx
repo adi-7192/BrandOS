@@ -485,6 +485,7 @@ export default function Dashboard() {
 function getSidebarIconName(path) {
   if (path === '/dashboard') return 'grid';
   if (path === '/settings/brands') return 'layers';
+  if (path === '/campaigns') return 'campaigns';
   if (path === '/inbox') return 'inbox';
   return 'settings';
 }
@@ -605,6 +606,17 @@ function IconSvg({ name, stroke, className }) {
       <svg viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.8" className={className} aria-hidden="true">
         <path d="M4 5.5h16v10.5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5.5Z" />
         <path d="M4 13h4.8a2 2 0 0 0 1.7.95h3a2 2 0 0 0 1.7-.95H20" />
+      </svg>
+    );
+  }
+
+  if (name === 'campaigns') {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.8" className={className} aria-hidden="true">
+        <path d="M4.75 7.25h11.5a2 2 0 0 1 2 2v8.5H6.75a2 2 0 0 1-2-2v-8.5Z" />
+        <path d="M8 7.25V5.75A1.75 1.75 0 0 1 9.75 4h1.5A1.75 1.75 0 0 1 13 5.75v1.5" />
+        <path d="M18.25 10.5h1.5A1.5 1.5 0 0 1 21.25 12v2.25a1.5 1.5 0 0 1-1.5 1.5h-1.5" />
+        <path d="M8.5 12h5" />
       </svg>
     );
   }

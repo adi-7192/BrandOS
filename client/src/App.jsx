@@ -26,6 +26,7 @@ import S7KitLive from './pages/onboarding/S7KitLive';
 
 // Main app
 import Dashboard from './pages/dashboard/Dashboard';
+import Campaigns from './pages/campaigns/Campaigns';
 import Inbox from './pages/inbox/Inbox';
 import Brief from './pages/generate/Brief';
 import Preview from './pages/generate/Preview';
@@ -65,6 +66,7 @@ export default function App() {
 
             {/* Main app */}
             <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+            <Route path="/campaigns" element={<ProtectedRoute><Campaigns /></ProtectedRoute>} />
             <Route path="/inbox" element={<ProtectedRoute><Inbox /></ProtectedRoute>} />
             <Route path="/generate/brief" element={<ProtectedRoute><Brief /></ProtectedRoute>} />
             <Route path="/generate/preview" element={<ProtectedRoute><Preview /></ProtectedRoute>} />
