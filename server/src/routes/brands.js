@@ -2,6 +2,8 @@ import { Router } from 'express';
 import pool from '../db/pool.js';
 import { authenticate } from '../middleware/auth.js';
 import { formatFunnelStages, normalizeFunnelStages } from '../lib/brandKitFields.js';
+import { collectGuidelineStoragePaths } from '../services/brandDeletion.js';
+import { deleteBrandGuideline } from '../services/storage/supabaseStorage.js';
 
 const router = Router();
 router.use(authenticate);
@@ -49,6 +51,43 @@ router.get('/:id', async (req, res, next) => {
     );
     if (!rows[0]) return res.status(404).json({ message: 'Brand not found.' });
     res.json({ brand: formatBrand(rows[0]) });
+  } catch (err) { next(err); }
+});
+
+router.delete('/:id', async (req, res, next) => {
+  try {
+    const ws = await getWorkspace(req.user.id);
+    if (!ws) return res.status(404).json({ message: 'Workspace not found.' });
+
+    const brandResult = await pool.query(
+      `SELECT b.id, b.name
+       FROM brands b
+       WHERE b.id = $1 AND b.workspace_id = $2
+       LIMIT 1`,
+      [req.params.id, ws.id]
+    );
+
+    if (!brandResult.rows[0]) return res.status(404).json({ message: 'Brand not found.' });
+
+    const kitFilesResult = await pool.query(
+      `SELECT guideline_storage_path
+       FROM brand_kits
+       WHERE brand_id = $1`,
+      [req.params.id]
+    );
+
+    const guidelinePaths = collectGuidelineStoragePaths(kitFilesResult.rows);
+    for (const path of guidelinePaths) {
+      await deleteBrandGuideline(path);
+    }
+
+    await pool.query(
+      `DELETE FROM brands
+       WHERE id = $1 AND workspace_id = $2`,
+      [req.params.id, ws.id]
+    );
+
+    res.json({ ok: true });
   } catch (err) { next(err); }
 });
 

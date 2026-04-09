@@ -3,12 +3,14 @@ import { useState, useEffect, useRef } from 'react';
 import TopNav from '../../components/layout/TopNav';
 import Button from '../../components/ui/Button';
 import Dropdown from '../../components/ui/Dropdown';
+import DangerConfirmModal from '../../components/ui/DangerConfirmModal';
 import api from '../../services/api';
 import {
   buildConfirmedBrief,
   buildManualBriefFromBrand,
   isManualBriefReady,
 } from '../../lib/generation-flow';
+import { buildCampaignDeleteConfirmation } from '../../lib/destructive-actions';
 import {
   buildGenerationSessionPayload,
   buildSessionQuery,
@@ -57,6 +59,8 @@ export default function Brief() {
   const [sessionId, setSessionId] = useState(new URLSearchParams(search).get('sessionId') || state?.sessionId || '');
   const [autosaveState, setAutosaveState] = useState('idle');
   const [loading, setLoading] = useState(true);
+  const [deleteState, setDeleteState] = useState({ open: false, loading: false });
+  const [deleteError, setDeleteError] = useState('');
   const brandIdParam = new URLSearchParams(search).get('brandId');
   const sessionIdParam = new URLSearchParams(search).get('sessionId');
   const initialSnapshotRef = useRef('');
@@ -144,6 +148,9 @@ export default function Brief() {
 
   const readyToContinue = nextBrief ? isManualBriefReady(nextBrief) : false;
   const isManualMode = nextBrief?.mode === 'manual';
+  const campaignDeleteConfirmation = buildCampaignDeleteConfirmation({
+    sessionTitle: nextBrief?.campaignName || brief?.campaignName || brief?.emailSubject || brief?.brandName,
+  });
 
   const persistSession = async ({ nextStep, nextBriefOverride } = {}) => {
     const briefForSave = nextBriefOverride || nextBrief;
@@ -202,18 +209,57 @@ export default function Brief() {
     });
   };
 
+  const handleDeleteCampaign = async () => {
+    if (!sessionId) return;
+
+    setDeleteError('');
+    setDeleteState({ open: true, loading: false });
+  };
+
+  const confirmDeleteCampaign = async () => {
+    if (!sessionId) return;
+
+    setDeleteError('');
+    setDeleteState({ open: true, loading: true });
+
+    try {
+      await api.delete(`/generate/sessions/${sessionId}`);
+      navigate(brief?.brandId ? `/settings/brands/${brief.brandId}` : '/dashboard', { replace: true });
+    } catch {
+      setDeleteError('We could not delete this campaign right now. Please try again.');
+      setDeleteState({ open: true, loading: false });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[var(--brand-bg)]">
       <TopNav eyebrow="Campaign flow" meta="Brief → Preview → Generate" />
       <div className="max-w-2xl mx-auto px-6 py-8">
         {/* Progress */}
-        <div className="flex items-center gap-2 text-xs text-gray-400 mb-8">
-          <span className="font-medium text-gray-900">Brief</span>
-          <span>→</span>
-          <span>Preview</span>
-          <span>→</span>
-          <span>Generate</span>
+        <div className="mb-8 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-2 text-xs text-gray-400">
+            <span className="font-medium text-gray-900">Brief</span>
+            <span>→</span>
+            <span>Preview</span>
+            <span>→</span>
+            <span>Generate</span>
+          </div>
+          {sessionId ? (
+            <button
+              type="button"
+              onClick={handleDeleteCampaign}
+              className="text-sm font-medium text-red-600 transition-colors hover:text-red-700"
+            >
+              Delete campaign
+            </button>
+          ) : null}
         </div>
+
+        {deleteError ? (
+          <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {deleteError}
+          </div>
+        ) : null}
 
         {/* Brand pill */}
         <div className="flex items-center gap-3 mb-6 rounded-xl border border-gray-200 bg-white p-4">
@@ -339,6 +385,21 @@ export default function Brief() {
           </div>
         )}
       </div>
+
+      <DangerConfirmModal
+        open={deleteState.open}
+        title={campaignDeleteConfirmation.title}
+        subject={campaignDeleteConfirmation.subject}
+        description={campaignDeleteConfirmation.description}
+        warningItems={campaignDeleteConfirmation.warningItems}
+        confirmLabel={campaignDeleteConfirmation.confirmLabel}
+        loading={deleteState.loading}
+        onCancel={() => {
+          if (deleteState.loading) return;
+          setDeleteState({ open: false, loading: false });
+        }}
+        onConfirm={confirmDeleteCampaign}
+      />
     </div>
   );
 }

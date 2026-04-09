@@ -10,6 +10,7 @@ import generateRouter from './routes/generate.js';
 import dashboardRouter from './routes/dashboard.js';
 import intentRouter from './routes/intent.js';
 import settingsRouter from './routes/settings.js';
+import inboundRouter from './routes/inbound.js';
 import { errorHandler } from './middleware/errorHandler.js';
 
 const app = express();
@@ -34,6 +35,7 @@ app.use(cors({
   credentials: true
 }));
 
+app.use('/api/inbound', express.raw({ type: 'application/json' }), inboundRouter);
 app.use(express.json());
 
 app.use('/api/auth', authRouter);

@@ -261,10 +261,10 @@ export default function Settings() {
               <div className="rounded-2xl border border-[#e7ecf3] bg-[#fbfcfe] px-4 py-4">
                 <p className="text-sm font-medium text-[#111827]">Integration status</p>
                 <div className="mt-4 space-y-3 text-sm text-[#667085]">
-                  <StatusLine label="Gmail support" value={settings.inbox.gmailAvailable ? 'Available' : 'Not configured'} />
-                  <StatusLine label="Workspace connection" value={titleCase(settings.inbox.gmailConnectionStatus)} />
+                  <StatusLine label="Inbound email" value={settings.inbox.gmailAvailable ? 'Available' : 'Not configured'} />
+                  <StatusLine label="Receiving setup" value={settings.inbox.gmailAvailable ? 'Ready' : 'Needs configuration'} />
                   <p className="rounded-xl bg-white px-3 py-3 text-xs leading-6 text-[#667085]">
-                    Forward completed stakeholder threads to the BrandOS intake address and we will extract usable updates into the inbox.
+                    Forward completed stakeholder threads to the BrandOS intake address and BrandOS will extract campaign and brand updates into your inbox.
                   </p>
                 </div>
               </div>

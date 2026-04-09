@@ -55,8 +55,14 @@ export default function Inbox() {
     loadInbox(activeTab);
   };
 
-  const handleUseUpdate = (id) => {
+  const handleUseUpdate = async (id) => {
+    await api.post(`/inbox/${id}/complete-campaign`);
     navigate('/generate/brief', { state: { cardIds: [id] } });
+  };
+
+  const handleApplyBrandUpdates = async (id) => {
+    await api.post(`/inbox/${id}/apply-brand-updates`);
+    loadInbox(activeTab);
   };
 
   const toggleThread = (threadId) => {
@@ -138,7 +144,9 @@ export default function Inbox() {
                     index={index}
                     onUse={() => handleUseUpdate(card.id)}
                     onDismiss={() => handleDismiss(card.id)}
+                    onApplyBrandUpdates={() => handleApplyBrandUpdates(card.id)}
                     onViewSource={() => setSelectedSourceCardId(card.id)}
+                    onReload={() => loadInbox(activeTab)}
                   />
                 ))
               ) : (
@@ -169,10 +177,48 @@ export default function Inbox() {
   );
 }
 
-function UpdateCard({ card, index, onUse, onDismiss, onViewSource }) {
+function UpdateCard({ card, index, onUse, onDismiss, onApplyBrandUpdates, onViewSource, onReload }) {
+  const [instruction, setInstruction] = useState('');
+  const [interpretation, setInterpretation] = useState(null);
+  const [routingState, setRoutingState] = useState('idle');
+  const [error, setError] = useState('');
   const type = inferUpdateType(card);
   const confidence = getConfidenceView(card.overallScore);
   const tags = getCardTags(card);
+  const needsRouting = card.routingStatus === 'needs_routing' || !card.brandId;
+
+  const handleInterpret = async () => {
+    setRoutingState('loading');
+    setError('');
+    try {
+      const res = await api.post(`/inbox/${card.id}/route/interpret`, { instruction });
+      setInterpretation(res.data.interpretation);
+      setRoutingState('ready');
+    } catch (err) {
+      setError(err.response?.data?.message || 'We could not interpret that routing instruction yet.');
+      setRoutingState('error');
+    }
+  };
+
+  const handleConfirm = async () => {
+    if (!interpretation?.brandId) return;
+
+    setRoutingState('confirming');
+    setError('');
+    try {
+      await api.post(`/inbox/${card.id}/route/confirm`, {
+        brandId: interpretation.brandId,
+        instruction,
+        summary: interpretation.summary,
+        createCampaign: interpretation.createCampaign,
+        reviewBrandUpdates: interpretation.reviewBrandUpdates,
+      });
+      await onReload();
+    } catch (err) {
+      setError(err.response?.data?.message || 'We could not confirm that routing yet.');
+      setRoutingState('error');
+    }
+  };
 
   return (
     <div
@@ -184,6 +230,11 @@ function UpdateCard({ card, index, onUse, onDismiss, onViewSource }) {
         <span className="rounded-full bg-[#f6f8fb] px-3 py-1 text-xs font-semibold text-slate-500">
           {type}
         </span>
+        {needsRouting && (
+          <span className="rounded-full bg-[#fff8ea] px-3 py-1 text-xs font-semibold text-[#c48a20]">
+            Needs routing
+          </span>
+        )}
         <span className={`rounded-full px-3 py-1 text-xs font-semibold ${confidence.classes}`}>
           {confidence.label}
         </span>
@@ -211,10 +262,87 @@ function UpdateCard({ card, index, onUse, onDismiss, onViewSource }) {
         </div>
       )}
 
+      {!needsRouting && (
+        <div className="mt-4 flex flex-wrap gap-2">
+          {card.campaignActionStatus !== 'not_applicable' && (
+            <span className={`rounded-full px-3 py-1 text-xs font-semibold ${getActionStatusView(card.campaignActionStatus).classes}`}>
+              Campaign · {getActionStatusView(card.campaignActionStatus).label}
+            </span>
+          )}
+          {card.brandUpdateActionStatus !== 'not_applicable' && (
+            <span className={`rounded-full px-3 py-1 text-xs font-semibold ${getActionStatusView(card.brandUpdateActionStatus).classes}`}>
+              Brand updates · {getActionStatusView(card.brandUpdateActionStatus).label}
+            </span>
+          )}
+        </div>
+      )}
+
+      {card.brandUpdateProposal?.fields && Object.keys(card.brandUpdateProposal.fields).length > 0 && !needsRouting && (
+        <div className="mt-5 rounded-[20px] border border-[#eef2f7] bg-[#fbfcff] p-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">Brand diff</p>
+          <div className="mt-3 space-y-3">
+            {Object.entries(card.brandUpdateProposal.fields).map(([field, proposal]) => (
+              <div key={`${card.id}-${field}`} className="rounded-[16px] border border-[#e7ebf3] bg-white p-3">
+                <p className="text-sm font-semibold text-slate-900">{formatFieldLabel(field)}</p>
+                <p className="mt-2 text-xs text-slate-400">Current</p>
+                <p className="mt-1 text-sm text-slate-600">{formatProposalValue(proposal.current)}</p>
+                <p className="mt-3 text-xs text-slate-400">Suggested</p>
+                <p className="mt-1 text-sm text-slate-900">{formatProposalValue(proposal.suggested)}</p>
+                {proposal.reason ? <p className="mt-2 text-xs text-slate-500">{proposal.reason}</p> : null}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {needsRouting && (
+        <div className="mt-5 rounded-[20px] border border-[#fff1c8] bg-[#fffaf0] p-4">
+          <p className="text-sm font-semibold text-slate-900">Help BrandOS route this thread</p>
+          <p className="mt-2 text-sm leading-7 text-slate-500">
+            Tell BrandOS which brand this belongs to and whether it should create a campaign, update the brand kit, or both.
+          </p>
+          <textarea
+            value={instruction}
+            onChange={(event) => setInstruction(event.target.value)}
+            placeholder="Example: This belongs to BHV Marais. Create a campaign from this and review any lasting tone changes for the brand kit."
+            className="mt-4 min-h-[96px] w-full rounded-xl border border-[#e7ebf3] bg-white px-4 py-3 text-sm text-slate-700 focus:border-slate-900 focus:outline-none"
+          />
+          {error ? (
+            <p className="mt-3 text-sm text-red-600">{error}</p>
+          ) : null}
+          {interpretation ? (
+            <div className="mt-4 rounded-xl border border-[#dbe7ff] bg-white px-4 py-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--brand-primary)]">Interpretation</p>
+              <p className="mt-2 text-sm text-slate-700">{interpretation.summary}</p>
+              <p className="mt-2 text-xs text-slate-400">
+                Brand: {interpretation.brandName || 'Unresolved'} · Campaign: {interpretation.createCampaign ? 'Yes' : 'No'} · Brand updates: {interpretation.reviewBrandUpdates ? 'Yes' : 'No'}
+              </p>
+              <div className="mt-4 flex flex-wrap items-center gap-3">
+                <Button variant="primary" onClick={handleConfirm} disabled={!interpretation.brandId || routingState === 'confirming'}>
+                  {routingState === 'confirming' ? 'Confirming…' : 'Confirm interpretation'}
+                </Button>
+              </div>
+            </div>
+          ) : null}
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            <Button variant="secondary" onClick={handleInterpret} disabled={!instruction.trim() || routingState === 'loading'}>
+              {routingState === 'loading' ? 'Interpreting…' : 'Interpret instruction'}
+            </Button>
+          </div>
+        </div>
+      )}
+
       <div className="mt-6 flex flex-wrap items-center gap-3">
-        <Button variant="primary" onClick={onUse}>
-          Use this update
-        </Button>
+        {!needsRouting && (
+          <Button variant="primary" onClick={onUse} disabled={card.campaignActionStatus === 'done'}>
+            {card.campaignActionStatus === 'done' ? 'Campaign done' : 'Create campaign'}
+          </Button>
+        )}
+        {!needsRouting && card.brandUpdateProposal?.fields && Object.keys(card.brandUpdateProposal.fields).length > 0 && (
+          <Button variant="secondary" onClick={onApplyBrandUpdates} disabled={card.brandUpdateActionStatus === 'done'}>
+            {card.brandUpdateActionStatus === 'done' ? 'Brand updates done' : 'Update brand kit'}
+          </Button>
+        )}
         {card.status === 'pending' && (
           <button onClick={onDismiss} className="text-sm font-medium text-slate-500 transition-colors hover:text-slate-900">
             Dismiss
@@ -374,6 +502,18 @@ function EmptyInboxState({ activeTab }) {
 }
 
 function inferUpdateType(card) {
+  if (card.classification === 'needs_routing') {
+    return 'Needs routing';
+  }
+
+  if (card.classification === 'mixed') {
+    return 'Campaign + brand update';
+  }
+
+  if (card.classification === 'brand_update') {
+    return 'Brand update';
+  }
+
   const fields = card.matchedFields || [];
   const extracted = card.extractedFields || {};
 
@@ -410,6 +550,14 @@ function formatFieldLabel(field) {
     .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
+function formatProposalValue(value) {
+  if (Array.isArray(value)) {
+    return value.length > 0 ? value.join(', ') : 'None set';
+  }
+
+  return value || 'None set';
+}
+
 function getConfidenceView(score) {
   const value = Number(score || 0);
 
@@ -434,6 +582,18 @@ function getThreadStatusView(statuses) {
   }
 
   return { label: 'dismissed', classes: 'bg-[#f6f8fb] text-slate-500' };
+}
+
+function getActionStatusView(status) {
+  if (status === 'done') {
+    return { label: 'Done', classes: 'bg-[#eefaf3] text-[#2f9b63]' };
+  }
+
+  if (status === 'dismissed') {
+    return { label: 'Dismissed', classes: 'bg-[#f6f8fb] text-slate-500' };
+  }
+
+  return { label: 'Needs review', classes: 'bg-[#eef4ff] text-[var(--brand-primary)]' };
 }
 
 function formatRelativeTime(value) {

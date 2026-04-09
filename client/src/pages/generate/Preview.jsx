@@ -2,12 +2,14 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useEffect, useRef, useState } from 'react';
 import TopNav from '../../components/layout/TopNav';
 import Button from '../../components/ui/Button';
+import DangerConfirmModal from '../../components/ui/DangerConfirmModal';
 import api from '../../services/api';
 import {
   createInitialPreviewSections,
   hasPreviewContent,
   mergePreviewSuggestions,
 } from '../../lib/generation-flow';
+import { buildCampaignDeleteConfirmation } from '../../lib/destructive-actions';
 import {
   buildGenerationSessionPayload,
   buildSessionQuery,
@@ -42,8 +44,13 @@ export default function Preview() {
   const [loading, setLoading] = useState(true);
   const [autosaveState, setAutosaveState] = useState('idle');
   const [suggestionsState, setSuggestionsState] = useState('idle');
+  const [deleteState, setDeleteState] = useState({ open: false, loading: false });
+  const [deleteError, setDeleteError] = useState('');
   const initialSnapshotRef = useRef('');
   const lastSavedSnapshotRef = useRef('');
+  const campaignDeleteConfirmation = buildCampaignDeleteConfirmation({
+    sessionTitle: brief?.campaignName || brief?.emailSubject || brief?.brandName,
+  });
 
   useEffect(() => {
     const loadPreview = async () => {
@@ -177,18 +184,53 @@ export default function Preview() {
     navigate(`/generate/creating${buildSessionQuery(persisted.id)}`, { state: { brief, sections, sessionId: persisted.id } });
   };
 
+  const confirmDeleteCampaign = async () => {
+    if (!sessionId) return;
+
+    setDeleteError('');
+    setDeleteState({ open: true, loading: true });
+
+    try {
+      await api.delete(`/generate/sessions/${sessionId}`);
+      navigate(brief?.brandId ? `/settings/brands/${brief.brandId}` : '/dashboard', { replace: true });
+    } catch {
+      setDeleteError('We could not delete this campaign right now. Please try again.');
+      setDeleteState({ open: true, loading: false });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[var(--brand-bg)]">
       <TopNav eyebrow="Campaign flow" meta="Brief → Preview → Generate" />
       <div className="max-w-2xl mx-auto px-6 py-8">
         {/* Progress */}
-        <div className="flex items-center gap-2 text-xs text-gray-400 mb-8">
-          <span>Brief</span>
-          <span>→</span>
-          <span className="font-medium text-gray-900">Preview</span>
-          <span>→</span>
-          <span>Generate</span>
+        <div className="mb-8 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-2 text-xs text-gray-400">
+            <span>Brief</span>
+            <span>→</span>
+            <span className="font-medium text-gray-900">Preview</span>
+            <span>→</span>
+            <span>Generate</span>
+          </div>
+          {sessionId ? (
+            <button
+              type="button"
+              onClick={() => {
+                setDeleteError('');
+                setDeleteState({ open: true, loading: false });
+              }}
+              className="text-sm font-medium text-red-600 transition-colors hover:text-red-700"
+            >
+              Delete campaign
+            </button>
+          ) : null}
         </div>
+
+        {deleteError ? (
+          <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {deleteError}
+          </div>
+        ) : null}
 
         <div className="flex gap-2 mb-4">
           {['linkedin', 'blog'].map(fmt => (
@@ -260,6 +302,21 @@ export default function Preview() {
           </p>
         )}
       </div>
+
+      <DangerConfirmModal
+        open={deleteState.open}
+        title={campaignDeleteConfirmation.title}
+        subject={campaignDeleteConfirmation.subject}
+        description={campaignDeleteConfirmation.description}
+        warningItems={campaignDeleteConfirmation.warningItems}
+        confirmLabel={campaignDeleteConfirmation.confirmLabel}
+        loading={deleteState.loading}
+        onCancel={() => {
+          if (deleteState.loading) return;
+          setDeleteState({ open: false, loading: false });
+        }}
+        onConfirm={confirmDeleteCampaign}
+      />
     </div>
   );
 }

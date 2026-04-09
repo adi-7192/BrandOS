@@ -2,6 +2,7 @@ import { Router } from 'express';
 import pool from '../db/pool.js';
 import { authenticate } from '../middleware/auth.js';
 import { MODEL, PROVIDER, isAIConfigured, testAIConnection } from '../services/ai/client.js';
+import { buildWorkspaceIntakeEmail } from '../services/inbound/intakeAddress.js';
 
 const router = Router();
 router.use(authenticate);
@@ -114,8 +115,9 @@ router.post('/test-ai', async (_req, res) => {
 });
 
 function buildSettingsResponse({ user, workspace, brandCount }) {
-  const intakeDomain = process.env.INTAKE_EMAIL_DOMAIN;
-  const intakeEmail = intakeDomain ? `updates+${workspace.id.slice(0, 8)}@${intakeDomain}` : null;
+  const intakeDomain = process.env.RESEND_INBOUND_DOMAIN || process.env.INTAKE_EMAIL_DOMAIN;
+  const intakeEmail = buildWorkspaceIntakeEmail(workspace.id, intakeDomain);
+  const inboundAvailable = Boolean(intakeDomain && process.env.RESEND_API_KEY && process.env.RESEND_WEBHOOK_SECRET);
 
   return {
     profile: {
@@ -136,7 +138,7 @@ function buildSettingsResponse({ user, workspace, brandCount }) {
       forwardingEnabled: Boolean(user.forwarding_enabled),
       preferredInboxView: user.preferred_inbox_view || 'updates',
       includeOriginalEmail: user.include_original_email !== false,
-      gmailAvailable: Boolean(process.env.GMAIL_CLIENT_ID && process.env.GMAIL_CLIENT_SECRET),
+      gmailAvailable: inboundAvailable,
       gmailConnectionStatus: workspace.gmail_connection_status || 'not_connected',
     },
     generation: {

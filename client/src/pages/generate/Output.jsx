@@ -2,10 +2,12 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import TopNav from '../../components/layout/TopNav';
 import Button from '../../components/ui/Button';
+import DangerConfirmModal from '../../components/ui/DangerConfirmModal';
 import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { getNextOutputIntentQuestion } from '../../lib/intent-capture';
 import { buildGenerationSessionPayload } from '../../lib/generation-session';
+import { buildCampaignDeleteConfirmation } from '../../lib/destructive-actions';
 import {
   OUTPUT_FEEDBACK_CHIPS,
   SELECTION_REWRITE_CHIPS,
@@ -50,10 +52,15 @@ export default function Output() {
   const [autosaveState, setAutosaveState] = useState('idle');
   const [loading, setLoading] = useState(Boolean(sessionIdParam));
   const [intentHidden, setIntentHidden] = useState(false);
+  const [deleteState, setDeleteState] = useState({ open: false, loading: false });
+  const [deleteError, setDeleteError] = useState('');
   const outputIntentQuestion = useMemo(
     () => getNextOutputIntentQuestion(user?.intentState),
     [user?.intentState]
   );
+  const campaignDeleteConfirmation = buildCampaignDeleteConfirmation({
+    sessionTitle: brief?.campaignName || brief?.emailSubject || brief?.brandName,
+  });
   const activeDraft = content[activeTab] || '';
   const selection = useMemo(
     () => getSelectionState(activeDraft, selectionRange.start, selectionRange.end),
@@ -263,6 +270,21 @@ export default function Output() {
     await refreshUser();
   };
 
+  const confirmDeleteCampaign = async () => {
+    if (!sessionId) return;
+
+    setDeleteError('');
+    setDeleteState({ open: true, loading: true });
+
+    try {
+      await api.delete(`/generate/sessions/${sessionId}`);
+      navigate(brief?.brandId ? `/settings/brands/${brief.brandId}` : '/dashboard', { replace: true });
+    } catch {
+      setDeleteError('We could not delete this campaign right now. Please try again.');
+      setDeleteState({ open: true, loading: false });
+    }
+  };
+
   useEffect(() => {
     if (loading || !sessionId || !brief?.brandId) return undefined;
 
@@ -299,6 +321,30 @@ export default function Output() {
     <div className="min-h-screen bg-[var(--brand-bg)]">
       <TopNav eyebrow="Campaign flow" meta="Generated content ready to review" />
       <div className="max-w-3xl mx-auto px-6 py-8">
+        <div className="mb-5 flex items-center justify-between gap-4">
+          <div className="text-xs text-slate-400">
+            Campaign output
+          </div>
+          {sessionId ? (
+            <button
+              type="button"
+              onClick={() => {
+                setDeleteError('');
+                setDeleteState({ open: true, loading: false });
+              }}
+              className="text-sm font-medium text-red-600 transition-colors hover:text-red-700"
+            >
+              Delete campaign
+            </button>
+          ) : null}
+        </div>
+
+        {deleteError ? (
+          <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {deleteError}
+          </div>
+        ) : null}
+
         {/* Tabs */}
         <div className="flex gap-2 mb-5">
           {['linkedin', 'blog'].map(tab => (
@@ -561,6 +607,21 @@ export default function Output() {
           )}
         </div>
       </div>
+
+      <DangerConfirmModal
+        open={deleteState.open}
+        title={campaignDeleteConfirmation.title}
+        subject={campaignDeleteConfirmation.subject}
+        description={campaignDeleteConfirmation.description}
+        warningItems={campaignDeleteConfirmation.warningItems}
+        confirmLabel={campaignDeleteConfirmation.confirmLabel}
+        loading={deleteState.loading}
+        onCancel={() => {
+          if (deleteState.loading) return;
+          setDeleteState({ open: false, loading: false });
+        }}
+        onConfirm={confirmDeleteCampaign}
+      />
     </div>
   );
 }

@@ -4,6 +4,9 @@ import AppShell from '../../components/layout/AppShell';
 import api from '../../services/api';
 import { buildBrandDetailSections } from '../../lib/brand-kits-view';
 import { buildResumeSessionItem, buildSessionRoute } from '../../lib/generation-session';
+import { buildBrandDeleteConfirmation, buildCampaignDeleteConfirmation } from '../../lib/destructive-actions';
+import DangerConfirmModal from '../../components/ui/DangerConfirmModal';
+import Button from '../../components/ui/Button';
 
 export default function BrandEditor() {
   const { id } = useParams();
@@ -12,6 +15,9 @@ export default function BrandEditor() {
   const [sessions, setSessions] = useState([]);
   const [showResumePicker, setShowResumePicker] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [deleteError, setDeleteError] = useState('');
+  const [brandDeleteState, setBrandDeleteState] = useState({ open: false, loading: false });
+  const [sessionDeleteState, setSessionDeleteState] = useState({ open: false, loading: false, session: null });
 
   useEffect(() => {
     api.get(`/brands/${id}`)
@@ -27,6 +33,67 @@ export default function BrandEditor() {
 
   const detail = useMemo(() => (brand ? buildBrandDetailSections(brand) : null), [brand]);
   const resumableSessions = useMemo(() => sessions.map(buildResumeSessionItem), [sessions]);
+  const brandDeleteConfirmation = useMemo(
+    () => buildBrandDeleteConfirmation({ brandName: brand?.name }),
+    [brand?.name]
+  );
+  const sessionDeleteConfirmation = useMemo(
+    () => buildCampaignDeleteConfirmation({ sessionTitle: sessionDeleteState.session?.sessionTitle || sessionDeleteState.session?.brandName }),
+    [sessionDeleteState.session]
+  );
+
+  const closeBrandDelete = () => {
+    if (brandDeleteState.loading) return;
+    setBrandDeleteState({ open: false, loading: false });
+  };
+
+  const closeSessionDelete = () => {
+    if (sessionDeleteState.loading) return;
+    setSessionDeleteState({ open: false, loading: false, session: null });
+  };
+
+  const handleDeleteBrand = async () => {
+    setDeleteError('');
+    setBrandDeleteState({ open: true, loading: false });
+  };
+
+  const confirmDeleteBrand = async () => {
+    setDeleteError('');
+    setBrandDeleteState({ open: true, loading: true });
+
+    try {
+      await api.delete(`/brands/${brand.id}`);
+      navigate('/settings/brands', { replace: true });
+    } catch {
+      setDeleteError('We could not delete this brand kit right now. Please try again.');
+      setBrandDeleteState({ open: true, loading: false });
+    }
+  };
+
+  const handleDeleteSession = (session) => {
+    setDeleteError('');
+    setSessionDeleteState({ open: true, loading: false, session });
+  };
+
+  const confirmDeleteSession = async () => {
+    if (!sessionDeleteState.session?.id) return;
+
+    setDeleteError('');
+    setSessionDeleteState((current) => ({ ...current, loading: true }));
+
+    try {
+      await api.delete(`/generate/sessions/${sessionDeleteState.session.id}`);
+      setSessions((current) => {
+        const nextSessions = current.filter((session) => session.id !== sessionDeleteState.session.id);
+        setShowResumePicker((isOpen) => (isOpen ? nextSessions.length > 0 : isOpen));
+        return nextSessions;
+      });
+      closeSessionDelete();
+    } catch {
+      setDeleteError('We could not delete this campaign right now. Please try again.');
+      setSessionDeleteState((current) => ({ ...current, loading: false }));
+    }
+  };
 
   return (
     <AppShell>
@@ -70,6 +137,12 @@ export default function BrandEditor() {
               Generate content
             </button>
           </div>
+
+          {deleteError ? (
+            <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              {deleteError}
+            </div>
+          ) : null}
 
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             {detail.summary.map((item, index) => (
@@ -116,6 +189,23 @@ export default function BrandEditor() {
             ))}
           </div>
 
+          <div className="mt-8 rounded-[24px] border border-red-100 bg-red-50/70 p-6 shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-red-500">Danger zone</p>
+                <h2 className="mt-2 font-sans text-[1.3rem] font-semibold tracking-[-0.03em] text-slate-950">
+                  Delete brand kit
+                </h2>
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+                  This permanently deletes this brand kit and all related campaign work, saved drafts, inbox briefs, and uploaded guideline files for {brand.name}.
+                </p>
+              </div>
+              <Button type="button" variant="danger" onClick={handleDeleteBrand}>
+                Delete brand kit
+              </Button>
+            </div>
+          </div>
+
           {showResumePicker && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 px-4">
               <div className="w-full max-w-xl rounded-[28px] border border-[#e7ebf3] bg-white p-6 shadow-[0_24px_80px_rgba(15,23,42,0.18)]">
@@ -137,19 +227,40 @@ export default function BrandEditor() {
                 </div>
 
                 <div className="mt-5 space-y-3">
-                  {resumableSessions.map((session) => (
-                    <button
-                      key={session.id}
-                      onClick={() => navigate(buildSessionRoute(sessions.find((entry) => entry.id === session.id)))}
-                      className="flex w-full items-center justify-between rounded-2xl border border-[#e7ebf3] px-4 py-4 text-left transition-colors hover:bg-[#fafcff]"
-                    >
-                      <div>
-                        <p className="text-sm font-semibold text-slate-900">{session.title}</p>
-                        <p className="mt-1 text-sm text-slate-500">{session.subtitle}</p>
+                  {resumableSessions.map((session) => {
+                    const fullSession = sessions.find((entry) => entry.id === session.id);
+
+                    return (
+                      <div
+                        key={session.id}
+                        className="rounded-2xl border border-[#e7ebf3] px-4 py-4 transition-colors hover:bg-[#fafcff]"
+                      >
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <p className="text-sm font-semibold text-slate-900">{session.title}</p>
+                            <p className="mt-1 text-sm text-slate-500">{session.subtitle}</p>
+                          </div>
+                          <span className="text-xs font-medium text-slate-400">{formatUpdatedAt(session.updatedAt)}</span>
+                        </div>
+                        <div className="mt-4 flex items-center justify-between gap-3">
+                          <button
+                            type="button"
+                            onClick={() => navigate(buildSessionRoute(fullSession))}
+                            className="text-sm font-medium text-[var(--brand-primary)] transition-colors hover:text-[var(--brand-primary-hover)]"
+                          >
+                            Resume campaign
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteSession(fullSession)}
+                            className="text-sm font-medium text-red-600 transition-colors hover:text-red-700"
+                          >
+                            Delete campaign
+                          </button>
+                        </div>
                       </div>
-                      <span className="text-xs font-medium text-slate-400">{formatUpdatedAt(session.updatedAt)}</span>
-                    </button>
-                  ))}
+                    );
+                  })}
                 </div>
 
                 <div className="mt-6 flex items-center justify-between gap-3">
@@ -169,6 +280,30 @@ export default function BrandEditor() {
               </div>
             </div>
           )}
+
+          <DangerConfirmModal
+            open={brandDeleteState.open}
+            title={brandDeleteConfirmation.title}
+            subject={brandDeleteConfirmation.subject}
+            description={brandDeleteConfirmation.description}
+            warningItems={brandDeleteConfirmation.warningItems}
+            confirmLabel={brandDeleteConfirmation.confirmLabel}
+            loading={brandDeleteState.loading}
+            onCancel={closeBrandDelete}
+            onConfirm={confirmDeleteBrand}
+          />
+
+          <DangerConfirmModal
+            open={sessionDeleteState.open}
+            title={sessionDeleteConfirmation.title}
+            subject={sessionDeleteConfirmation.subject}
+            description={sessionDeleteConfirmation.description}
+            warningItems={sessionDeleteConfirmation.warningItems}
+            confirmLabel={sessionDeleteConfirmation.confirmLabel}
+            loading={sessionDeleteState.loading}
+            onCancel={closeSessionDelete}
+            onConfirm={confirmDeleteSession}
+          />
         </div>
       )}
     </AppShell>

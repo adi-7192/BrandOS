@@ -157,6 +157,21 @@ router.patch('/sessions/:id', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+router.delete('/sessions/:id', async (req, res, next) => {
+  try {
+    const existing = await hydrateSessionRow(req.params.id, req.user.id);
+    if (!existing) return res.status(404).json({ message: 'Generation session not found.' });
+
+    await pool.query(
+      `DELETE FROM generation_sessions
+       WHERE id = $1 AND user_id = $2`,
+      [req.params.id, req.user.id]
+    );
+
+    res.json({ ok: true });
+  } catch (err) { next(err); }
+});
+
 // POST /api/generate/brief
 // Merge inbox cards into a confirmed brief object
 router.post('/brief', async (req, res, next) => {

@@ -214,11 +214,23 @@ END $$;
 -- Inbox cards
 CREATE TABLE IF NOT EXISTS inbox_cards (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  workspace_id UUID REFERENCES workspaces(id) ON DELETE CASCADE,
   brand_id UUID REFERENCES brands(id) ON DELETE CASCADE,
+  provider_email_id TEXT,
+  provider_message_id TEXT,
+  email_to TEXT[] DEFAULT '{}',
   email_subject TEXT,
   email_from TEXT,
   email_body TEXT,
+  email_headers JSONB DEFAULT '{}'::jsonb,
   excerpt TEXT,
+  classification TEXT DEFAULT 'campaign' CHECK (classification IN ('campaign', 'brand_update', 'mixed', 'needs_routing')),
+  routing_status TEXT DEFAULT 'matched' CHECK (routing_status IN ('matched', 'needs_routing', 'confirmed')),
+  campaign_action_status TEXT DEFAULT 'not_applicable' CHECK (campaign_action_status IN ('pending', 'done', 'dismissed', 'not_applicable')),
+  brand_update_action_status TEXT DEFAULT 'not_applicable' CHECK (brand_update_action_status IN ('pending', 'done', 'dismissed', 'not_applicable')),
+  routing_instruction TEXT,
+  interpretation_summary TEXT,
+  brand_update_proposal JSONB DEFAULT '{}'::jsonb,
   extracted_fields JSONB DEFAULT '{}',
   matched_fields TEXT[] DEFAULT '{}',
   unmatched_fields TEXT[] DEFAULT '{}',
@@ -230,6 +242,78 @@ CREATE TABLE IF NOT EXISTS inbox_cards (
 );
 
 DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'inbox_cards' AND column_name = 'workspace_id'
+  ) THEN
+    ALTER TABLE inbox_cards ADD COLUMN workspace_id UUID REFERENCES workspaces(id) ON DELETE CASCADE;
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'inbox_cards' AND column_name = 'provider_email_id'
+  ) THEN
+    ALTER TABLE inbox_cards ADD COLUMN provider_email_id TEXT;
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'inbox_cards' AND column_name = 'provider_message_id'
+  ) THEN
+    ALTER TABLE inbox_cards ADD COLUMN provider_message_id TEXT;
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'inbox_cards' AND column_name = 'email_to'
+  ) THEN
+    ALTER TABLE inbox_cards ADD COLUMN email_to TEXT[] DEFAULT '{}';
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'inbox_cards' AND column_name = 'email_headers'
+  ) THEN
+    ALTER TABLE inbox_cards ADD COLUMN email_headers JSONB DEFAULT '{}'::jsonb;
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'inbox_cards' AND column_name = 'classification'
+  ) THEN
+    ALTER TABLE inbox_cards ADD COLUMN classification TEXT DEFAULT 'campaign';
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'inbox_cards' AND column_name = 'routing_status'
+  ) THEN
+    ALTER TABLE inbox_cards ADD COLUMN routing_status TEXT DEFAULT 'matched';
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'inbox_cards' AND column_name = 'campaign_action_status'
+  ) THEN
+    ALTER TABLE inbox_cards ADD COLUMN campaign_action_status TEXT DEFAULT 'not_applicable';
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'inbox_cards' AND column_name = 'brand_update_action_status'
+  ) THEN
+    ALTER TABLE inbox_cards ADD COLUMN brand_update_action_status TEXT DEFAULT 'not_applicable';
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'inbox_cards' AND column_name = 'routing_instruction'
+  ) THEN
+    ALTER TABLE inbox_cards ADD COLUMN routing_instruction TEXT;
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'inbox_cards' AND column_name = 'interpretation_summary'
+  ) THEN
+    ALTER TABLE inbox_cards ADD COLUMN interpretation_summary TEXT;
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'inbox_cards' AND column_name = 'brand_update_proposal'
+  ) THEN
+    ALTER TABLE inbox_cards ADD COLUMN brand_update_proposal JSONB DEFAULT '{}'::jsonb;
+  END IF;
   IF NOT EXISTS (
     SELECT 1 FROM information_schema.columns
     WHERE table_name = 'inbox_cards' AND column_name = 'publish_date'
@@ -283,7 +367,9 @@ CREATE TABLE IF NOT EXISTS drafts (
 CREATE INDEX IF NOT EXISTS idx_brands_workspace ON brands(workspace_id);
 CREATE INDEX IF NOT EXISTS idx_brand_kits_brand ON brand_kits(brand_id);
 CREATE INDEX IF NOT EXISTS idx_inbox_cards_brand ON inbox_cards(brand_id);
+CREATE INDEX IF NOT EXISTS idx_inbox_cards_workspace ON inbox_cards(workspace_id);
 CREATE INDEX IF NOT EXISTS idx_inbox_cards_status ON inbox_cards(status);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_inbox_cards_provider_email_id ON inbox_cards(provider_email_id) WHERE provider_email_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_generation_sessions_user ON generation_sessions(user_id);
 CREATE INDEX IF NOT EXISTS idx_generation_sessions_brand ON generation_sessions(brand_id);
 CREATE INDEX IF NOT EXISTS idx_generation_sessions_status ON generation_sessions(status);
