@@ -5,44 +5,76 @@ function buildStatus(label, tone, meta) {
 export function buildLinkedInViewModel(linkedin = {}) {
   if (linkedin.status === 'connected' && linkedin.connected) {
     return {
-      label: 'Connected',
+      title: 'LinkedIn connected',
       tone: 'success',
-      ctaLabel: 'Reconnect LinkedIn',
-      helper: 'Your personal LinkedIn account is connected for direct publishing from BrandOS.',
+      badgeLabel: 'Connected',
+      primaryActionLabel: 'Connected',
+      secondaryActionLabel: 'Disconnect',
+      reconnectActionLabel: 'Reconnect',
+      summary: 'BrandOS can publish approved posts to your personal LinkedIn account.',
       connectedAs: linkedin.displayName || '',
-      expiresMeta: linkedin.expiresAt ? 'Token active' : '',
+      accountEmail: linkedin.email || '',
+      readinessLabel: 'Ready to publish',
+      lastCheckedLabel: linkedin.lastValidatedAt ? 'Last checked' : '',
+      lastCheckedValue: linkedin.lastValidatedAt || '',
+      bullets: [],
     };
   }
 
   if (linkedin.status === 'reconnect_required') {
     return {
-      label: 'Reconnect required',
+      title: 'Reconnect LinkedIn',
       tone: 'warning',
-      ctaLabel: 'Reconnect LinkedIn',
-      helper: 'Reconnect your personal LinkedIn account to keep publishing from BrandOS.',
+      badgeLabel: 'Reconnect required',
+      primaryActionLabel: 'Reconnect LinkedIn',
+      secondaryActionLabel: 'Disconnect',
+      reconnectActionLabel: '',
+      summary: 'Your LinkedIn connection needs attention before BrandOS can publish again.',
       connectedAs: linkedin.displayName || '',
-      expiresMeta: 'Token expired',
+      accountEmail: linkedin.email || '',
+      readinessLabel: 'Publishing blocked',
+      lastCheckedLabel: '',
+      lastCheckedValue: '',
+      bullets: [],
     };
   }
 
   if (linkedin.status === 'connection_error') {
     return {
-      label: 'Connection error',
+      title: 'Reconnect LinkedIn',
       tone: 'warning',
-      ctaLabel: 'Reconnect LinkedIn',
-      helper: 'LinkedIn needs attention before BrandOS can publish on your behalf.',
+      badgeLabel: 'Connection error',
+      primaryActionLabel: 'Reconnect LinkedIn',
+      secondaryActionLabel: 'Disconnect',
+      reconnectActionLabel: '',
+      summary: 'LinkedIn needs attention before BrandOS can publish on your behalf.',
       connectedAs: linkedin.displayName || '',
-      expiresMeta: '',
+      accountEmail: linkedin.email || '',
+      readinessLabel: 'Publishing blocked',
+      lastCheckedLabel: '',
+      lastCheckedValue: '',
+      bullets: [],
     };
   }
 
   return {
-    label: 'Not connected',
+    title: 'Connect LinkedIn',
     tone: 'neutral',
-    ctaLabel: 'Connect LinkedIn',
-    helper: 'Connect your personal LinkedIn account to publish approved drafts directly from BrandOS.',
+    badgeLabel: 'Not connected',
+    primaryActionLabel: 'Connect LinkedIn',
+    secondaryActionLabel: '',
+    reconnectActionLabel: '',
+    summary: 'Connect your personal LinkedIn account to publish approved drafts directly from BrandOS.',
     connectedAs: '',
-    expiresMeta: '',
+    accountEmail: '',
+    readinessLabel: 'Publishing unavailable',
+    lastCheckedLabel: '',
+    lastCheckedValue: '',
+    bullets: [
+      'Connect once from Settings',
+      'Approve BrandOS in LinkedIn',
+      'Publish approved LinkedIn drafts directly from BrandOS',
+    ],
   };
 }
 
@@ -50,9 +82,15 @@ export function buildLinkedInPublishState({ activeTab, content, linkedin = {}, p
   if (activeTab !== 'linkedin') {
     return {
       visible: false,
+      mode: 'hidden',
       disabled: true,
+      badgeLabel: '',
+      title: '',
       label: 'Publish to LinkedIn',
       helper: '',
+      primaryActionLabel: '',
+      secondaryActionLabel: '',
+      steps: [],
     };
   }
 
@@ -60,41 +98,91 @@ export function buildLinkedInPublishState({ activeTab, content, linkedin = {}, p
   if (!linkedin.connected) {
     return {
       visible: true,
+      mode: 'setup',
       disabled: true,
+      badgeLabel: 'Setup required',
+      title: 'Publish to LinkedIn',
       label: 'Publish to LinkedIn',
-      helper: 'Connect LinkedIn in Settings before publishing.',
+      helper: 'You can publish this post directly from BrandOS. Connect LinkedIn once in Settings and BrandOS can post on your behalf.',
+      primaryActionLabel: 'Connect LinkedIn in Settings',
+      secondaryActionLabel: 'Copy draft for now',
+      steps: [
+        'Open Settings',
+        'Connect your personal LinkedIn',
+        'Come back here and publish directly',
+      ],
     };
   }
 
   if (!trimmed) {
     return {
       visible: true,
+      mode: 'ready',
       disabled: true,
+      badgeLabel: 'Ready to publish',
+      title: 'Publish to LinkedIn',
       label: 'Publish to LinkedIn',
-      helper: 'Add LinkedIn copy before publishing.',
+      helper: 'BrandOS is connected and ready. Finish your LinkedIn draft to unlock publishing.',
+      primaryActionLabel: 'Publish to LinkedIn',
+      secondaryActionLabel: 'Copy draft for now',
+      steps: [],
     };
   }
 
   return {
     visible: true,
+    mode: 'ready',
     disabled: Boolean(publishing),
+    badgeLabel: publishing ? 'Publishing…' : 'Ready to publish',
+    title: 'Publish to LinkedIn',
     label: publishing ? 'Publishing…' : 'Publish to LinkedIn',
-    helper: 'This publishes immediately to your connected personal LinkedIn account.',
+    helper: 'BrandOS is ready to publish this LinkedIn post directly to your connected account.',
+    primaryActionLabel: 'Publish to LinkedIn',
+    secondaryActionLabel: 'Copy draft for now',
+    steps: [],
   };
 }
 
 export function buildLinkedInStatus(linkedin = {}) {
   if (linkedin.connected && linkedin.status === 'connected') {
-    return buildStatus('Connected', 'success', linkedin.displayName || 'Ready to publish');
+    return buildStatus('Connected', 'success', 'Ready to publish');
   }
 
   if (linkedin.status === 'reconnect_required') {
-    return buildStatus('Reconnect required', 'warning', linkedin.displayName || 'LinkedIn token expired');
+    return buildStatus('Reconnect required', 'warning', 'Publishing blocked');
   }
 
   if (linkedin.status === 'connection_error') {
-    return buildStatus('Needs attention', 'warning', linkedin.displayName || 'Check LinkedIn connection');
+    return buildStatus('Needs attention', 'warning', 'Check connection');
   }
 
   return buildStatus('Not connected', 'neutral', 'Personal publishing unavailable');
+}
+
+export function buildLinkedInFeedbackState(status, message = '') {
+  if (status === 'connected') {
+    return {
+      tone: 'success',
+      message: message || 'LinkedIn connected. BrandOS is ready to publish approved LinkedIn posts from your personal account.',
+    };
+  }
+
+  if (status === 'disconnected') {
+    return {
+      tone: 'success',
+      message: message || 'LinkedIn disconnected.',
+    };
+  }
+
+  if (status === 'error') {
+    return {
+      tone: 'warning',
+      message: message || 'LinkedIn could not be connected. Try again or reconnect from Settings.',
+    };
+  }
+
+  return {
+    tone: 'neutral',
+    message,
+  };
 }

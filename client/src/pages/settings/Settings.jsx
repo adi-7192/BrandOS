@@ -6,7 +6,7 @@ import Dropdown from '../../components/ui/Dropdown';
 import Button from '../../components/ui/Button';
 import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
-import { buildLinkedInViewModel } from '../../lib/linkedin-view';
+import { buildLinkedInFeedbackState, buildLinkedInViewModel } from '../../lib/linkedin-view';
 import { buildSettingsViewModel } from '../../lib/settings-view';
 
 const CONTENT_FORMAT_OPTIONS = [
@@ -43,7 +43,7 @@ export default function Settings() {
   const [generationForm, setGenerationForm] = useState({ defaultContentFormat: 'LinkedIn only', toneStrictness: 'Balanced', preferredOutputLength: 'Standard' });
   const [saving, setSaving] = useState({});
   const [aiTest, setAiTest] = useState({ loading: false, result: null });
-  const [linkedinAction, setLinkedinAction] = useState({ loading: false, message: '' });
+  const [linkedinAction, setLinkedinAction] = useState({ loading: false, status: '', message: '' });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -53,13 +53,25 @@ export default function Settings() {
 
   const viewModel = useMemo(() => buildSettingsViewModel(settings), [settings]);
   const linkedinView = useMemo(() => buildLinkedInViewModel(settings?.linkedin), [settings?.linkedin]);
+  const linkedinBanner = useMemo(
+    () => buildLinkedInFeedbackState(linkedinAction.status, linkedinAction.message),
+    [linkedinAction.message, linkedinAction.status]
+  );
 
   useEffect(() => {
     const status = new URLSearchParams(location.search).get('linkedin');
     if (status === 'connected') {
-      setLinkedinAction({ loading: false, message: 'LinkedIn connected. You can now publish personal posts from BrandOS.' });
+      setLinkedinAction({
+        loading: false,
+        status: 'connected',
+        message: 'LinkedIn connected. You can now publish personal posts from BrandOS.',
+      });
     } else if (status === 'error') {
-      setLinkedinAction({ loading: false, message: 'LinkedIn could not be connected. Please try again.' });
+      setLinkedinAction({
+        loading: false,
+        status: 'error',
+        message: 'LinkedIn could not be connected. Please try again.',
+      });
     }
   }, [location.search]);
 
@@ -133,7 +145,7 @@ export default function Settings() {
   }
 
   async function handleLinkedInConnect() {
-    setLinkedinAction({ loading: true, message: '' });
+    setLinkedinAction({ loading: true, status: '', message: '' });
 
     try {
       const res = await api.get('/linkedin/connect');
@@ -141,21 +153,23 @@ export default function Settings() {
     } catch (err) {
       setLinkedinAction({
         loading: false,
+        status: 'error',
         message: err.response?.data?.message || 'Unable to start the LinkedIn connection right now.',
       });
     }
   }
 
   async function handleLinkedInDisconnect() {
-    setLinkedinAction({ loading: true, message: '' });
+    setLinkedinAction({ loading: true, status: '', message: '' });
 
     try {
       await api.post('/linkedin/disconnect');
       await loadSettings();
-      setLinkedinAction({ loading: false, message: 'LinkedIn disconnected.' });
+      setLinkedinAction({ loading: false, status: 'disconnected', message: 'LinkedIn disconnected.' });
     } catch (err) {
       setLinkedinAction({
         loading: false,
+        status: 'error',
         message: err.response?.data?.message || 'Unable to disconnect LinkedIn right now.',
       });
     }
@@ -372,54 +386,95 @@ export default function Settings() {
 
           <SettingsSection
             title="LinkedIn"
-            description="Connect your personal LinkedIn account so BrandOS can publish approved LinkedIn drafts on your behalf."
+            description="Publish approved LinkedIn drafts from BrandOS using your personal account."
             aside={<StatusPill status={viewModel.linkedinStatus} />}
           >
-            <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
-              <div className="space-y-4">
-                <ReadonlyField
-                  label="Connection scope"
-                  value="Personal account only. This connection belongs to your signed-in BrandOS user and is not shared across the workspace."
-                />
-                <ReadonlyField
-                  label="Connected as"
-                  value={linkedinView.connectedAs || 'Not connected yet'}
-                />
-                <ReadonlyField
-                  label="Status"
-                  value={linkedinView.helper}
-                />
-              </div>
-              <div className="rounded-2xl border border-[#e7ecf3] bg-[#fbfcfe] px-4 py-4">
-                <p className="text-sm font-medium text-[#111827]">Publishing access</p>
-                <div className="mt-4 space-y-3 text-sm text-[#667085]">
-                  <StatusLine label="LinkedIn account" value={linkedinView.label} />
-                  <StatusLine label="Posting mode" value="Personal text posts" />
-                  <StatusLine label="Token state" value={linkedinView.expiresMeta || 'No active token'} />
+            <div className="grid gap-5 lg:grid-cols-[minmax(0,1.3fr)_320px]">
+              <div className="rounded-[24px] border border-[#dce7f3] bg-[linear-gradient(135deg,#f7fbff_0%,#ffffff_100%)] p-5 shadow-[0_18px_45px_rgba(15,23,42,0.04)]">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#0a66c2]">LinkedIn integration</p>
+                    <h3 className="mt-2 text-2xl font-semibold text-[#111827]">{linkedinView.title}</h3>
+                    <p className="mt-3 max-w-2xl text-sm leading-6 text-[#667085]">{linkedinView.summary}</p>
+                  </div>
+                  <span className={`inline-flex h-fit items-center rounded-full px-3 py-1.5 text-xs font-semibold ${
+                    linkedinView.tone === 'success'
+                      ? 'bg-[#e7f8ef] text-[#178A5B]'
+                      : linkedinView.tone === 'warning'
+                        ? 'bg-[#fff5df] text-[#b7791f]'
+                        : 'bg-[#eef2f6] text-[#667085]'
+                  }`}>
+                    {linkedinView.badgeLabel}
+                  </span>
+                </div>
+
+                {linkedinView.connectedAs ? (
+                  <div className="mt-5 grid gap-3 md:grid-cols-2">
+                    <MetricCard label="Connected account" value={linkedinView.connectedAs} />
+                    <MetricCard label="Account email" value={linkedinView.accountEmail || 'Unavailable'} />
+                  </div>
+                ) : (
+                  <div className="mt-5 rounded-2xl border border-[#e7ecf3] bg-white px-4 py-4">
+                    <p className="text-sm font-medium text-[#111827]">What happens after you connect</p>
+                    <ul className="mt-3 space-y-2 text-sm leading-6 text-[#667085]">
+                      {linkedinView.bullets.map((item) => (
+                        <li key={item} className="flex items-start gap-2">
+                          <span className="mt-2 h-1.5 w-1.5 rounded-full bg-[#0a66c2]" />
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                <div className="mt-5 flex flex-wrap gap-3 border-t border-[#e4edf7] pt-5">
+                  <Button
+                    variant={linkedinView.tone === 'neutral' ? 'primary' : 'secondary'}
+                    disabled={linkedinAction.loading || linkedinView.primaryActionLabel === 'Connected'}
+                    onClick={handleLinkedInConnect}
+                  >
+                    {linkedinAction.loading ? 'Opening LinkedIn…' : linkedinView.primaryActionLabel}
+                  </Button>
+                  {linkedinView.reconnectActionLabel ? (
+                    <Button variant="secondary" disabled={linkedinAction.loading} onClick={handleLinkedInConnect}>
+                      {linkedinView.reconnectActionLabel}
+                    </Button>
+                  ) : null}
+                  {linkedinView.secondaryActionLabel ? (
+                    <Button variant="ghost" disabled={linkedinAction.loading} onClick={handleLinkedInDisconnect}>
+                      {linkedinView.secondaryActionLabel}
+                    </Button>
+                  ) : null}
                 </div>
               </div>
+
+              <div className="rounded-[24px] border border-[#e7ecf3] bg-[#fbfcfe] px-5 py-5">
+                <p className="text-sm font-medium text-[#111827]">Connection details</p>
+                <div className="mt-4 space-y-3 text-sm text-[#667085]">
+                  <StatusLine label="Status" value={linkedinView.badgeLabel} />
+                  <StatusLine label="Publishing" value={linkedinView.readinessLabel} />
+                  <StatusLine label="Connection scope" value="Personal account only" />
+                  <StatusLine label="Connected account" value={linkedinView.connectedAs || 'No account connected'} />
+                  {linkedinView.lastCheckedLabel ? (
+                    <StatusLine label={linkedinView.lastCheckedLabel} value={formatDateTime(linkedinView.lastCheckedValue)} />
+                  ) : null}
+                </div>
+                <p className="mt-4 rounded-2xl bg-white px-3 py-3 text-xs leading-6 text-[#667085]">
+                  This LinkedIn connection belongs only to your signed-in BrandOS user and is not shared across the workspace.
+                </p>
+              </div>
             </div>
-            {linkedinAction.message ? (
-              <p className="mt-4 text-sm text-[#667085]">{linkedinAction.message}</p>
+            {linkedinBanner.message ? (
+              <div className={`mt-4 rounded-2xl border px-4 py-3 text-sm ${
+                linkedinBanner.tone === 'success'
+                  ? 'border-[#cfe9db] bg-[#eefaf3] text-[#146c43]'
+                  : linkedinBanner.tone === 'warning'
+                    ? 'border-[#f2ddad] bg-[#fff8e6] text-[#9a6b12]'
+                    : 'border-[#e7ecf3] bg-[#fbfcfe] text-[#667085]'
+              }`}>
+                {linkedinBanner.message}
+              </div>
             ) : null}
-            <SectionActions>
-              <Button
-                variant="primary"
-                disabled={linkedinAction.loading}
-                onClick={handleLinkedInConnect}
-              >
-                {linkedinAction.loading ? 'Opening LinkedIn…' : linkedinView.ctaLabel}
-              </Button>
-              {settings.linkedin?.connected || settings.linkedin?.status === 'reconnect_required' ? (
-                <Button
-                  variant="secondary"
-                  disabled={linkedinAction.loading}
-                  onClick={handleLinkedInDisconnect}
-                >
-                  Disconnect
-                </Button>
-              ) : null}
-            </SectionActions>
           </SettingsSection>
 
           <SettingsSection
@@ -594,4 +649,15 @@ function contentFormatValue(value) {
   if (value === 'Blog only') return 'blog';
   if (value === 'Both') return 'both';
   return 'linkedin';
+}
+
+function formatDateTime(value) {
+  if (!value) return '';
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return date.toLocaleString();
 }

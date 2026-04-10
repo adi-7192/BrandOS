@@ -281,6 +281,10 @@ export default function Output() {
 
   const copyToClipboard = (text) => navigator.clipboard.writeText(text);
 
+  const handleOpenLinkedInSettings = () => {
+    navigate('/settings');
+  };
+
   const handlePublishToLinkedIn = async () => {
     if (linkedinPublishState.disabled) return;
 
@@ -438,6 +442,108 @@ export default function Output() {
           {brief.language && <span className="chip chip-grey">{brief.language}</span>}
           <span className="chip chip-green">✓ {brief.kit?.restrictedWords?.length || 0} restricted words</span>
         </div>
+
+        {linkedinPublishState.visible ? (
+          <div className="mb-5 rounded-[24px] border border-[#dbe6f3] bg-[linear-gradient(135deg,#f8fbff_0%,#ffffff_100%)] p-5 shadow-[0_16px_40px_rgba(15,23,42,0.05)]">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#0a66c2]">Publishing</p>
+                <h2 className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-slate-950">
+                  {linkedinPublishState.title}
+                </h2>
+                <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
+                  {publishState.message || linkedinPublishState.helper}
+                </p>
+              </div>
+              <span className={`inline-flex h-fit items-center rounded-full px-3 py-1.5 text-xs font-semibold ${
+                linkedinPublishState.mode === 'setup'
+                  ? 'bg-[#fff5df] text-[#b7791f]'
+                  : 'bg-[#e7f8ef] text-[#178A5B]'
+              }`}>
+                {linkedinLoading ? 'Checking status…' : linkedinPublishState.badgeLabel}
+              </span>
+            </div>
+
+            <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
+              <div>
+                {linkedinPublishState.mode === 'setup' ? (
+                  <div className="rounded-2xl border border-[#e7ecf3] bg-white px-4 py-4">
+                    <p className="text-sm font-medium text-slate-900">How direct publishing works</p>
+                    <ul className="mt-3 space-y-2 text-sm leading-6 text-slate-600">
+                      {linkedinPublishState.steps.map((item) => (
+                        <li key={item} className="flex items-start gap-2">
+                          <span className="mt-2 h-1.5 w-1.5 rounded-full bg-[#0a66c2]" />
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : (
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <div className="rounded-2xl border border-[#e7ecf3] bg-white px-4 py-4">
+                      <p className="text-xs font-medium uppercase tracking-[0.14em] text-slate-400">Connected account</p>
+                      <p className="mt-3 text-sm font-semibold text-slate-900">{linkedin.displayName || 'Personal LinkedIn account'}</p>
+                      <p className="mt-1 text-xs text-slate-500">{linkedin.email || 'Ready for direct publishing'}</p>
+                    </div>
+                    <div className="rounded-2xl border border-[#e7ecf3] bg-white px-4 py-4">
+                      <p className="text-xs font-medium uppercase tracking-[0.14em] text-slate-400">Publish behavior</p>
+                      <p className="mt-3 text-sm font-semibold text-slate-900">Posts immediately from BrandOS</p>
+                      <p className="mt-1 text-xs text-slate-500">You can still copy the draft if you want to post manually.</p>
+                    </div>
+                  </div>
+                )}
+
+                {publishState.ok && (publishState.publishedAt || publishState.postUrn) ? (
+                  <div className="mt-4 rounded-2xl border border-[#cfe9db] bg-[#eefaf3] px-4 py-3 text-sm text-[#146c43]">
+                    {publishState.publishedAt ? `Published at ${new Date(publishState.publishedAt).toLocaleString()}. ` : ''}
+                    {publishState.postUrn ? `Reference: ${publishState.postUrn}.` : ''}
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="rounded-2xl border border-[#e7ecf3] bg-[#fbfcfe] px-4 py-4">
+                <p className="text-sm font-medium text-slate-900">Next step</p>
+                <div className="mt-4 space-y-3">
+                  {linkedinPublishState.mode === 'setup' ? (
+                    <Button
+                      variant="primary"
+                      className="w-full"
+                      disabled={linkedinLoading}
+                      onClick={handleOpenLinkedInSettings}
+                    >
+                      {linkedinPublishState.primaryActionLabel}
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="primary"
+                      className="w-full"
+                      disabled={linkedinLoading || linkedinPublishState.disabled}
+                      onClick={() => setPublishModalOpen(true)}
+                    >
+                      {linkedinLoading ? 'Checking LinkedIn…' : linkedinPublishState.primaryActionLabel}
+                    </Button>
+                  )}
+                  <Button
+                    variant="secondary"
+                    className="w-full"
+                    onClick={() => copyToClipboard(content[activeTab])}
+                  >
+                    {linkedinPublishState.secondaryActionLabel}
+                  </Button>
+                  {linkedinPublishState.mode !== 'setup' ? (
+                    <button
+                      type="button"
+                      onClick={handleOpenLinkedInSettings}
+                      className="w-full text-sm font-medium text-slate-500 transition-colors hover:text-slate-700"
+                    >
+                      Manage LinkedIn in Settings
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : null}
 
         {/* Output body */}
         <div className="rounded-xl border border-gray-200 bg-white p-4">
@@ -620,16 +726,6 @@ export default function Output() {
           {activeTab === 'blog' && (
             <Button variant="secondary" className="text-sm" onClick={() => {}}>Copy markdown</Button>
           )}
-          {linkedinPublishState.visible ? (
-            <Button
-              variant="primary"
-              className="text-sm"
-              disabled={linkedinLoading || linkedinPublishState.disabled}
-              onClick={() => setPublishModalOpen(true)}
-            >
-              {linkedinLoading ? 'Checking LinkedIn…' : linkedinPublishState.label}
-            </Button>
-          ) : null}
         </div>
         {(saveState.message || autosaveState !== 'idle') && (
           <p className="mb-4 text-sm text-brand-muted">
@@ -642,14 +738,6 @@ export default function Output() {
             )}
           </p>
         )}
-        {linkedinPublishState.visible ? (
-          <p className={`mb-4 text-sm ${publishState.ok ? 'text-emerald-700' : 'text-brand-muted'}`}>
-            {publishState.message || linkedinPublishState.helper}
-            {publishState.ok && publishState.publishedAt ? ` Published at ${new Date(publishState.publishedAt).toLocaleString()}.` : ''}
-            {publishState.ok && publishState.postUrn ? ` Reference: ${publishState.postUrn}.` : ''}
-          </p>
-        ) : null}
-
         {outputIntentQuestion && !intentHidden && (
           <div className="mb-6 rounded-xl border border-brand bg-brand-surface-subtle px-4 py-4 animate-dashboard-enter">
             <div className="flex items-start justify-between gap-4">

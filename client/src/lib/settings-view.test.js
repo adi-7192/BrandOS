@@ -50,7 +50,7 @@ test('buildSettingsViewModel derives section statuses from the settings payload'
   assert.deepEqual(model.linkedinStatus, {
     label: 'Connected',
     tone: 'success',
-    meta: 'Ada Lovelace',
+    meta: 'Ready to publish',
   });
   assert.deepEqual(model.securityMethods, ['Google']);
 });
@@ -103,4 +103,20 @@ test('buildSettingsViewModel falls back to setup states when systems are not rea
     meta: 'Personal publishing unavailable',
   });
   assert.deepEqual(model.securityMethods, ['Password']);
+});
+
+test('buildSettingsViewModel summarizes reconnect-required linkedin state with blocked publishing copy', () => {
+  const model = buildSettingsViewModel({
+    linkedin: {
+      connected: false,
+      status: 'reconnect_required',
+      displayName: 'Ada Lovelace',
+    },
+  });
+
+  assert.deepEqual(model.linkedinStatus, {
+    label: 'Reconnect required',
+    tone: 'warning',
+    meta: 'Publishing blocked',
+  });
 });
