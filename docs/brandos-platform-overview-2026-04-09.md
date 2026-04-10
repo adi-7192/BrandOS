@@ -1,5 +1,5 @@
 # BrandOS Platform Overview
-_Last updated: April 9, 2026_
+_Last updated: April 10, 2026_
 
 ## 1. Executive Summary
 BrandOS is an AI-powered content marketing workspace for teams that manage multiple brands inside one organization. It gives each brand a persistent memory layer so content marketers do not have to re-explain voice, audience, tone, proof style, and content rules every time they want AI help.
@@ -17,6 +17,8 @@ Today, BrandOS supports a focused V1 workflow for:
 - campaign workspace management
 - AI-assisted content generation
 - inbox-based stakeholder update intake
+- sample workflow teaching for first-time users
+- one-time LinkedIn connection and direct personal-post publishing
 - dashboard, brand management, settings, and destructive lifecycle actions
 
 ## 2. The Problem BrandOS Solves
@@ -75,6 +77,9 @@ AI performs extraction, summarization, routing, diff proposal, preview drafting,
 
 ### 5.4 Focused Content Workflow
 The product is optimized for a clear V1 content path rather than a broad publishing suite.
+
+### 5.5 Activation and Publish Readiness
+BrandOS now includes first-run guidance, sample workflow teaching, and direct personal LinkedIn publishing so users can understand and activate the end-to-end loop faster.
 
 ## 6. Current Feature Set
 ### 6.1 Authentication and Access
@@ -169,11 +174,14 @@ Current dashboard capabilities include:
 - pending briefs count
 - brands in pipeline count
 - saved drafts count
+- workflow guide for first-time or low-data workspaces
+- sample workflow entry point from the dashboard
 - pending intake visibility
 - continue-working items
 - brand health rows
 - guideline-loaded signal per brand
 - upcoming publish/go-live deadlines
+- inline brand-kit editing from the dashboard portfolio view
 - safe fallback rendering when summary data is partial or malformed
 
 ### 6.5 Campaigns Workspace
@@ -203,6 +211,8 @@ The inbox is now an AI-first review surface for stakeholder email threads.
 Current inbox capabilities include:
 - pending, used, and dismissed states
 - AI summary cards instead of raw email-first cards
+- “inbox to brief to content” workflow explainer
+- sample workflow entry point for zero-data users
 - campaign brief detection
 - brand update detection
 - mixed thread handling
@@ -223,6 +233,11 @@ Unmatched flow:
 - user confirms
 - the thread is reprocessed against the selected brand and intended action
 
+Current empty-state behavior:
+- explains how forwarding works instead of showing a blank queue
+- links the user to settings for inbox setup
+- offers a sample workflow so the product loop can be understood before real inbox data exists
+
 ### 6.7 Campaign and Content Workflow
 The generation flow is built as a structured multi-step workspace:
 - brief
@@ -233,7 +248,9 @@ The generation flow is built as a structured multi-step workspace:
 Capabilities in this flow:
 - build a brief from inbox cards
 - create a manual brief from a brand
+- start from a sample brief for guided product exploration
 - confirm and edit campaign details
+- show brief provenance as sample, manual, or inbox-driven
 - capture publish/go-live date
 - autosave generation sessions
 - resume in-progress sessions
@@ -242,12 +259,19 @@ Capabilities in this flow:
 - full content generation
 - iterative regeneration
 - selection rewrite
+- compliance checks for LinkedIn and blog output
 - save drafts
+- mark campaign work as completed
 - delete campaign work with irreversible warning
 
 Current V1 outputs:
 - LinkedIn post
 - blog post
+
+Current V1 publishing support:
+- direct text-only publishing to the connected personal LinkedIn account from the output screen
+- publish-state guidance when LinkedIn is not yet connected
+- copy-and-paste fallback when direct publishing is not available
 
 ### 6.8 Review and Confidence UX
 The onboarding review flow already includes several quality-of-life improvements:
@@ -258,18 +282,38 @@ The onboarding review flow already includes several quality-of-life improvements
 - multiple regenerate attempts are supported
 - “Almost there” feedback path replaces the older less-clear label
 
+Additional current review UX:
+- whole-draft feedback chips and free-text iteration guidance in output
+- selection-level rewrite flow for focused AI edits
+- sample-mode messaging that makes example data explicit
+- lightweight intent prompts after onboarding and post-generation to capture user goals and feedback
+
 ### 6.9 Settings
 The settings area currently supports:
 - user profile settings
-- workspace naming
-- inbox preferences
+- workspace naming and onboarding visibility
+- integrations overview
+- LinkedIn connection status, connect, reconnect, and disconnect actions
+- inbox preferences and inbound intake email visibility
 - generation preferences
-- AI configuration visibility
-- security visibility
-- inbound intake email visibility
+- access and sign-in visibility
 - AI connection testing
 
-### 6.10 Destructive Actions
+### 6.10 LinkedIn Publishing and Integrations
+BrandOS now includes a first-party LinkedIn integration for direct personal posting.
+
+Current LinkedIn capabilities:
+- secure OAuth connect and callback flow
+- per-user connection status in Settings and the output screen
+- encrypted server-side token storage
+- reconnect-required handling when a token expires or connection fails
+- publish logging with timestamps and reference ids
+
+Current scope boundary:
+- personal LinkedIn posting is supported in V1
+- company-page posting is not yet supported
+
+### 6.11 Destructive Actions
 The platform currently supports permanent deletion for:
 - brand kits
 - campaigns / generation sessions
@@ -286,6 +330,7 @@ Delete confirmations are explicit and designed as danger flows.
 6. User reviews and edits the kit
 7. User validates the brand voice through a confidence test
 8. Brand kit goes live
+9. BrandOS prompts the user to connect inbox and LinkedIn, then move into the dashboard
 
 ### 7.2 Manual Campaign Creation
 1. User opens a brand
@@ -322,6 +367,20 @@ Delete confirmations are explicit and designed as danger flows.
 3. User reviews current vs suggested values
 4. User applies the update
 5. Active brand kit is updated
+
+### 7.6 Sample Workflow Journey
+1. User opens the dashboard or inbox before real data is configured
+2. User starts the sample workflow
+3. BrandOS opens a prefilled example brief with example-data labeling
+4. User reviews preview and output states using realistic sample content
+5. User understands the real inbox-to-content loop before connecting live sources
+
+### 7.7 Direct LinkedIn Publish
+1. User connects personal LinkedIn once from Settings or the onboarding next-step panel
+2. User opens the LinkedIn tab on the output screen
+3. BrandOS checks connection state and draft readiness
+4. User publishes the final LinkedIn draft explicitly
+5. BrandOS stores the publish result and marks the campaign complete where appropriate
 
 ## 8. Business Value and Benefits
 ### 8.1 Operational Benefits
@@ -401,6 +460,7 @@ UI architecture:
 - shared platform chrome and focused-flow top nav
 - reusable shells for workspace and flow contexts
 - lightweight client-side view-model helpers for dashboard, inbox, generation, and review flows
+- guided first-run empty states and sample-data teaching surfaces
 - consistent navigation language across dashboard, onboarding, generation, inbox, campaigns, and settings
 
 ### 10.2 Backend
@@ -421,8 +481,9 @@ The backend exposes routes for:
 - inbox
 - inbound email intake
 - generation
+- LinkedIn
 - settings
-- intent and AI test flows
+- intent capture and AI test flows
 
 ### 10.3 Database Model
 Current key tables include:
@@ -433,6 +494,8 @@ Current key tables include:
 - `inbox_cards`
 - `drafts`
 - `generation_sessions`
+- `linkedin_connections`
+- `linkedin_post_publications`
 
 High-level data relationships:
 - one user owns one workspace
@@ -441,6 +504,8 @@ High-level data relationships:
 - one brand may have many inbox cards
 - one brand may have many drafts
 - one user may have many generation sessions
+- one user may have one LinkedIn connection
+- one user may have many LinkedIn publication records
 
 ### 10.4 Storage and Document Handling
 BrandOS supports:
@@ -533,6 +598,8 @@ Workspace:
 - `/api/inbox/*`
 - `/api/inbound/email`
 - `/api/generate/*`
+- `/api/intent/*`
+- `/api/linkedin/*`
 - `/api/settings/*`
 
 ## 12. Current Integrations
@@ -542,11 +609,13 @@ Workspace:
 - Resend inbound email
 - Anthropic / OpenAI / Gemini provider abstraction
 - Google OAuth for sign-in
+- LinkedIn OAuth plus direct personal-post publishing
 
 ### 12.2 Present in Product Language or Settings but Not Yet Full First-Class Platform Features
 - broader Gmail connection status language remains in parts of the workspace
 - SSO is not yet a fully implemented enterprise auth stack
-- publishing and distribution are not yet end-to-end product modules
+- broader multi-channel publishing and distribution are not yet end-to-end product modules
+- company-page LinkedIn posting is not yet supported
 
 ### 12.3 Current Product Boundaries
 BrandOS is intentionally opinionated in V1.
@@ -556,18 +625,16 @@ Current in-scope:
 - inbox-driven intake
 - campaigns workspace
 - LinkedIn and blog generation
+- direct personal LinkedIn publishing
+- sample workflow teaching for first-time users
 - reviewer-first editing and iteration
 
 Current out-of-scope or not yet first-class:
-- publishing/distribution to channels
+- company-page posting and broader distribution workflows
+- scheduled publishing
 - campaign calendars and deadline planning beyond publish-date visibility
 - deleted campaign history UI
 - broad analytics and approval reporting
-
-### 12.2 Present in Product Language or Settings but Not Yet Full First-Class Platform Features
-- broader Gmail connection status language remains in parts of the workspace
-- SSO is not yet a fully implemented enterprise auth stack
-- publishing and distribution are not yet end-to-end product modules
 
 ## 13. Business Model Logic
 BrandOS is best positioned as a B2B SaaS workflow product for marketing teams rather than a consumer AI tool.
@@ -592,6 +659,8 @@ BrandOS differentiates from generic AI tools through:
 - structured inbox-driven campaign intake
 - brand diff proposals from stakeholder threads
 - human-reviewed AI updates rather than blind automation
+- first-run sample workflow teaching
+- direct personal LinkedIn publishing from the final review surface
 - focused enterprise-style multi-brand workflow
 
 ## 15. Risks and Product Constraints
@@ -604,6 +673,7 @@ BrandOS differentiates from generic AI tools through:
 ### 15.2 Technical Risks
 - forwarded thread reconstruction is inherently imperfect
 - AI outputs require careful fallback handling
+- third-party OAuth connections can expire and require user reconnect
 - production migrations must be applied manually in hosted environments
 - file extraction quality can vary based on document structure
 
@@ -618,6 +688,8 @@ BrandOS differentiates from generic AI tools through:
 - persistent session-based generation workflow
 - support for durable brand memory plus transient campaign context
 - practical inbound email intake foundation
+- strong first-run teaching through workflow explainers and sample data
+- direct personal LinkedIn publishing from the output surface
 - clear destructive-action handling for brands and campaigns
 
 ## 17. High-Value Next Steps
@@ -626,6 +698,7 @@ Natural next areas for continued investment:
 - more sophisticated brand diff approval UX
 - stronger archive and audit history for inbox actions
 - broader content format support
+- company-page posting and wider channel distribution
 - stronger enterprise security and SSO support
 - collaboration features across multiple teammates
 - analytics on brand usage, content volume, and revision patterns
@@ -638,6 +711,7 @@ Its business value is straightforward:
 - better brand consistency
 - faster campaign execution
 - more confidence using AI in real marketing operations
+- faster activation through sample workflow teaching and one-time channel setup
 
 Its technical design is also pragmatic:
 - React frontend
@@ -646,5 +720,6 @@ Its technical design is also pragmatic:
 - AI provider abstraction
 - storage-backed guideline ingestion
 - webhook-based inbound email processing
+- first-party LinkedIn OAuth and publishing integration
 
-In its current form, BrandOS is already more than a content generator. It is becoming a system of record and execution layer for AI-assisted brand-aware content marketing.
+In its current form, BrandOS is already more than a content generator. It is becoming a system of record and execution layer for AI-assisted brand-aware content marketing, with a clearer path from stakeholder update to final draft to direct publishing.
