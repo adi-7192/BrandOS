@@ -37,3 +37,6 @@ coverage/
 
 # Uploads (local dev only)
 server/uploads/
+
+# Local git worktrees
+.worktrees/
