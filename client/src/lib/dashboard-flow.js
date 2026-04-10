@@ -20,6 +20,42 @@ const EMPTY_DASHBOARD_SUMMARY = {
   },
 };
 
+const BRAND_KIT_LIST_FIELDS = new Set([
+  'voiceAdjectives',
+  'vocabulary',
+  'restrictedWords',
+  'funnelStages',
+  'websiteUrls',
+]);
+
+const BRAND_KIT_NUMERIC_FIELDS = new Set([
+  'voiceFormality',
+]);
+
+const BRAND_KIT_EDITABLE_FIELDS = [
+  'voiceAdjectives',
+  'vocabulary',
+  'restrictedWords',
+  'channelRulesLinkedin',
+  'channelRulesBlog',
+  'contentGoal',
+  'publishingFrequency',
+  'audienceType',
+  'buyerSeniority',
+  'ageRange',
+  'industrySector',
+  'industryTarget',
+  'funnelStages',
+  'toneShift',
+  'proofStyle',
+  'voiceFormality',
+  'campaignCoreWhy',
+  'pastContentExamples',
+  'websiteUrl',
+  'websiteUrls',
+  'websiteSummary',
+];
+
 export function normalizeDashboardSummary(summary) {
   const input = summary && typeof summary === 'object' ? summary : {};
   const counts = input.counts && typeof input.counts === 'object' ? input.counts : {};
@@ -207,9 +243,12 @@ export function buildBrandPortfolioRows(summary) {
       return getTimestamp(b.updatedAt) - getTimestamp(a.updatedAt);
     })
     .map((brand) => {
-      const toneSummary = (brand.voiceAdjectives || []).slice(0, 2).join(', ') || 'Voice still being defined';
-      const isActive = (brand.voiceAdjectives || []).length > 0;
+      const kit = getBrandKit(brand);
+      const voiceAdjectives = kit.voiceAdjectives || [];
+      const toneSummary = voiceAdjectives.slice(0, 2).join(', ') || 'Voice still being defined';
+      const isActive = voiceAdjectives.length > 0;
       const pendingBriefCount = Number(brand.pendingBriefCount || 0);
+      const hasGuidelineDocument = Boolean(brand.hasGuidelineDocument || kit.guidelineFileName);
 
       return {
         id: brand.id,
@@ -219,13 +258,54 @@ export function buildBrandPortfolioRows(summary) {
         statusLabel: isActive ? 'Active' : 'Draft',
         statusTone: isActive ? 'green' : 'amber',
         pendingBriefLabel: pendingBriefCount > 0 ? `${pendingBriefCount} pending brief${pendingBriefCount === 1 ? '' : 's'}` : 'Queue clear',
-        guidelineLabel: brand.hasGuidelineDocument ? 'Guideline loaded' : 'No guideline loaded',
-        guidelineTone: brand.hasGuidelineDocument ? 'blue' : 'neutral',
+        guidelineLabel: hasGuidelineDocument ? 'Guideline loaded' : 'No guideline loaded',
+        guidelineTone: hasGuidelineDocument ? 'blue' : 'neutral',
         pendingBriefCount,
         href: `/settings/brands/${brand.id}`,
-        actionLabel: 'Open kit',
+        primaryActionLabel: 'Edit brand kit',
+        secondaryActionLabel: 'Open full kit',
       };
     });
+}
+
+export function buildBrandKitEditorState(brand) {
+  const kit = getBrandKit(brand);
+
+  return BRAND_KIT_EDITABLE_FIELDS.reduce((state, field) => {
+    const value = kit[field];
+
+    if (BRAND_KIT_LIST_FIELDS.has(field)) {
+      return { ...state, [field]: Array.isArray(value) ? value.join(', ') : joinListValue(value) };
+    }
+
+    if (BRAND_KIT_NUMERIC_FIELDS.has(field)) {
+      return { ...state, [field]: value === null || value === undefined || value === '' ? '' : String(value) };
+    }
+
+    return { ...state, [field]: value === null || value === undefined ? '' : String(value) };
+  }, {});
+}
+
+export function buildBrandKitUpdatePayload(formState = {}) {
+  return {
+    kit: BRAND_KIT_EDITABLE_FIELDS.reduce((payload, field) => {
+      const value = formState[field];
+
+      if (BRAND_KIT_LIST_FIELDS.has(field)) {
+        return { ...payload, [field]: splitListValue(value) };
+      }
+
+      if (BRAND_KIT_NUMERIC_FIELDS.has(field)) {
+        return { ...payload, [field]: normalizeNumericField(value) };
+      }
+
+      return { ...payload, [field]: normalizeTextField(value) };
+    }, {}),
+  };
+}
+
+export function applyUpdatedBrandToCollection(brands = [], updatedBrand) {
+  return brands.map((brand) => (brand.id === updatedBrand?.id ? updatedBrand : brand));
 }
 
 export function buildRecentActivity(summary) {
@@ -301,6 +381,50 @@ function getTimestamp(value) {
 
 function getBriefQualityLabel(matchedFieldCount) {
   return matchedFieldCount >= 3 ? 'High match' : 'Needs review';
+}
+
+function getBrandKit(brand) {
+  if (brand?.kit && typeof brand.kit === 'object') {
+    return brand.kit;
+  }
+
+  return {
+    voiceAdjectives: brand?.voiceAdjectives || [],
+    guidelineFileName: brand?.hasGuidelineDocument ? 'Guideline loaded' : '',
+  };
+}
+
+function splitListValue(value) {
+  if (Array.isArray(value)) {
+    return [...new Set(value.map((entry) => normalizeTextField(entry)).filter(Boolean))];
+  }
+
+  return [...new Set(
+    String(value || '')
+      .split(',')
+      .map((entry) => normalizeTextField(entry))
+      .filter(Boolean)
+  )];
+}
+
+function joinListValue(value) {
+  if (Array.isArray(value)) {
+    return value.join(', ');
+  }
+
+  return normalizeTextField(value);
+}
+
+function normalizeTextField(value) {
+  return String(value ?? '').trim();
+}
+
+function normalizeNumericField(value) {
+  const normalized = normalizeTextField(value);
+  if (!normalized) return null;
+
+  const parsed = Number.parseInt(normalized, 10);
+  return Number.isNaN(parsed) ? null : parsed;
 }
 
 function getDeadlineUrgency(publishDate, now) {

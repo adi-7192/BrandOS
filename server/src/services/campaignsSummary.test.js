@@ -189,3 +189,36 @@ test('mapCampaignRows excludes abandoned sessions from the campaigns workspace',
 
   assert.deepEqual(campaigns, []);
 });
+
+test('mapCampaignRows keeps saved output sessions in the draft bucket until explicitly completed', () => {
+  const campaigns = mapCampaignRows([
+    {
+      id: 'session-saved',
+      brand_id: 'brand-1',
+      brand_name: 'Apple',
+      brand_language: 'English',
+      session_title: 'Launch recap',
+      source: 'manual',
+      source_card_ids: [],
+      status: 'saved',
+      current_step: 'output',
+      publish_date: '2026-04-12',
+      brief_payload: {
+        campaignName: 'Launch recap',
+        campaignType: 'Product launch',
+        toneShift: 'Warm and confident',
+        keyMessage: 'Share the launch story with customers.',
+      },
+      output_payload: {
+        linkedin: 'Ready LinkedIn post',
+        blog: '',
+      },
+      created_at: '2026-04-10T10:00:00.000Z',
+      updated_at: '2026-04-10T12:00:00.000Z',
+    },
+  ]);
+
+  assert.equal(campaigns[0]?.status, 'draft');
+  assert.equal(campaigns[0]?.statusLabel, 'Draft');
+  assert.equal(campaigns[0]?.progressPercent, 75);
+});

@@ -2,6 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+  applyUpdatedBrandToCollection,
+  buildBrandKitEditorState,
+  buildBrandKitUpdatePayload,
   buildBrandPortfolioRows,
   buildBriefActionItems,
   buildContinueWorkingItems,
@@ -297,7 +300,8 @@ test('buildBrandPortfolioRows sorts brands with pending work first and marks sta
       guidelineTone: 'blue',
       pendingBriefCount: 2,
       href: '/settings/brands/brand-1',
-      actionLabel: 'Open kit',
+      primaryActionLabel: 'Edit brand kit',
+      secondaryActionLabel: 'Open full kit',
     },
     {
       id: 'brand-2',
@@ -311,8 +315,131 @@ test('buildBrandPortfolioRows sorts brands with pending work first and marks sta
       guidelineTone: 'neutral',
       pendingBriefCount: 0,
       href: '/settings/brands/brand-2',
-      actionLabel: 'Open kit',
+      primaryActionLabel: 'Edit brand kit',
+      secondaryActionLabel: 'Open full kit',
     },
+  ]);
+});
+
+test('buildBrandKitEditorState prepares editable dashboard form fields from a full brand payload', () => {
+  const state = buildBrandKitEditorState({
+    id: 'brand-1',
+    name: 'Atlas',
+    kit: {
+      voiceAdjectives: ['Warm', 'Direct'],
+      vocabulary: ['Craft', 'Neighbourhood'],
+      restrictedWords: ['cheap', 'disruptive'],
+      channelRulesLinkedin: 'Lead with a point of view.',
+      channelRulesBlog: 'Use subheadings.',
+      contentGoal: 'Thought leadership',
+      publishingFrequency: 'Weekly',
+      audienceType: 'CMOs',
+      buyerSeniority: 'Director',
+      ageRange: '30-45',
+      industrySector: 'Retail',
+      industryTarget: 'Luxury retail',
+      funnelStages: ['Top of funnel', 'Mid funnel'],
+      toneShift: 'More premium',
+      proofStyle: 'Customer story',
+      voiceFormality: 3,
+      campaignCoreWhy: 'Build preference over time.',
+      pastContentExamples: 'Founder note and launch post.',
+      websiteUrl: 'https://atlas.example',
+      websiteUrls: ['https://atlas.example/about', 'https://atlas.example/journal'],
+      websiteSummary: 'Atlas designs modern retail experiences.',
+    },
+  });
+
+  assert.deepEqual(state, {
+    voiceAdjectives: 'Warm, Direct',
+    vocabulary: 'Craft, Neighbourhood',
+    restrictedWords: 'cheap, disruptive',
+    channelRulesLinkedin: 'Lead with a point of view.',
+    channelRulesBlog: 'Use subheadings.',
+    contentGoal: 'Thought leadership',
+    publishingFrequency: 'Weekly',
+    audienceType: 'CMOs',
+    buyerSeniority: 'Director',
+    ageRange: '30-45',
+    industrySector: 'Retail',
+    industryTarget: 'Luxury retail',
+    funnelStages: 'Top of funnel, Mid funnel',
+    toneShift: 'More premium',
+    proofStyle: 'Customer story',
+    voiceFormality: '3',
+    campaignCoreWhy: 'Build preference over time.',
+    pastContentExamples: 'Founder note and launch post.',
+    websiteUrl: 'https://atlas.example',
+    websiteUrls: 'https://atlas.example/about, https://atlas.example/journal',
+    websiteSummary: 'Atlas designs modern retail experiences.',
+  });
+});
+
+test('buildBrandKitUpdatePayload trims text fields and converts list inputs into arrays', () => {
+  const payload = buildBrandKitUpdatePayload({
+    voiceAdjectives: ' Warm, Direct , Warm ',
+    vocabulary: 'Craft, Neighbourhood',
+    restrictedWords: ' cheap, disruptive ',
+    channelRulesLinkedin: ' Lead with a point of view. ',
+    channelRulesBlog: '',
+    contentGoal: ' Thought leadership ',
+    publishingFrequency: ' Weekly ',
+    audienceType: ' CMOs ',
+    buyerSeniority: ' Director ',
+    ageRange: ' 30-45 ',
+    industrySector: ' Retail ',
+    industryTarget: ' Luxury retail ',
+    funnelStages: ' Top of funnel , Mid funnel ',
+    toneShift: ' More premium ',
+    proofStyle: ' Customer story ',
+    voiceFormality: ' 4 ',
+    campaignCoreWhy: ' Build preference over time. ',
+    pastContentExamples: ' Founder note and launch post. ',
+    websiteUrl: ' https://atlas.example ',
+    websiteUrls: ' https://atlas.example/about, https://atlas.example/journal ',
+    websiteSummary: ' Atlas designs modern retail experiences. ',
+  });
+
+  assert.deepEqual(payload, {
+    kit: {
+      voiceAdjectives: ['Warm', 'Direct'],
+      vocabulary: ['Craft', 'Neighbourhood'],
+      restrictedWords: ['cheap', 'disruptive'],
+      channelRulesLinkedin: 'Lead with a point of view.',
+      channelRulesBlog: '',
+      contentGoal: 'Thought leadership',
+      publishingFrequency: 'Weekly',
+      audienceType: 'CMOs',
+      buyerSeniority: 'Director',
+      ageRange: '30-45',
+      industrySector: 'Retail',
+      industryTarget: 'Luxury retail',
+      funnelStages: ['Top of funnel', 'Mid funnel'],
+      toneShift: 'More premium',
+      proofStyle: 'Customer story',
+      voiceFormality: 4,
+      campaignCoreWhy: 'Build preference over time.',
+      pastContentExamples: 'Founder note and launch post.',
+      websiteUrl: 'https://atlas.example',
+      websiteUrls: ['https://atlas.example/about', 'https://atlas.example/journal'],
+      websiteSummary: 'Atlas designs modern retail experiences.',
+    },
+  });
+});
+
+test('applyUpdatedBrandToCollection replaces the saved brand so dashboard summaries refresh immediately', () => {
+  const brands = applyUpdatedBrandToCollection([
+    { id: 'brand-1', name: 'Atlas', kit: { voiceAdjectives: ['Warm'] } },
+    { id: 'brand-2', name: 'Northstar', kit: { voiceAdjectives: [] } },
+  ], {
+    id: 'brand-1',
+    name: 'Atlas',
+    kit: { voiceAdjectives: ['Warm', 'Direct'] },
+  });
+
+  assert.deepEqual(brands, [
+    { id: 'brand-1', name: 'Atlas', kit: { voiceAdjectives: ['Warm', 'Direct'] } },
+    { id: 'brand-2', name: 'Northstar', kit: { voiceAdjectives: [] } },
   ]);
 });
 

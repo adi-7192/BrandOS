@@ -4,6 +4,7 @@ import { authenticate } from '../middleware/auth.js';
 import { buildCanonicalBrief } from '../services/ai/briefBuilder.js';
 import { generateContent, generatePreviewSuggestions, iterateContent, rewriteSelection } from '../services/ai/generation.js';
 import { mapGenerationSessionRow } from '../services/generationSessions.js';
+import { validateGenerationSessionPayload } from '../services/generationSessionStatus.js';
 import { normalizePublishDateValue } from '../services/extraction/publishDate.js';
 
 const router = Router();
@@ -50,7 +51,9 @@ router.get('/sessions/:id', async (req, res, next) => {
       [req.params.id, req.user.id]
     );
 
-    if (!rows[0]) return res.status(404).json({ message: 'Generation session not found.' });
+    if (!rows[0] || rows[0].status === 'abandoned') {
+      return res.status(404).json({ message: 'Generation session not found.' });
+    }
 
     res.json({ session: mapGenerationSessionRow(rows[0]) });
   } catch (err) { next(err); }
@@ -72,6 +75,15 @@ router.post('/sessions', async (req, res, next) => {
       lastInstruction = '',
     } = req.body;
     const publishDate = normalizePublishDateValue(briefPayload?.publishDate || '');
+    const validationError = validateGenerationSessionPayload({
+      status,
+      currentStep,
+      outputPayload,
+    }, { mode: 'create' });
+
+    if (validationError) {
+      return res.status(400).json({ message: validationError });
+    }
 
     const { rows } = await pool.query(
       `INSERT INTO generation_sessions (
@@ -104,7 +116,9 @@ router.post('/sessions', async (req, res, next) => {
 router.patch('/sessions/:id', async (req, res, next) => {
   try {
     const existing = await hydrateSessionRow(req.params.id, req.user.id);
-    if (!existing) return res.status(404).json({ message: 'Generation session not found.' });
+    if (!existing || existing.status === 'abandoned') {
+      return res.status(404).json({ message: 'Generation session not found.' });
+    }
 
     const nextPayload = {
       sessionTitle: req.body.sessionTitle ?? existing.session_title,
@@ -119,6 +133,11 @@ router.patch('/sessions/:id', async (req, res, next) => {
       lastInstruction: req.body.lastInstruction ?? existing.last_instruction,
     };
     const publishDate = normalizePublishDateValue(nextPayload.briefPayload?.publishDate || existing.publish_date || '');
+    const validationError = validateGenerationSessionPayload(nextPayload);
+
+    if (validationError) {
+      return res.status(400).json({ message: validationError });
+    }
 
     await pool.query(
       `UPDATE generation_sessions
@@ -160,10 +179,14 @@ router.patch('/sessions/:id', async (req, res, next) => {
 router.delete('/sessions/:id', async (req, res, next) => {
   try {
     const existing = await hydrateSessionRow(req.params.id, req.user.id);
-    if (!existing) return res.status(404).json({ message: 'Generation session not found.' });
+    if (!existing || existing.status === 'abandoned') {
+      return res.status(404).json({ message: 'Generation session not found.' });
+    }
 
     await pool.query(
-      `DELETE FROM generation_sessions
+      `UPDATE generation_sessions
+       SET status = 'abandoned',
+           updated_at = NOW()
        WHERE id = $1 AND user_id = $2`,
       [req.params.id, req.user.id]
     );

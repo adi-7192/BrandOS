@@ -3,6 +3,7 @@ import pool from '../db/pool.js';
 import { authenticate } from '../middleware/auth.js';
 import { formatFunnelStages, normalizeFunnelStages } from '../lib/brandKitFields.js';
 import { collectGuidelineStoragePaths } from '../services/brandDeletion.js';
+import { normalizeEditableBrandKitPatch } from '../services/brands/updateBrandKit.js';
 import { deleteBrandGuideline } from '../services/storage/supabaseStorage.js';
 
 const router = Router();
@@ -34,24 +35,54 @@ router.get('/', async (req, res, next) => {
 // GET /api/brands/:id
 router.get('/:id', async (req, res, next) => {
   try {
-    const { rows } = await pool.query(
-      `SELECT b.*, k.voice_adjectives, k.vocabulary, k.restricted_words,
-              k.channel_rules_linkedin, k.channel_rules_blog, k.content_goal,
-              k.audience_type, k.buyer_seniority, k.age_range,
-              k.industry_sector, k.industry_target, k.funnel_stages, k.funnel_stage,
-              k.tone_shift, k.proof_style,
-              k.publishing_frequency, k.formality_level, k.campaign_core_why,
-              k.past_content_examples, k.website_url, k.website_urls, k.website_summary,
-              k.guideline_file_url, k.guideline_file_name, k.guideline_storage_path, k.guideline_text_excerpt,
-              k.version as kit_version
-       FROM brands b
-       LEFT JOIN brand_kits k ON k.brand_id = b.id AND k.is_active = TRUE
-       WHERE b.id = $1`,
-      [req.params.id]
-    );
+    const rows = await hydrateBrandRows({ brandId: req.params.id });
     if (!rows[0]) return res.status(404).json({ message: 'Brand not found.' });
     res.json({ brand: formatBrand(rows[0]) });
   } catch (err) { next(err); }
+});
+
+router.patch('/:id', async (req, res, next) => {
+  const client = await pool.connect();
+
+  try {
+    const workspace = await getWorkspace(req.user.id);
+    if (!workspace) return res.status(404).json({ message: 'Workspace not found.' });
+
+    const brandResult = await client.query(
+      `SELECT id
+       FROM brands
+       WHERE id = $1 AND workspace_id = $2
+       LIMIT 1`,
+      [req.params.id, workspace.id]
+    );
+
+    if (!brandResult.rows[0]) return res.status(404).json({ message: 'Brand not found.' });
+
+    const patch = normalizeEditableBrandKitPatch(req.body?.kit || {});
+    if (Object.keys(patch).length === 0) {
+      const rows = await hydrateBrandRows({ brandId: req.params.id, client });
+      return res.json({ brand: formatBrand(rows[0]) });
+    }
+
+    await client.query('BEGIN');
+    await upsertEditableBrandKit({ client, brandId: req.params.id, patch });
+    await client.query(
+      `UPDATE brands
+       SET updated_at = NOW(),
+           kit_version = COALESCE(kit_version, 1) + 1
+       WHERE id = $1`,
+      [req.params.id]
+    );
+    await client.query('COMMIT');
+
+    const rows = await hydrateBrandRows({ brandId: req.params.id, client });
+    res.json({ brand: formatBrand(rows[0]) });
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
+    next(err);
+  } finally {
+    client.release();
+  }
 });
 
 router.delete('/:id', async (req, res, next) => {
@@ -95,6 +126,117 @@ async function getWorkspace(userId) {
   const { rows } = await pool.query('SELECT * FROM workspaces WHERE user_id = $1', [userId]);
   return rows[0];
 }
+
+async function hydrateBrandRows({ brandId, client = pool }) {
+  const { rows } = await client.query(
+    `SELECT b.*, k.voice_adjectives, k.vocabulary, k.restricted_words,
+            k.channel_rules_linkedin, k.channel_rules_blog, k.content_goal,
+            k.audience_type, k.buyer_seniority, k.age_range,
+            k.industry_sector, k.industry_target, k.funnel_stages, k.funnel_stage,
+            k.tone_shift, k.proof_style,
+            k.publishing_frequency, k.formality_level, k.campaign_core_why,
+            k.past_content_examples, k.website_url, k.website_urls, k.website_summary,
+            k.guideline_file_url, k.guideline_file_name, k.guideline_storage_path, k.guideline_text_excerpt,
+            k.version as kit_version
+     FROM brands b
+     LEFT JOIN brand_kits k ON k.brand_id = b.id AND k.is_active = TRUE
+     WHERE b.id = $1`,
+    [brandId]
+  );
+
+  return rows;
+}
+
+async function upsertEditableBrandKit({ client, brandId, patch }) {
+  const entries = Object.entries(BRAND_KIT_FIELD_MAP)
+    .filter(([field]) => field in patch);
+
+  const existingResult = await client.query(
+    `SELECT id
+     FROM brand_kits
+     WHERE brand_id = $1 AND is_active = TRUE
+     ORDER BY created_at DESC
+     LIMIT 1`,
+    [brandId]
+  );
+  const existingKit = existingResult.rows[0] || null;
+
+  if (!existingKit && entries.length === 0) {
+    return;
+  }
+
+  if (!existingKit) {
+    const columns = ['brand_id'];
+    const placeholders = ['$1'];
+    const values = [brandId];
+
+    for (const [field, column] of entries) {
+      values.push(patch[field]);
+      columns.push(column);
+      placeholders.push(`$${values.length}`);
+    }
+
+    if ('funnelStages' in patch) {
+      values.push(formatFunnelStages(patch.funnelStages) || null);
+      columns.push('funnel_stage');
+      placeholders.push(`$${values.length}`);
+    }
+
+    await client.query(
+      `INSERT INTO brand_kits (${columns.join(', ')})
+       VALUES (${placeholders.join(', ')})`,
+      values
+    );
+    return;
+  }
+
+  const values = [];
+  const updates = [];
+
+  for (const [field, column] of entries) {
+    values.push(patch[field]);
+    updates.push(`${column} = $${values.length}`);
+  }
+
+  if ('funnelStages' in patch) {
+    values.push(formatFunnelStages(patch.funnelStages) || null);
+    updates.push(`funnel_stage = $${values.length}`);
+  }
+
+  values.push(existingKit.id);
+
+  await client.query(
+    `UPDATE brand_kits
+     SET ${updates.join(', ')},
+         version = COALESCE(version, 1) + 1
+     WHERE id = $${values.length}`,
+    values
+  );
+}
+
+const BRAND_KIT_FIELD_MAP = {
+  voiceAdjectives: 'voice_adjectives',
+  vocabulary: 'vocabulary',
+  restrictedWords: 'restricted_words',
+  channelRulesLinkedin: 'channel_rules_linkedin',
+  channelRulesBlog: 'channel_rules_blog',
+  contentGoal: 'content_goal',
+  publishingFrequency: 'publishing_frequency',
+  audienceType: 'audience_type',
+  buyerSeniority: 'buyer_seniority',
+  ageRange: 'age_range',
+  industrySector: 'industry_sector',
+  industryTarget: 'industry_target',
+  funnelStages: 'funnel_stages',
+  toneShift: 'tone_shift',
+  proofStyle: 'proof_style',
+  voiceFormality: 'formality_level',
+  campaignCoreWhy: 'campaign_core_why',
+  pastContentExamples: 'past_content_examples',
+  websiteUrl: 'website_url',
+  websiteUrls: 'website_urls',
+  websiteSummary: 'website_summary',
+};
 
 function formatBrand(row) {
   const funnelStages = normalizeFunnelStages(row.funnel_stages || row.funnel_stage);

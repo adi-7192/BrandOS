@@ -6,6 +6,7 @@ import {
   buildSessionRoute,
   buildResumeSessionItem,
   buildSessionQuery,
+  normalizeGenerationSessionStatus,
 } from './generation-session.js';
 
 test('buildGenerationSessionPayload captures in-progress workflow state from the first field change', () => {
@@ -55,6 +56,34 @@ test('buildGenerationSessionPayload captures in-progress workflow state from the
       blog: '',
     },
   });
+});
+
+test('buildGenerationSessionPayload preserves an explicit lifecycle status for saved or completed output states', () => {
+  const payload = buildGenerationSessionPayload({
+    brief: {
+      brandId: 'brand-1',
+      brandName: 'Apple',
+      campaignName: 'Spring launch',
+      mode: 'manual',
+      sourceCardIds: [],
+    },
+    sections: {},
+    output: {
+      linkedin: 'Ready LinkedIn post',
+      blog: '',
+    },
+    currentStep: 'output',
+    activeTab: 'linkedin',
+    lastInstruction: '',
+    status: 'saved',
+  });
+
+  assert.equal(payload.status, 'saved');
+});
+
+test('normalizeGenerationSessionStatus falls back to in progress for unsupported values', () => {
+  assert.equal(normalizeGenerationSessionStatus('completed'), 'completed');
+  assert.equal(normalizeGenerationSessionStatus('not-real'), 'in_progress');
 });
 
 test('buildResumeSessionItem creates a concise picker item for resumable sessions', () => {

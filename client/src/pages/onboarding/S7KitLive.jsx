@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useOnboarding } from '../../context/OnboardingContext';
 import OnboardingShell from '../../components/layout/OnboardingShell';
@@ -13,7 +13,12 @@ export default function S7KitLive() {
   const ob = useOnboarding();
   const { user, refreshUser } = useAuth();
   const [intentHidden, setIntentHidden] = useState(false);
-  const nextSteps = buildKitLiveNextSteps();
+  const [linkedinAction, setLinkedinAction] = useState({ loading: false, message: '', error: false });
+  const [linkedinStatus, setLinkedinStatus] = useState({ loading: true, connected: false });
+  const nextSteps = useMemo(
+    () => buildKitLiveNextSteps({ linkedinConnected: linkedinStatus.connected }),
+    [linkedinStatus.connected]
+  );
 
   const chips = [
     ob.kitCards?.voiceAdjectives?.join(' · '),
@@ -25,6 +30,27 @@ export default function S7KitLive() {
   ].filter(Boolean);
 
   const hasAnsweredKitLiveIntent = user?.intentState?.answeredQuestionKeys?.includes(KIT_LIVE_INTENT_QUESTION.questionKey);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    api.get('/linkedin/status')
+      .then((res) => {
+        if (cancelled) return;
+        setLinkedinStatus({
+          loading: false,
+          connected: Boolean(res.data.linkedin?.connected),
+        });
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setLinkedinStatus({ loading: false, connected: false });
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleIntentAnswer = async (answer) => {
     await api.post('/intent', {
@@ -39,6 +65,38 @@ export default function S7KitLive() {
   const handleGoToDashboard = () => {
     setIntentHidden(true);
     navigate('/dashboard');
+  };
+
+  const handleStepAction = async (actionId) => {
+    if (actionId === 'open-inbox-settings') {
+      navigate('/settings');
+      return;
+    }
+
+    if (actionId === 'open-dashboard') {
+      handleGoToDashboard();
+      return;
+    }
+
+    if (actionId === 'open-linkedin-settings') {
+      navigate('/settings');
+      return;
+    }
+
+    if (actionId === 'connect-linkedin') {
+      setLinkedinAction({ loading: true, message: '', error: false });
+
+      try {
+        const res = await api.get('/linkedin/connect');
+        window.location.href = res.data.authUrl;
+      } catch (err) {
+        setLinkedinAction({
+          loading: false,
+          message: err.response?.data?.message || 'Unable to start the LinkedIn connection right now.',
+          error: true,
+        });
+      }
+    }
   };
 
   return (
@@ -85,17 +143,42 @@ export default function S7KitLive() {
         </button>
       </div>
 
+      {linkedinAction.message ? (
+        <div className={`mt-6 rounded-[18px] border px-4 py-3 text-sm ${
+          linkedinAction.error
+            ? 'border-red-200 bg-red-50 text-red-700'
+            : 'border-[#dbe6f3] bg-[#f8fbff] text-slate-700'
+        }`}>
+          {linkedinAction.message}
+        </div>
+      ) : null}
+
       {/* Phase 3 signpost */}
       <div className="mt-8 rounded-[20px] bg-[var(--brand-surface-subtle)] border border-[#e7ebf3] shadow-[0_1px_2px_rgba(15,23,42,0.04)] p-4">
-        <p className="text-xs font-semibold text-[var(--brand-text-muted)] uppercase tracking-widest mb-2">What's available next</p>
-        <ul className="space-y-3 text-sm text-gray-500">
+        <p className="text-xs font-semibold text-[var(--brand-text-muted)] uppercase tracking-widest mb-2">Complete your setup</p>
+        <div className="space-y-3">
           {nextSteps.map((step) => (
-            <li key={step.title}>
-              <p className="font-medium text-gray-700">{step.title}</p>
-              <p className="mt-1 text-gray-500">{step.description}</p>
-            </li>
+            <div key={step.title} className="rounded-[18px] border border-[#e7ecf3] bg-white px-4 py-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="font-medium text-gray-700">{step.title}</p>
+                  <p className="mt-1 text-sm text-gray-500">{step.description}</p>
+                </div>
+                <Button
+                  variant={step.actionId === 'connect-linkedin' ? 'primary' : 'secondary'}
+                  disabled={linkedinStatus.loading || (linkedinAction.loading && step.actionId === 'connect-linkedin')}
+                  onClick={() => handleStepAction(step.actionId)}
+                >
+                  {linkedinStatus.loading && (step.actionId === 'connect-linkedin' || step.actionId === 'open-linkedin-settings')
+                    ? 'Checking LinkedIn…'
+                    : linkedinAction.loading && step.actionId === 'connect-linkedin'
+                      ? 'Opening LinkedIn…'
+                      : step.actionLabel}
+                </Button>
+              </div>
+            </div>
           ))}
-        </ul>
+        </div>
       </div>
     </OnboardingShell>
   );

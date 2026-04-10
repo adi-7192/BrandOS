@@ -6,7 +6,7 @@ import DangerConfirmModal from '../../components/ui/DangerConfirmModal';
 import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { getNextOutputIntentQuestion } from '../../lib/intent-capture';
-import { buildGenerationSessionPayload } from '../../lib/generation-session';
+import { buildGenerationSessionPayload, normalizeGenerationSessionStatus } from '../../lib/generation-session';
 import { buildBriefOriginMeta } from '../../lib/generation-flow';
 import { buildLinkedInPublishState } from '../../lib/linkedin-view';
 import { buildCampaignDeleteConfirmation } from '../../lib/destructive-actions';
@@ -41,6 +41,7 @@ export default function Output() {
     linkedin: state?.output?.linkedin || '',
     blog: state?.output?.blog || '',
   });
+  const [sessionStatus, setSessionStatus] = useState('in_progress');
   const [draftReaction, setDraftReaction] = useState('');
   const [feedbackChips, setFeedbackChips] = useState([]);
   const [feedbackNote, setFeedbackNote] = useState('');
@@ -51,6 +52,7 @@ export default function Output() {
   const [selectionRewriteState, setSelectionRewriteState] = useState({ loading: false, message: '' });
   const [lastAiChange, setLastAiChange] = useState({ linkedin: '', blog: '' });
   const [saveState, setSaveState] = useState({ saving: false, message: '' });
+  const [completeState, setCompleteState] = useState({ saving: false, message: '' });
   const [autosaveState, setAutosaveState] = useState('idle');
   const [linkedin, setLinkedin] = useState({ connected: false, status: 'not_connected' });
   const [linkedinLoading, setLinkedinLoading] = useState(true);
@@ -133,6 +135,7 @@ export default function Output() {
           blog: session.outputPayload?.blog || '',
         });
         setActiveTab(session.activeTab || 'linkedin');
+        setSessionStatus(normalizeGenerationSessionStatus(session.status));
       } finally {
         setLoading(false);
       }
@@ -207,6 +210,7 @@ export default function Output() {
           currentStep: 'output',
           activeTab,
           lastInstruction: instruction,
+          status: sessionStatus,
         }));
       }
     } catch {
@@ -264,6 +268,7 @@ export default function Output() {
     }
 
     setSaveState({ saving: true, message: '' });
+    setCompleteState((current) => ({ ...current, message: '' }));
     try {
       const res = await api.post('/generate/save-draft', {
         brandId: brief.brandId,
@@ -276,9 +281,73 @@ export default function Output() {
           note: feedbackNote,
         }) || null,
       });
-      setSaveState({ saving: false, message: `Saved version ${res.data.version}.` });
+
+      let statusUpdated = true;
+      if (sessionId) {
+        try {
+          await api.patch(`/generate/sessions/${sessionId}`, buildGenerationSessionPayload({
+            brief,
+            sections: {},
+            output: content,
+            currentStep: 'output',
+            activeTab,
+            lastInstruction: buildGlobalFeedbackInstruction({
+              reaction: draftReaction,
+              chips: feedbackChips,
+              note: feedbackNote,
+            }),
+            status: 'saved',
+          }));
+          setSessionStatus('saved');
+        } catch {
+          statusUpdated = false;
+        }
+      }
+
+      setSaveState({
+        saving: false,
+        message: statusUpdated
+          ? `Saved as draft in version ${res.data.version}.`
+          : `Saved version ${res.data.version}, but we could not move the campaign to Draft yet.`,
+      });
     } catch {
       setSaveState({ saving: false, message: 'Failed to save draft. Please try again.' });
+    }
+  };
+
+  const handleMarkCompleted = async () => {
+    if (!sessionId) {
+      setCompleteState({ saving: false, message: 'This campaign needs a saved session before it can be marked as completed.' });
+      return;
+    }
+
+    setCompleteState({ saving: true, message: '' });
+    setSaveState((current) => ({ ...current, message: '' }));
+
+    try {
+      await api.patch(`/generate/sessions/${sessionId}`, buildGenerationSessionPayload({
+        brief,
+        sections: {},
+        output: content,
+        currentStep: 'output',
+        activeTab,
+        lastInstruction: buildGlobalFeedbackInstruction({
+          reaction: draftReaction,
+          chips: feedbackChips,
+          note: feedbackNote,
+        }),
+        status: 'completed',
+      }));
+      setSessionStatus('completed');
+      setCompleteState({
+        saving: false,
+        message: 'Campaign marked as completed. It now appears in the Completed tab on Campaigns.',
+      });
+    } catch {
+      setCompleteState({
+        saving: false,
+        message: 'We could not mark this campaign as completed right now. Please try again.',
+      });
     }
   };
 
@@ -306,6 +375,13 @@ export default function Output() {
         postUrn: res.data.postUrn || '',
         publishedAt: res.data.publishedAt || '',
       });
+      if (sessionId) {
+        setSessionStatus('completed');
+        setCompleteState({
+          saving: false,
+          message: 'Campaign marked as completed after publishing.',
+        });
+      }
       setPublishModalOpen(false);
     } catch (err) {
       setPublishState({
@@ -383,6 +459,7 @@ export default function Output() {
             chips: feedbackChips,
             note: feedbackNote,
           }),
+          status: sessionStatus,
         }));
         setAutosaveState('saved');
       } catch {
@@ -391,7 +468,7 @@ export default function Output() {
     }, 700);
 
     return () => clearTimeout(timer);
-  }, [activeTab, brief, content, draftReaction, feedbackChips, feedbackNote, loading, sessionId]);
+  }, [activeTab, brief, content, draftReaction, feedbackChips, feedbackNote, loading, sessionId, sessionStatus]);
 
   useEffect(() => {
     setSelectionRange({ start: 0, end: 0 });
@@ -633,16 +710,24 @@ export default function Output() {
         {/* Export row */}
         <div className="flex flex-wrap gap-2 mb-6">
           <Button variant="secondary" className="text-sm" onClick={handleSaveDraft} disabled={saveState.saving}>
-            {saveState.saving ? 'Saving…' : 'Save draft'}
+            {saveState.saving ? 'Saving…' : 'Save as draft'}
+          </Button>
+          <Button
+            variant="teal"
+            className="text-sm"
+            onClick={handleMarkCompleted}
+            disabled={completeState.saving || !sessionId || sessionStatus === 'completed'}
+          >
+            {completeState.saving ? 'Updating…' : sessionStatus === 'completed' ? 'Completed' : 'Mark as completed'}
           </Button>
           <Button variant="secondary" className="text-sm" onClick={() => copyToClipboard(content[activeTab])}>Copy to clipboard</Button>
           {activeTab === 'blog' && (
             <Button variant="secondary" className="text-sm" onClick={() => {}}>Copy markdown</Button>
           )}
         </div>
-        {(saveState.message || autosaveState !== 'idle') && (
+        {(saveState.message || completeState.message || autosaveState !== 'idle') && (
           <p className="mb-4 text-sm text-brand-muted">
-            {saveState.message || (
+            {saveState.message || completeState.message || (
               autosaveState === 'saving'
                 ? 'Saving…'
                 : autosaveState === 'saved'

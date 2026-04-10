@@ -1,3 +1,5 @@
+const VALID_GENERATION_SESSION_STATUSES = new Set(['in_progress', 'saved', 'completed', 'abandoned']);
+
 export function buildGenerationSessionPayload({
   brief,
   sections = {},
@@ -15,13 +17,17 @@ export function buildGenerationSessionPayload({
     source,
     sourceCardIds: brief?.sourceCardIds || [],
     currentStep,
-    status,
+    status: normalizeGenerationSessionStatus(status),
     activeTab,
     lastInstruction,
     briefPayload: brief || {},
     previewPayload: sections,
     outputPayload: output,
   };
+}
+
+export function normalizeGenerationSessionStatus(status, fallback = 'in_progress') {
+  return VALID_GENERATION_SESSION_STATUSES.has(status) ? status : fallback;
 }
 
 export function buildResumeSessionItem(session) {

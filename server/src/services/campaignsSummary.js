@@ -40,8 +40,12 @@ export function mapCampaignRows(rows = []) {
 }
 
 function getCampaignStatus(session, outputs) {
-  if (session.status === 'completed' || session.status === 'saved') {
+  if (session.status === 'completed') {
     return 'completed';
+  }
+
+  if (session.status === 'saved') {
+    return 'draft';
   }
 
   if (session.currentStep === 'creating' || session.currentStep === 'output') {

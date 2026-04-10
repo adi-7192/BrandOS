@@ -189,6 +189,17 @@ router.post('/publish', async (req, res, next) => {
       [connection.id]
     );
 
+    if (req.body?.generationSessionId) {
+      await client.query(
+        `UPDATE generation_sessions
+         SET status = 'completed',
+             current_step = 'output',
+             updated_at = NOW()
+         WHERE id = $1 AND user_id = $2 AND status <> 'abandoned'`,
+        [req.body.generationSessionId, req.user.id]
+      );
+    }
+
     res.json({
       ok: true,
       status: 'published',

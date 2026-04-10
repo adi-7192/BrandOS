@@ -1,8 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { useBrand } from '../../context/BrandContext';
 import api from '../../services/api';
 import {
+  applyUpdatedBrandToCollection,
+  buildBrandKitEditorState,
+  buildBrandKitUpdatePayload,
   buildBrandPortfolioRows,
   buildBriefActionItems,
   buildContinueWorkingItems,
@@ -23,21 +27,36 @@ const emptySummary = getEmptyDashboardSummary();
 export default function Dashboard() {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
+  const { fetchBrands } = useBrand();
   const [summary, setSummary] = useState(emptySummary);
+  const [dashboardBrands, setDashboardBrands] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [editingBrandId, setEditingBrandId] = useState('');
+  const [brandEditorState, setBrandEditorState] = useState(null);
+  const [brandEditorSaveState, setBrandEditorSaveState] = useState({ saving: false, message: '', tone: 'neutral' });
 
   useEffect(() => {
-    api.get('/dashboard/summary')
-      .then((res) => setSummary(normalizeDashboardSummary(res.data.summary)))
+    Promise.all([
+      api.get('/dashboard/summary'),
+      fetchBrands().catch(() => []),
+    ])
+      .then(([summaryRes, brandsRes]) => {
+        setSummary(normalizeDashboardSummary(summaryRes.data.summary));
+        setDashboardBrands(Array.isArray(brandsRes) ? brandsRes : []);
+      })
       .catch(() => setSummary(getEmptyDashboardSummary()))
       .finally(() => setLoading(false));
-  }, []);
+  }, [fetchBrands]);
 
   const greeting = getGreeting();
   const stats = useMemo(() => buildDashboardStats(summary), [summary]);
   const briefItems = useMemo(() => buildBriefActionItems(summary), [summary]);
   const continueWorkingItems = useMemo(() => buildContinueWorkingItems(summary), [summary]);
-  const brandRows = useMemo(() => buildBrandPortfolioRows(summary), [summary]);
+  const brandPortfolioBrands = useMemo(
+    () => mergeBrandPortfolioData(summary.brands, dashboardBrands),
+    [dashboardBrands, summary.brands]
+  );
+  const brandRows = useMemo(() => buildBrandPortfolioRows({ brands: brandPortfolioBrands }), [brandPortfolioBrands]);
   const deadlineItems = useMemo(() => buildUpcomingDeadlineItems(summary), [summary]);
   const activity = useMemo(() => buildRecentActivity(summary), [summary]);
   const workflowGuide = useMemo(() => buildWorkflowGuide(summary), [summary]);
@@ -145,6 +164,58 @@ export default function Dashboard() {
         sampleBrief: buildSampleBrief(),
       },
     });
+  };
+
+  const handleOpenBrandEditor = (brandId) => {
+    const brand = brandPortfolioBrands.find((entry) => entry.id === brandId);
+    if (!brand?.kit) return;
+
+    setEditingBrandId(brandId);
+    setBrandEditorState(buildBrandKitEditorState(brand));
+    setBrandEditorSaveState({ saving: false, message: '', tone: 'neutral' });
+  };
+
+  const handleCancelBrandEditor = () => {
+    if (brandEditorSaveState.saving) return;
+    setEditingBrandId('');
+    setBrandEditorState(null);
+    setBrandEditorSaveState({ saving: false, message: '', tone: 'neutral' });
+  };
+
+  const handleBrandEditorChange = (field, value) => {
+    setBrandEditorState((current) => ({ ...(current || {}), [field]: value }));
+  };
+
+  const handleSaveBrandChanges = async (brandId) => {
+    if (!brandEditorState) return;
+
+    setBrandEditorSaveState({ saving: true, message: '', tone: 'neutral' });
+
+    try {
+      const res = await api.patch(`/brands/${brandId}`, buildBrandKitUpdatePayload(brandEditorState));
+      const updatedBrand = res.data.brand;
+      const refreshedBrands = await fetchBrands().catch(() => null);
+
+      if (Array.isArray(refreshedBrands)) {
+        setDashboardBrands(refreshedBrands);
+      } else {
+        setDashboardBrands((current) => applyUpdatedBrandToCollection(current, updatedBrand));
+      }
+
+      setEditingBrandId('');
+      setBrandEditorState(null);
+      setBrandEditorSaveState({
+        saving: false,
+        message: 'Brand kit updated.',
+        tone: 'success',
+      });
+    } catch {
+      setBrandEditorSaveState({
+        saving: false,
+        message: 'We could not save this brand kit right now. Please try again.',
+        tone: 'error',
+      });
+    }
   };
 
   return (
@@ -398,29 +469,50 @@ export default function Dashboard() {
                   {brandRows.length > 0 ? (
                     <div>
                       {brandRows.map((row) => (
-                        <button
+                        <div
                           key={row.id}
-                          onClick={() => navigate(row.href)}
-                          className="group flex w-full flex-col gap-4 border-b border-[#eef2f7] px-5 py-5 text-left transition-colors hover:bg-[#fafcff] last:border-b-0 sm:px-6 lg:flex-row lg:items-center lg:justify-between"
+                          className="border-b border-[#eef2f7] last:border-b-0"
                         >
-                          <div className="min-w-0">
-                            <div className="flex flex-wrap items-center gap-3">
-                              <p className="text-[1.02rem] font-medium tracking-[-0.02em] text-slate-900">{row.name}</p>
-                              <Pill tone={row.statusTone}>{row.statusLabel}</Pill>
+                          <div className="group flex w-full flex-col gap-4 px-5 py-5 text-left transition-colors hover:bg-[#fafcff] sm:px-6 lg:flex-row lg:items-center lg:justify-between">
+                            <div className="min-w-0">
+                              <div className="flex flex-wrap items-center gap-3">
+                                <p className="text-[1.02rem] font-medium tracking-[-0.02em] text-slate-900">{row.name}</p>
+                                <Pill tone={row.statusTone}>{row.statusLabel}</Pill>
+                              </div>
+                              <p className="mt-1 text-sm text-slate-500">{row.descriptor}</p>
+                              <p className="mt-3 text-sm text-slate-500">{row.toneSummary}</p>
                             </div>
-                            <p className="mt-1 text-sm text-slate-500">{row.descriptor}</p>
-                            <p className="mt-3 text-sm text-slate-500">{row.toneSummary}</p>
+                            <div className="flex shrink-0 flex-wrap items-center gap-3">
+                              <span className="rounded-full bg-[#f6f8fb] px-3 py-1 text-xs font-semibold text-slate-500">
+                                {row.pendingBriefLabel}
+                              </span>
+                              <Pill tone={row.guidelineTone}>{row.guidelineLabel}</Pill>
+                              <button
+                                type="button"
+                                onClick={() => handleOpenBrandEditor(row.id)}
+                                className="text-sm font-medium text-[var(--brand-primary)] transition-colors hover:text-[var(--brand-primary-hover)]"
+                              >
+                                {row.primaryActionLabel}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => navigate(row.href)}
+                                className="text-sm font-medium text-slate-500 transition-colors hover:text-slate-700"
+                              >
+                                {row.secondaryActionLabel} →
+                              </button>
+                            </div>
                           </div>
-                          <div className="flex shrink-0 flex-wrap items-center gap-3">
-                            <span className="rounded-full bg-[#f6f8fb] px-3 py-1 text-xs font-semibold text-slate-500">
-                              {row.pendingBriefLabel}
-                            </span>
-                            <Pill tone={row.guidelineTone}>{row.guidelineLabel}</Pill>
-                            <span className="text-sm font-medium text-[var(--brand-primary)] group-hover:text-[var(--brand-primary-hover)]">
-                              {row.actionLabel} →
-                            </span>
-                          </div>
-                        </button>
+                          {editingBrandId === row.id && brandEditorState ? (
+                            <BrandKitInlineEditor
+                              state={brandEditorState}
+                              saveState={brandEditorSaveState}
+                              onChange={handleBrandEditorChange}
+                              onCancel={handleCancelBrandEditor}
+                              onSave={() => handleSaveBrandChanges(row.id)}
+                            />
+                          ) : null}
+                        </div>
                       ))}
                     </div>
                   ) : (
@@ -619,6 +711,150 @@ function StatCard({ card, delay, onClick }) {
       </div>
     </button>
   );
+}
+
+const BRAND_EDITOR_SECTIONS = [
+  {
+    title: 'Brand voice',
+    fields: [
+      { key: 'voiceAdjectives', label: 'Voice adjectives', type: 'textarea', placeholder: 'Warm, Direct, Distinctive' },
+      { key: 'vocabulary', label: 'Vocabulary to use', type: 'textarea', placeholder: 'Craft, Neighbourhood, Signature' },
+      { key: 'restrictedWords', label: 'Restricted words', type: 'textarea', placeholder: 'cheap, disruptive, viral' },
+    ],
+  },
+  {
+    title: 'Channel rules',
+    fields: [
+      { key: 'channelRulesLinkedin', label: 'LinkedIn rules', type: 'textarea', placeholder: 'Lead with a point of view, keep line one sharp.' },
+      { key: 'channelRulesBlog', label: 'Blog rules', type: 'textarea', placeholder: 'Use subheadings, examples, and a practical close.' },
+    ],
+  },
+  {
+    title: 'Strategy and audience',
+    fields: [
+      { key: 'contentGoal', label: 'Content goal', type: 'input', placeholder: 'Thought leadership' },
+      { key: 'publishingFrequency', label: 'Publishing frequency', type: 'input', placeholder: 'Weekly' },
+      { key: 'audienceType', label: 'Audience type', type: 'input', placeholder: 'CMOs' },
+      { key: 'buyerSeniority', label: 'Buyer seniority', type: 'input', placeholder: 'Director' },
+      { key: 'ageRange', label: 'Age range', type: 'input', placeholder: '30-45' },
+      { key: 'industrySector', label: 'Industry sector', type: 'input', placeholder: 'Retail' },
+      { key: 'industryTarget', label: 'Target industry', type: 'input', placeholder: 'Luxury retail' },
+      { key: 'funnelStages', label: 'Funnel stages', type: 'input', placeholder: 'Top of funnel, Mid funnel' },
+    ],
+  },
+  {
+    title: 'Proof and tone',
+    fields: [
+      { key: 'toneShift', label: 'Tone shift', type: 'input', placeholder: 'More premium' },
+      { key: 'proofStyle', label: 'Proof style', type: 'input', placeholder: 'Customer story' },
+      { key: 'voiceFormality', label: 'Voice formality (1-5)', type: 'input', placeholder: '3' },
+      { key: 'campaignCoreWhy', label: 'Campaign core why', type: 'textarea', placeholder: 'Why this campaign matters now.' },
+      { key: 'pastContentExamples', label: 'Past content examples', type: 'textarea', placeholder: 'Founder note, launch post, case-study intro.' },
+    ],
+  },
+  {
+    title: 'Website context',
+    fields: [
+      { key: 'websiteUrl', label: 'Primary website URL', type: 'input', placeholder: 'https://atlas.example' },
+      { key: 'websiteUrls', label: 'Additional website URLs', type: 'textarea', placeholder: 'https://atlas.example/about, https://atlas.example/journal' },
+      { key: 'websiteSummary', label: 'Website summary', type: 'textarea', placeholder: 'Short summary of the brand site and positioning.' },
+    ],
+  },
+];
+
+function BrandKitInlineEditor({ state, saveState, onChange, onCancel, onSave }) {
+  return (
+    <div className="border-t border-[#eef2f7] bg-[#fbfcff] px-5 py-5 sm:px-6">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-400">Inline brand editor</p>
+          <h3 className="mt-1 font-sans text-[1.25rem] font-semibold tracking-[-0.03em] text-slate-950">
+            Edit brand kit from the dashboard
+          </h3>
+        </div>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={saveState.saving}
+            className="text-sm font-medium text-slate-500 transition-colors hover:text-slate-700 disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onSave}
+            disabled={saveState.saving}
+            className="inline-flex items-center justify-center rounded-xl bg-[var(--brand-primary)] px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[var(--brand-primary-hover)] disabled:opacity-50"
+          >
+            {saveState.saving ? 'Saving…' : 'Save changes'}
+          </button>
+        </div>
+      </div>
+
+      {saveState.message ? (
+        <div className={`mt-4 rounded-2xl px-4 py-3 text-sm ${
+          saveState.tone === 'error'
+            ? 'border border-red-200 bg-red-50 text-red-700'
+            : 'border border-emerald-200 bg-emerald-50 text-emerald-700'
+        }`}>
+          {saveState.message}
+        </div>
+      ) : null}
+
+      <div className="mt-5 grid gap-4 xl:grid-cols-2">
+        {BRAND_EDITOR_SECTIONS.map((section) => (
+          <div key={section.title} className="rounded-[20px] border border-[#e7ebf3] bg-white p-4">
+            <h4 className="font-medium text-slate-900">{section.title}</h4>
+            <div className="mt-4 space-y-4">
+              {section.fields.map((field) => (
+                <label key={field.key} className="block">
+                  <span className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">{field.label}</span>
+                  {field.type === 'textarea' ? (
+                    <textarea
+                      value={state[field.key] || ''}
+                      onChange={(event) => onChange(field.key, event.target.value)}
+                      placeholder={field.placeholder}
+                      className="mt-2 min-h-[96px] w-full rounded-xl border border-[#dbe3ef] px-4 py-3 text-sm text-slate-700 outline-none transition-colors focus:border-[var(--brand-primary)]"
+                    />
+                  ) : (
+                    <input
+                      value={state[field.key] || ''}
+                      onChange={(event) => onChange(field.key, event.target.value)}
+                      placeholder={field.placeholder}
+                      className="mt-2 w-full rounded-xl border border-[#dbe3ef] px-4 py-3 text-sm text-slate-700 outline-none transition-colors focus:border-[var(--brand-primary)]"
+                    />
+                  )}
+                </label>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function mergeBrandPortfolioData(summaryBrands = [], fullBrands = []) {
+  const fullBrandMap = new Map(fullBrands.map((brand) => [brand.id, brand]));
+  const seen = new Set();
+
+  const merged = summaryBrands.map((brand) => {
+    seen.add(brand.id);
+    const fullBrand = fullBrandMap.get(brand.id);
+
+    return fullBrand
+      ? { ...brand, ...fullBrand, kit: fullBrand.kit }
+      : brand;
+  });
+
+  for (const brand of fullBrands) {
+    if (!seen.has(brand.id)) {
+      merged.push(brand);
+    }
+  }
+
+  return merged;
 }
 
 function SidebarIcon({ name, active }) {
