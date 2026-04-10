@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { buildBrandCardModel, buildBrandDetailSections } from './brand-kits-view.js';
+import { buildBrandCardModel, buildBrandDetailActions, buildBrandDetailSections } from './brand-kits-view.js';
 
 test('buildBrandCardModel creates a reference-style card summary from brand kit data', () => {
   const model = buildBrandCardModel({
@@ -85,5 +85,14 @@ test('buildBrandDetailSections keeps guideline excerpts internal and only shows 
     tone: 'neutral',
     items: ['File: design doc.docx'],
     empty: 'No uploaded guideline document has been applied yet.',
+  });
+});
+
+test('buildBrandDetailActions exposes edit controls for the brand detail page', () => {
+  assert.deepEqual(buildBrandDetailActions(), {
+    primaryActionLabel: 'Edit brand kit',
+    secondaryActionLabel: 'Generate content',
+    saveActionLabel: 'Save changes',
+    cancelActionLabel: 'Cancel',
   });
 });

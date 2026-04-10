@@ -1,8 +1,10 @@
 import { useNavigate, useParams } from 'react-router-dom';
 import { useEffect, useMemo, useState } from 'react';
 import AppShell from '../../components/layout/AppShell';
+import { useBrand } from '../../context/BrandContext';
 import api from '../../services/api';
-import { buildBrandDetailSections } from '../../lib/brand-kits-view';
+import { buildBrandDetailActions, buildBrandDetailSections } from '../../lib/brand-kits-view';
+import { buildBrandKitEditorState, buildBrandKitUpdatePayload } from '../../lib/dashboard-flow';
 import { buildResumeSessionItem, buildSessionRoute } from '../../lib/generation-session';
 import { buildBrandDeleteConfirmation, buildCampaignDeleteConfirmation } from '../../lib/destructive-actions';
 import DangerConfirmModal from '../../components/ui/DangerConfirmModal';
@@ -11,11 +13,15 @@ import Button from '../../components/ui/Button';
 export default function BrandEditor() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { fetchBrands } = useBrand();
   const [brand, setBrand] = useState(null);
   const [sessions, setSessions] = useState([]);
   const [showResumePicker, setShowResumePicker] = useState(false);
   const [loading, setLoading] = useState(true);
   const [deleteError, setDeleteError] = useState('');
+  const [isEditing, setIsEditing] = useState(false);
+  const [editorState, setEditorState] = useState(null);
+  const [editorSaveState, setEditorSaveState] = useState({ saving: false, message: '', tone: 'neutral' });
   const [brandDeleteState, setBrandDeleteState] = useState({ open: false, loading: false });
   const [sessionDeleteState, setSessionDeleteState] = useState({ open: false, loading: false, session: null });
 
@@ -32,6 +38,7 @@ export default function BrandEditor() {
   }, [id]);
 
   const detail = useMemo(() => (brand ? buildBrandDetailSections(brand) : null), [brand]);
+  const detailActions = useMemo(() => buildBrandDetailActions(), []);
   const resumableSessions = useMemo(() => sessions.map(buildResumeSessionItem), [sessions]);
   const brandDeleteConfirmation = useMemo(
     () => buildBrandDeleteConfirmation({ brandName: brand?.name }),
@@ -73,6 +80,45 @@ export default function BrandEditor() {
   const handleDeleteSession = (session) => {
     setDeleteError('');
     setSessionDeleteState({ open: true, loading: false, session });
+  };
+
+  const handleStartEdit = () => {
+    if (!brand) return;
+    setIsEditing(true);
+    setEditorState(buildBrandKitEditorState(brand));
+    setEditorSaveState({ saving: false, message: '', tone: 'neutral' });
+  };
+
+  const handleCancelEdit = () => {
+    if (editorSaveState.saving) return;
+    setIsEditing(false);
+    setEditorState(null);
+    setEditorSaveState({ saving: false, message: '', tone: 'neutral' });
+  };
+
+  const handleEditorChange = (field, value) => {
+    setEditorState((current) => ({ ...(current || {}), [field]: value }));
+  };
+
+  const handleSaveEdit = async () => {
+    if (!brand || !editorState) return;
+
+    setEditorSaveState({ saving: true, message: '', tone: 'neutral' });
+
+    try {
+      const res = await api.patch(`/brands/${brand.id}`, buildBrandKitUpdatePayload(editorState));
+      setBrand(res.data.brand);
+      await fetchBrands().catch(() => null);
+      setIsEditing(false);
+      setEditorState(null);
+      setEditorSaveState({ saving: false, message: 'Brand kit updated.', tone: 'success' });
+    } catch {
+      setEditorSaveState({
+        saving: false,
+        message: 'We could not save this brand kit right now. Please try again.',
+        tone: 'error',
+      });
+    }
   };
 
   const confirmDeleteSession = async () => {
@@ -123,25 +169,60 @@ export default function BrandEditor() {
                 Review the live brand memory, channel rules, and guardrails used for generation.
               </p>
             </div>
-            <button
-              onClick={() => {
-                if (resumableSessions.length > 0) {
-                  setShowResumePicker(true);
-                  return;
-                }
+            <div className="flex flex-wrap gap-3">
+              {isEditing ? (
+                <>
+                  <Button type="button" variant="secondary" onClick={handleCancelEdit} disabled={editorSaveState.saving}>
+                    {detailActions.cancelActionLabel}
+                  </Button>
+                  <Button type="button" variant="primary" onClick={handleSaveEdit} disabled={editorSaveState.saving}>
+                    {editorSaveState.saving ? 'Saving…' : detailActions.saveActionLabel}
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button type="button" variant="secondary" onClick={handleStartEdit}>
+                    {detailActions.primaryActionLabel}
+                  </Button>
+                  <button
+                    onClick={() => {
+                      if (resumableSessions.length > 0) {
+                        setShowResumePicker(true);
+                        return;
+                      }
 
-                navigate(`/generate/brief?brandId=${brand.id}`, { state: { mode: 'manual', brand } });
-              }}
-              className="inline-flex items-center justify-center rounded-xl bg-[var(--brand-primary)] px-5 py-3 text-sm font-medium text-white shadow-[0_12px_24px_rgba(37,99,235,0.18)] transition-colors hover:bg-[var(--brand-primary-hover)]"
-            >
-              Generate content
-            </button>
+                      navigate(`/generate/brief?brandId=${brand.id}`, { state: { mode: 'manual', brand } });
+                    }}
+                    className="inline-flex items-center justify-center rounded-xl bg-[var(--brand-primary)] px-5 py-3 text-sm font-medium text-white shadow-[0_12px_24px_rgba(37,99,235,0.18)] transition-colors hover:bg-[var(--brand-primary-hover)]"
+                  >
+                    {detailActions.secondaryActionLabel}
+                  </button>
+                </>
+              )}
+            </div>
           </div>
 
           {deleteError ? (
             <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
               {deleteError}
             </div>
+          ) : null}
+
+          {editorSaveState.message ? (
+            <div className={`mb-6 rounded-2xl px-4 py-3 text-sm ${
+              editorSaveState.tone === 'error'
+                ? 'border border-red-200 bg-red-50 text-red-700'
+                : 'border border-emerald-200 bg-emerald-50 text-emerald-700'
+            }`}>
+              {editorSaveState.message}
+            </div>
+          ) : null}
+
+          {isEditing && editorState ? (
+            <BrandKitInlineEditor
+              state={editorState}
+              onChange={handleEditorChange}
+            />
           ) : null}
 
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -348,4 +429,96 @@ function formatUpdatedAt(value) {
     hour: 'numeric',
     minute: '2-digit',
   });
+}
+
+const BRAND_EDITOR_SECTIONS = [
+  {
+    title: 'Brand voice',
+    fields: [
+      { key: 'voiceAdjectives', label: 'Voice adjectives', type: 'textarea', placeholder: 'Warm, Direct, Distinctive' },
+      { key: 'vocabulary', label: 'Vocabulary to use', type: 'textarea', placeholder: 'Craft, Neighbourhood, Signature' },
+      { key: 'restrictedWords', label: 'Restricted words', type: 'textarea', placeholder: 'cheap, disruptive, viral' },
+    ],
+  },
+  {
+    title: 'Channel rules',
+    fields: [
+      { key: 'channelRulesLinkedin', label: 'LinkedIn rules', type: 'textarea', placeholder: 'Lead with a point of view, keep line one sharp.' },
+      { key: 'channelRulesBlog', label: 'Blog rules', type: 'textarea', placeholder: 'Use subheadings, examples, and a practical close.' },
+    ],
+  },
+  {
+    title: 'Strategy and audience',
+    fields: [
+      { key: 'contentGoal', label: 'Content goal', type: 'input', placeholder: 'Thought leadership' },
+      { key: 'publishingFrequency', label: 'Publishing frequency', type: 'input', placeholder: 'Weekly' },
+      { key: 'audienceType', label: 'Audience type', type: 'input', placeholder: 'CMOs' },
+      { key: 'buyerSeniority', label: 'Buyer seniority', type: 'input', placeholder: 'Director' },
+      { key: 'ageRange', label: 'Age range', type: 'input', placeholder: '30-45' },
+      { key: 'industrySector', label: 'Industry sector', type: 'input', placeholder: 'Retail' },
+      { key: 'industryTarget', label: 'Target industry', type: 'input', placeholder: 'Luxury retail' },
+      { key: 'funnelStages', label: 'Funnel stages', type: 'input', placeholder: 'Top of funnel, Mid funnel' },
+    ],
+  },
+  {
+    title: 'Proof and tone',
+    fields: [
+      { key: 'toneShift', label: 'Tone shift', type: 'input', placeholder: 'More premium' },
+      { key: 'proofStyle', label: 'Proof style', type: 'input', placeholder: 'Customer story' },
+      { key: 'voiceFormality', label: 'Voice formality (1-5)', type: 'input', placeholder: '3' },
+      { key: 'campaignCoreWhy', label: 'Campaign core why', type: 'textarea', placeholder: 'Why this campaign matters now.' },
+      { key: 'pastContentExamples', label: 'Past content examples', type: 'textarea', placeholder: 'Founder note, launch post, case-study intro.' },
+    ],
+  },
+  {
+    title: 'Website context',
+    fields: [
+      { key: 'websiteUrl', label: 'Primary website URL', type: 'input', placeholder: 'https://atlas.example' },
+      { key: 'websiteUrls', label: 'Additional website URLs', type: 'textarea', placeholder: 'https://atlas.example/about, https://atlas.example/journal' },
+      { key: 'websiteSummary', label: 'Website summary', type: 'textarea', placeholder: 'Short summary of the brand site and positioning.' },
+    ],
+  },
+];
+
+function BrandKitInlineEditor({ state, onChange }) {
+  return (
+    <div className="mb-8 rounded-[24px] border border-[#dbe6f3] bg-[#fbfcff] p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+      <div>
+        <p className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-400">Brand kit editor</p>
+        <h2 className="mt-2 font-sans text-[1.45rem] font-semibold tracking-[-0.03em] text-slate-950">
+          Edit this brand kit
+        </h2>
+      </div>
+
+      <div className="mt-5 grid gap-4 xl:grid-cols-2">
+        {BRAND_EDITOR_SECTIONS.map((section) => (
+          <div key={section.title} className="rounded-[20px] border border-[#e7ebf3] bg-white p-4">
+            <h3 className="font-medium text-slate-900">{section.title}</h3>
+            <div className="mt-4 space-y-4">
+              {section.fields.map((field) => (
+                <label key={field.key} className="block">
+                  <span className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">{field.label}</span>
+                  {field.type === 'textarea' ? (
+                    <textarea
+                      value={state[field.key] || ''}
+                      onChange={(event) => onChange(field.key, event.target.value)}
+                      placeholder={field.placeholder}
+                      className="mt-2 min-h-[96px] w-full rounded-xl border border-[#dbe3ef] px-4 py-3 text-sm text-slate-700 outline-none transition-colors focus:border-[var(--brand-primary)]"
+                    />
+                  ) : (
+                    <input
+                      value={state[field.key] || ''}
+                      onChange={(event) => onChange(field.key, event.target.value)}
+                      placeholder={field.placeholder}
+                      className="mt-2 w-full rounded-xl border border-[#dbe3ef] px-4 py-3 text-sm text-slate-700 outline-none transition-colors focus:border-[var(--brand-primary)]"
+                    />
+                  )}
+                </label>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }

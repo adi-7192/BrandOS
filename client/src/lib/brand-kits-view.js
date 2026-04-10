@@ -89,6 +89,15 @@ export function buildBrandDetailSections(brand) {
   };
 }
 
+export function buildBrandDetailActions() {
+  return {
+    primaryActionLabel: 'Edit brand kit',
+    secondaryActionLabel: 'Generate content',
+    saveActionLabel: 'Save changes',
+    cancelActionLabel: 'Cancel',
+  };
+}
+
 function pickSwatches(seed) {
   return SWATCH_GROUPS[hashSeed(seed) % SWATCH_GROUPS.length];
 }
