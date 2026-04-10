@@ -53,6 +53,18 @@ test('buildSettingsViewModel derives section statuses from the settings payload'
     meta: 'Ready to publish',
   });
   assert.deepEqual(model.securityMethods, ['Google']);
+  assert.deepEqual(model.sectionOrder, [
+    'Profile',
+    'Workspace',
+    'Integrations',
+    'Content preferences',
+    'Access and sign-in',
+  ]);
+  assert.deepEqual(model.accessStatus, {
+    label: 'Google',
+    tone: 'neutral',
+    meta: 'Available sign-in methods',
+  });
 });
 
 test('buildSettingsViewModel falls back to setup states when systems are not ready', () => {
@@ -103,6 +115,11 @@ test('buildSettingsViewModel falls back to setup states when systems are not rea
     meta: 'Personal publishing unavailable',
   });
   assert.deepEqual(model.securityMethods, ['Password']);
+  assert.deepEqual(model.accessStatus, {
+    label: 'Password',
+    tone: 'neutral',
+    meta: 'Available sign-in methods',
+  });
 });
 
 test('buildSettingsViewModel summarizes reconnect-required linkedin state with blocked publishing copy', () => {

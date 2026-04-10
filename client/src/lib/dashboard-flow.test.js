@@ -9,6 +9,7 @@ import {
   buildDraftOutputState,
   buildRecentActivity,
   buildUpcomingDeadlineItems,
+  buildWorkflowGuide,
   normalizeDashboardSummary,
 } from './dashboard-flow.js';
 
@@ -431,4 +432,45 @@ test('buildUpcomingDeadlineItems ignores malformed publish dates instead of cras
       urgencyTone: 'amber',
     },
   ]);
+});
+
+test('buildWorkflowGuide exposes a first-run explainer and sample CTA when the workspace has little activity', () => {
+  const guide = buildWorkflowGuide({
+    counts: {
+      brands: 1,
+      pendingBriefs: 0,
+      recentDrafts: 0,
+      inProgressSessions: 0,
+    },
+    setup: {
+      gmailAvailable: false,
+      hasPendingBriefs: false,
+      hasRecentSessions: false,
+      hasRecentDrafts: false,
+    },
+  });
+
+  assert.deepEqual(guide, {
+    visible: true,
+    title: 'How BrandOS turns updates into content',
+    description: 'BrandOS works best when it can pull campaign context into a brief, then generate on-brand drafts you can review and publish.',
+    steps: [
+      {
+        title: 'Bring in a stakeholder update',
+        description: 'Forward a thread to BrandOS or start from a sample workflow if your inbox is not ready yet.',
+      },
+      {
+        title: 'Confirm the campaign brief',
+        description: 'BrandOS extracts the campaign details and lets you tighten the brief before anything is written.',
+      },
+      {
+        title: 'Generate and publish on-brand content',
+        description: 'Preview LinkedIn and blog drafts, edit if needed, then publish or copy the final version.',
+      },
+    ],
+    actions: [
+      { id: 'sample-flow', label: 'Explore a sample workflow' },
+      { id: 'open-inbox', label: 'Set up your inbox' },
+    ],
+  });
 });

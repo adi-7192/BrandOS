@@ -2,10 +2,14 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+  buildBriefOriginMeta,
   hasPreviewContent,
   buildConfirmedBrief,
   buildGeneratingContext,
   buildManualBriefFromBrand,
+  buildSampleBrief,
+  buildSampleOutput,
+  buildSamplePreviewSections,
   mergePreviewSuggestions,
   isManualBriefReady,
 } from './generation-flow.js';
@@ -254,4 +258,69 @@ test('hasPreviewContent ignores placeholder hashtags and only treats meaningful 
     ),
     true
   );
+});
+
+test('buildBriefOriginMeta explains whether the current brief came from inbox, manual setup, or sample data', () => {
+  assert.deepEqual(
+    buildBriefOriginMeta({
+      sourceCardIds: ['card-1'],
+      brandName: 'BHV Marais',
+    }),
+    {
+      label: 'Inbox brief',
+      badge: 'From inbox',
+      description: 'This brief came from a stakeholder update that BrandOS extracted into a campaign draft.',
+    }
+  );
+
+  assert.deepEqual(
+    buildBriefOriginMeta({
+      mode: 'manual',
+      brandName: 'BHV Marais',
+    }),
+    {
+      label: 'Manual brief',
+      badge: 'Manual setup',
+      description: 'This campaign was started manually using your saved brand-kit defaults as the starting point.',
+    }
+  );
+
+  assert.deepEqual(
+    buildBriefOriginMeta({
+      mode: 'sample',
+      brandName: 'Moodway',
+    }),
+    {
+      label: 'Sample workflow',
+      badge: 'Example data',
+      description: 'This is a guided example so you can see how BrandOS moves from brief to final content before your real inbox is connected.',
+    }
+  );
+});
+
+test('buildSampleBrief returns a safe sample brief with kit context for zero-data walkthroughs', () => {
+  const brief = buildSampleBrief();
+
+  assert.equal(brief.mode, 'sample');
+  assert.equal(brief.brandName, 'Moodway');
+  assert.equal(brief.campaignName, 'Virtual try-on launch');
+  assert.equal(brief.contentGoal, 'Product awareness');
+  assert.equal(Array.isArray(brief.kit.voiceAdjectives), true);
+  assert.equal(brief.sourceCardIds.length, 1);
+});
+
+test('buildSampleOutput returns ready-to-read example linkedin and blog drafts', () => {
+  const output = buildSampleOutput();
+
+  assert.equal(typeof output.linkedin, 'string');
+  assert.equal(typeof output.blog, 'string');
+  assert.equal(output.linkedin.includes('virtual try-on'), true);
+  assert.equal(output.blog.includes('Moodway'), true);
+});
+
+test('buildSamplePreviewSections returns preview-ready sample sections for both formats', () => {
+  const sections = buildSamplePreviewSections();
+
+  assert.equal(sections.linkedin.hook.includes('virtual try-on'), true);
+  assert.equal(sections.blog.headline.includes('Moodway'), true);
 });

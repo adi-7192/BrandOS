@@ -6,8 +6,10 @@ import Dropdown from '../../components/ui/Dropdown';
 import DangerConfirmModal from '../../components/ui/DangerConfirmModal';
 import api from '../../services/api';
 import {
+  buildBriefOriginMeta,
   buildConfirmedBrief,
   buildManualBriefFromBrand,
+  buildSamplePreviewSections,
   isManualBriefReady,
 } from '../../lib/generation-flow';
 import { buildCampaignDeleteConfirmation } from '../../lib/destructive-actions';
@@ -119,6 +121,16 @@ export default function Brief() {
           return;
         }
 
+        if (state?.sampleBrief) {
+          const nextBrief = state.sampleBrief;
+          setBrief(nextBrief);
+          seedFields(nextBrief);
+          const snapshot = buildFieldSnapshot(nextBrief);
+          initialSnapshotRef.current = snapshot;
+          lastSavedSnapshotRef.current = snapshot;
+          return;
+        }
+
         const cardIds = state?.cardIds || [];
         const res = await api.post('/generate/brief', { cardIds });
         setBrief(res.data.brief);
@@ -148,6 +160,8 @@ export default function Brief() {
 
   const readyToContinue = nextBrief ? isManualBriefReady(nextBrief) : false;
   const isManualMode = nextBrief?.mode === 'manual';
+  const isSampleMode = nextBrief?.mode === 'sample';
+  const originMeta = nextBrief ? buildBriefOriginMeta(nextBrief) : null;
   const campaignDeleteConfirmation = buildCampaignDeleteConfirmation({
     sessionTitle: nextBrief?.campaignName || brief?.campaignName || brief?.emailSubject || brief?.brandName,
   });
@@ -200,6 +214,17 @@ export default function Brief() {
   }, [audienceType, campaignName, campaignType, contentGoal, keyMessage, loading, nextBrief, publishDate, sessionId, toneShift]);
 
   const handleContinue = async () => {
+    if (isSampleMode) {
+      navigate('/generate/preview', {
+        state: {
+          brief: nextBrief,
+          sections: buildSamplePreviewSections(),
+          activeTab: 'linkedin',
+        },
+      });
+      return;
+    }
+
     const persisted = await persistSession({ nextStep: 'preview' });
     navigate(`/generate/preview${buildSessionQuery(persisted.id)}`, {
       state: {
@@ -270,16 +295,32 @@ export default function Brief() {
             <p className="font-semibold text-gray-900">{brief?.brandName || 'Brand'}</p>
             <p className="text-xs text-gray-400">{brief?.kit?.voiceAdjectives?.join(' · ')} · {brief?.language}</p>
           </div>
-          <button className="text-xs text-gray-400 hover:underline">Change brand</button>
+          {!isSampleMode ? <button className="text-xs text-gray-400 hover:underline">Change brand</button> : null}
         </div>
 
         {loading ? (
           <div className="py-16 text-center text-gray-400">Loading brief…</div>
         ) : (
           <div className="flex flex-col gap-4">
+            {originMeta ? (
+              <div className="rounded-xl border border-[#dbe6f3] bg-[linear-gradient(135deg,#f8fbff_0%,#ffffff_100%)] p-4">
+                <div className="flex flex-wrap items-center gap-3">
+                  <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-[#0a66c2] shadow-[0_1px_2px_rgba(15,23,42,0.06)]">
+                    {originMeta.badge}
+                  </span>
+                  <p className="text-sm font-semibold text-slate-900">{originMeta.label}</p>
+                </div>
+                <p className="mt-3 text-sm leading-6 text-slate-600">{originMeta.description}</p>
+              </div>
+            ) : null}
+
             {isManualMode ? (
               <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-700">
                 Brand memory is already loaded. Add only the campaign-specific details for this piece.
+              </div>
+            ) : isSampleMode ? (
+              <div className="rounded-lg border border-[#dbe6f3] bg-[#f8fbff] p-3 text-sm text-slate-700">
+                This example uses sample data so you can understand the flow before your real inbox is connected.
               </div>
             ) : brief?.lowConfidence ? (
               <div className="rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-700">
@@ -364,10 +405,10 @@ export default function Brief() {
 
             <div className="flex items-center gap-3 mt-4">
               <button
-                onClick={() => navigate(isManualMode ? `/settings/brands/${brief.brandId}` : '/inbox')}
+                onClick={() => navigate(isSampleMode ? '/dashboard' : isManualMode ? `/settings/brands/${brief.brandId}` : '/inbox')}
                 className="text-sm text-gray-500 hover:underline"
               >
-                {isManualMode ? '← Back to brand kit' : '← Back to inbox'}
+                {isSampleMode ? '← Back to dashboard' : isManualMode ? '← Back to brand kit' : '← Back to inbox'}
               </button>
               <Button variant="primary" disabled={!readyToContinue} onClick={handleContinue} className="flex-1">
                 Preview content →

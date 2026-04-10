@@ -52,6 +52,41 @@ export function getEmptyDashboardSummary() {
   return normalizeDashboardSummary(EMPTY_DASHBOARD_SUMMARY);
 }
 
+export function buildWorkflowGuide(summary) {
+  const counts = summary?.counts || {};
+  const setup = summary?.setup || {};
+  const hasMeaningfulActivity = Number(counts.pendingBriefs || 0) > 0
+    || Number(counts.recentDrafts || 0) > 0
+    || Number(counts.inProgressSessions || 0) > 0
+    || Boolean(setup.hasPendingBriefs)
+    || Boolean(setup.hasRecentDrafts)
+    || Boolean(setup.hasRecentSessions);
+
+  return {
+    visible: !hasMeaningfulActivity,
+    title: 'How BrandOS turns updates into content',
+    description: 'BrandOS works best when it can pull campaign context into a brief, then generate on-brand drafts you can review and publish.',
+    steps: [
+      {
+        title: 'Bring in a stakeholder update',
+        description: 'Forward a thread to BrandOS or start from a sample workflow if your inbox is not ready yet.',
+      },
+      {
+        title: 'Confirm the campaign brief',
+        description: 'BrandOS extracts the campaign details and lets you tighten the brief before anything is written.',
+      },
+      {
+        title: 'Generate and publish on-brand content',
+        description: 'Preview LinkedIn and blog drafts, edit if needed, then publish or copy the final version.',
+      },
+    ],
+    actions: [
+      { id: 'sample-flow', label: 'Explore a sample workflow' },
+      { id: 'open-inbox', label: 'Set up your inbox' },
+    ],
+  };
+}
+
 export function buildDashboardStats(summary) {
   const counts = summary?.counts || {};
   const brandCount = Number(counts.brands || 0);

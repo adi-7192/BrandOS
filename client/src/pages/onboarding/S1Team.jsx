@@ -22,6 +22,32 @@ export default function S1Team() {
       <h1 className="text-2xl font-bold text-gray-900 mb-1">Tell us about your team</h1>
       <p className="text-sm text-gray-500 mb-8">Helps us personalise your workspace from the start.</p>
 
+      <div className="mb-8 rounded-[20px] border border-[#dbe6f3] bg-[linear-gradient(135deg,#f8fbff_0%,#ffffff_100%)] p-4">
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#0a66c2]">What happens next</p>
+        <div className="mt-4 grid gap-3 md:grid-cols-3">
+          {[
+            {
+              title: 'Set up brand memory',
+              description: 'Capture your brand voice, audience, rules, and reference material once.',
+            },
+            {
+              title: 'Connect your inputs',
+              description: 'Bring in inbox context and set up the channels BrandOS will help you publish to.',
+            },
+            {
+              title: 'Generate and publish',
+              description: 'Turn campaign context into review-ready LinkedIn and blog drafts faster.',
+            },
+          ].map((step, index) => (
+            <div key={step.title} className="rounded-2xl border border-[#e7ecf3] bg-white px-4 py-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-gray-400">Step {index + 1}</p>
+              <p className="mt-2 text-sm font-semibold text-gray-900">{step.title}</p>
+              <p className="mt-2 text-sm leading-6 text-gray-500">{step.description}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
       <form onSubmit={handleSubmit} className="flex flex-col gap-5">
         <Input
           label="Your role"
