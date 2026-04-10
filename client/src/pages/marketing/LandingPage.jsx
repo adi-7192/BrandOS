@@ -173,9 +173,6 @@ export default function LandingPage() {
             <a className="text-sm font-medium text-slate-600 transition-colors hover:text-slate-900" href="#for-teams">
               For teams
             </a>
-            <Link className="text-sm font-medium text-slate-600 transition-colors hover:text-slate-900" to="/signin">
-              Sign in
-            </Link>
           </nav>
 
           <div className="flex items-center gap-4">
@@ -186,7 +183,7 @@ export default function LandingPage() {
               to="/signup"
               className="inline-flex items-center justify-center rounded-full bg-[var(--brand-primary)] px-5 py-2.5 text-sm font-medium text-white shadow-sm shadow-[rgba(37,99,235,0.2)] transition-colors hover:bg-[var(--brand-primary-hover)]"
             >
-              Create workspace
+              Sign up
             </Link>
           </div>
         </div>
@@ -206,7 +203,7 @@ export default function LandingPage() {
                 </p>
 
                 <div className="mb-12 flex flex-col gap-4 sm:flex-row">
-                  <MarketingButton to="/signup">Create workspace</MarketingButton>
+                  <MarketingButton to="/signup">Sign up</MarketingButton>
                   <MarketingButton to="/signin" variant="secondary">
                     Sign in
                   </MarketingButton>
@@ -471,7 +468,7 @@ export default function LandingPage() {
                   Enter BrandOS through setup, store your first brand&apos;s voice kit, and move into generation with context already in place.
                 </p>
                 <div className="flex flex-col justify-center gap-4 sm:flex-row">
-                  <MarketingButton to="/signup">Start setup</MarketingButton>
+                  <MarketingButton to="/signup">Sign up</MarketingButton>
                   <MarketingButton to="/signin" variant="secondary">
                     Sign in
                   </MarketingButton>
