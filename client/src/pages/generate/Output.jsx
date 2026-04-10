@@ -7,6 +7,7 @@ import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { getNextOutputIntentQuestion } from '../../lib/intent-capture';
 import { buildGenerationSessionPayload } from '../../lib/generation-session';
+import { buildLinkedInPublishState } from '../../lib/linkedin-view';
 import { buildCampaignDeleteConfirmation } from '../../lib/destructive-actions';
 import {
   OUTPUT_FEEDBACK_CHIPS,
@@ -50,6 +51,10 @@ export default function Output() {
   const [lastAiChange, setLastAiChange] = useState({ linkedin: '', blog: '' });
   const [saveState, setSaveState] = useState({ saving: false, message: '' });
   const [autosaveState, setAutosaveState] = useState('idle');
+  const [linkedin, setLinkedin] = useState({ connected: false, status: 'not_connected' });
+  const [linkedinLoading, setLinkedinLoading] = useState(true);
+  const [publishState, setPublishState] = useState({ loading: false, message: '', ok: false, postUrn: '', publishedAt: '' });
+  const [publishModalOpen, setPublishModalOpen] = useState(false);
   const [loading, setLoading] = useState(Boolean(sessionIdParam));
   const [intentHidden, setIntentHidden] = useState(false);
   const [deleteState, setDeleteState] = useState({ open: false, loading: false });
@@ -72,10 +77,41 @@ export default function Output() {
     reaction: draftReaction,
     loading: iterating,
   });
+  const linkedinPublishState = useMemo(
+    () => buildLinkedInPublishState({
+      activeTab,
+      content: activeDraft,
+      linkedin,
+      publishing: publishState.loading,
+    }),
+    [activeDraft, activeTab, linkedin, publishState.loading]
+  );
 
   useEffect(() => {
     refreshUser().catch(() => {});
   }, [refreshUser]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    api.get('/linkedin/status')
+      .then((res) => {
+        if (cancelled) return;
+        setLinkedin(res.data.linkedin || { connected: false, status: 'not_connected' });
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setLinkedin({ connected: false, status: 'not_connected' });
+      })
+      .finally(() => {
+        if (cancelled) return;
+        setLinkedinLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     const loadSession = async () => {
@@ -244,6 +280,44 @@ export default function Output() {
   };
 
   const copyToClipboard = (text) => navigator.clipboard.writeText(text);
+
+  const handlePublishToLinkedIn = async () => {
+    if (linkedinPublishState.disabled) return;
+
+    setPublishState({ loading: true, message: '', ok: false, postUrn: '', publishedAt: '' });
+    try {
+      const res = await api.post('/linkedin/publish', {
+        generationSessionId: sessionId || null,
+        brandId: brief?.brandId || null,
+        content: content.linkedin,
+      });
+
+      setPublishState({
+        loading: false,
+        message: res.data.message || 'Published to LinkedIn.',
+        ok: true,
+        postUrn: res.data.postUrn || '',
+        publishedAt: res.data.publishedAt || '',
+      });
+      setPublishModalOpen(false);
+    } catch (err) {
+      setPublishState({
+        loading: false,
+        message: err.response?.data?.message || 'We could not publish to LinkedIn right now.',
+        ok: false,
+        postUrn: '',
+        publishedAt: '',
+      });
+
+      if (err.response?.status === 409) {
+        setLinkedin((current) => ({
+          ...current,
+          connected: false,
+          status: 'reconnect_required',
+        }));
+      }
+    }
+  };
 
   const handleIntentAnswer = async (answer) => {
     if (!outputIntentQuestion) return;
@@ -546,12 +620,16 @@ export default function Output() {
           {activeTab === 'blog' && (
             <Button variant="secondary" className="text-sm" onClick={() => {}}>Copy markdown</Button>
           )}
-          <div className="relative">
-            <Button variant="secondary" className="text-sm border-dashed cursor-not-allowed opacity-60">
-              Post to LinkedIn
+          {linkedinPublishState.visible ? (
+            <Button
+              variant="primary"
+              className="text-sm"
+              disabled={linkedinLoading || linkedinPublishState.disabled}
+              onClick={() => setPublishModalOpen(true)}
+            >
+              {linkedinLoading ? 'Checking LinkedIn…' : linkedinPublishState.label}
             </Button>
-            <span className="absolute -top-2 -right-2 text-[10px] bg-gray-900 text-white px-1.5 py-0.5 rounded-full">Coming V2</span>
-          </div>
+          ) : null}
         </div>
         {(saveState.message || autosaveState !== 'idle') && (
           <p className="mb-4 text-sm text-brand-muted">
@@ -560,10 +638,17 @@ export default function Output() {
                 ? 'Saving…'
                 : autosaveState === 'saved'
                   ? 'Saved just now'
-                  : 'We could not save this progress yet.'
+                : 'We could not save this progress yet.'
             )}
           </p>
         )}
+        {linkedinPublishState.visible ? (
+          <p className={`mb-4 text-sm ${publishState.ok ? 'text-emerald-700' : 'text-brand-muted'}`}>
+            {publishState.message || linkedinPublishState.helper}
+            {publishState.ok && publishState.publishedAt ? ` Published at ${new Date(publishState.publishedAt).toLocaleString()}.` : ''}
+            {publishState.ok && publishState.postUrn ? ` Reference: ${publishState.postUrn}.` : ''}
+          </p>
+        ) : null}
 
         {outputIntentQuestion && !intentHidden && (
           <div className="mb-6 rounded-xl border border-brand bg-brand-surface-subtle px-4 py-4 animate-dashboard-enter">
@@ -622,6 +707,64 @@ export default function Output() {
         }}
         onConfirm={confirmDeleteCampaign}
       />
+      <PublishConfirmModal
+        open={publishModalOpen}
+        loading={publishState.loading}
+        accountName={linkedin.displayName || 'your personal LinkedIn account'}
+        preview={content.linkedin}
+        onCancel={() => {
+          if (publishState.loading) return;
+          setPublishModalOpen(false);
+        }}
+        onConfirm={handlePublishToLinkedIn}
+      />
+    </div>
+  );
+}
+
+function PublishConfirmModal({ open, loading, accountName, preview, onCancel, onConfirm }) {
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 px-4">
+      <div className="w-full max-w-xl rounded-[28px] border border-[#e7ebf3] bg-white p-6 shadow-[0_24px_80px_rgba(15,23,42,0.22)]">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#0f766e]">Publish live</p>
+            <h2 className="mt-2 font-sans text-[1.45rem] font-semibold tracking-[-0.03em] text-slate-950">
+              Publish this LinkedIn post?
+            </h2>
+            <p className="mt-3 text-sm leading-6 text-slate-500">
+              BrandOS will publish this immediately to {accountName}. Review the final copy below before continuing.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onCancel}
+            className="text-sm font-medium text-slate-400 transition-colors hover:text-slate-600"
+          >
+            Close
+          </button>
+        </div>
+
+        <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Draft preview</p>
+          <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-slate-700">{preview}</p>
+        </div>
+
+        <div className="mt-6 flex items-center justify-between gap-3">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="text-sm font-medium text-slate-500 transition-colors hover:text-slate-700"
+          >
+            Cancel
+          </button>
+          <Button type="button" variant="primary" disabled={loading} onClick={onConfirm}>
+            {loading ? 'Publishing…' : 'Publish to LinkedIn'}
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }

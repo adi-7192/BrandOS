@@ -12,6 +12,7 @@ import dashboardRouter from './routes/dashboard.js';
 import intentRouter from './routes/intent.js';
 import settingsRouter from './routes/settings.js';
 import inboundRouter from './routes/inbound.js';
+import linkedinRouter from './routes/linkedin.js';
 import { errorHandler } from './middleware/errorHandler.js';
 
 const app = express();
@@ -48,6 +49,7 @@ app.use('/api/campaigns', campaignsRouter);
 app.use('/api/dashboard', dashboardRouter);
 app.use('/api/intent', intentRouter);
 app.use('/api/settings', settingsRouter);
+app.use('/api/linkedin', linkedinRouter);
 
 app.use(errorHandler);
 

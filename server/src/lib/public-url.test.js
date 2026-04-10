@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import {
   getFrontendUrl,
   getGoogleRedirectUri,
+  getLinkedInRedirectUri,
   getRequestOrigin,
 } from './public-url.js';
 
@@ -61,5 +62,23 @@ test('frontend and google urls fall back to request origin when env vars are abs
   assert.equal(
     getGoogleRedirectUri(req, {}),
     'https://brand-os-client.vercel.app/api/auth/google/callback'
+  );
+});
+
+test('getLinkedInRedirectUri prefers explicit environment variables and falls back to request origin', () => {
+  const req = {
+    headers: {
+      host: 'brandos.test',
+    },
+  };
+
+  assert.equal(
+    getLinkedInRedirectUri(req, { LINKEDIN_REDIRECT_URI: 'https://api.example.com/api/linkedin/callback' }),
+    'https://api.example.com/api/linkedin/callback'
+  );
+
+  assert.equal(
+    getLinkedInRedirectUri(req, {}),
+    'http://brandos.test/api/linkedin/callback'
   );
 });

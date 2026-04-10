@@ -3,6 +3,7 @@ import pool from '../db/pool.js';
 import { authenticate } from '../middleware/auth.js';
 import { MODEL, PROVIDER, isAIConfigured, testAIConnection } from '../services/ai/client.js';
 import { buildWorkspaceIntakeEmail } from '../services/inbound/intakeAddress.js';
+import { mapLinkedInConnectionStatus } from '../services/linkedin/publish.js';
 
 const router = Router();
 router.use(authenticate);
@@ -114,7 +115,7 @@ router.post('/test-ai', async (_req, res) => {
   }
 });
 
-function buildSettingsResponse({ user, workspace, brandCount }) {
+function buildSettingsResponse({ user, workspace, brandCount, linkedin }) {
   const intakeDomain = process.env.RESEND_INBOUND_DOMAIN || process.env.INTAKE_EMAIL_DOMAIN;
   const intakeEmail = buildWorkspaceIntakeEmail(workspace.id, intakeDomain);
   const inboundAvailable = Boolean(intakeDomain && process.env.RESEND_API_KEY && process.env.RESEND_WEBHOOK_SECRET);
@@ -157,20 +158,23 @@ function buildSettingsResponse({ user, workspace, brandCount }) {
       passwordEnabled: Boolean(user.password_hash),
       ssoEnabled: false,
     },
+    linkedin: mapLinkedInConnectionStatus(linkedin),
   };
 }
 
 async function getSettingsState(userId, client = pool) {
   const workspace = await getOrCreateWorkspace(userId, client);
-  const [userResult, brandCountResult] = await Promise.all([
+  const [userResult, brandCountResult, linkedinResult] = await Promise.all([
     client.query('SELECT * FROM users WHERE id = $1', [userId]),
     client.query('SELECT COUNT(*) AS count FROM brands WHERE workspace_id = $1', [workspace.id]),
+    client.query('SELECT * FROM linkedin_connections WHERE user_id = $1 LIMIT 1', [userId]),
   ]);
 
   return {
     user: userResult.rows[0],
     workspace,
     brandCount: Number(brandCountResult.rows[0]?.count || 0),
+    linkedin: linkedinResult.rows[0] || null,
   };
 }
 

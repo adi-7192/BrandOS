@@ -24,6 +24,12 @@ test('buildSettingsViewModel derives section statuses from the settings payload'
       passwordEnabled: false,
       ssoEnabled: false,
     },
+    linkedin: {
+      connected: true,
+      status: 'connected',
+      displayName: 'Ada Lovelace',
+      expiresAt: '2026-06-01T00:00:00.000Z',
+    },
   });
 
   assert.deepEqual(model.workspaceStatus, {
@@ -40,6 +46,11 @@ test('buildSettingsViewModel derives section statuses from the settings payload'
     label: 'Active',
     tone: 'success',
     meta: 'anthropic · claude-sonnet-4-6',
+  });
+  assert.deepEqual(model.linkedinStatus, {
+    label: 'Connected',
+    tone: 'success',
+    meta: 'Ada Lovelace',
   });
   assert.deepEqual(model.securityMethods, ['Google']);
 });
@@ -65,6 +76,10 @@ test('buildSettingsViewModel falls back to setup states when systems are not rea
       passwordEnabled: true,
       ssoEnabled: false,
     },
+    linkedin: {
+      connected: false,
+      status: 'not_connected',
+    },
   });
 
   assert.deepEqual(model.workspaceStatus, {
@@ -81,6 +96,11 @@ test('buildSettingsViewModel falls back to setup states when systems are not rea
     label: 'Needs attention',
     tone: 'warning',
     meta: 'openai · gpt-4o',
+  });
+  assert.deepEqual(model.linkedinStatus, {
+    label: 'Not connected',
+    tone: 'neutral',
+    meta: 'Personal publishing unavailable',
   });
   assert.deepEqual(model.securityMethods, ['Password']);
 });

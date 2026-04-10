@@ -118,6 +118,31 @@ DO $$ BEGIN
   END IF;
 END $$;
 
+CREATE TABLE IF NOT EXISTS linkedin_connections (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  workspace_id UUID NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+  linkedin_member_id TEXT,
+  linkedin_display_name TEXT,
+  linkedin_email TEXT,
+  person_urn TEXT,
+  access_token_encrypted TEXT NOT NULL,
+  refresh_token_encrypted TEXT,
+  scope TEXT,
+  token_type TEXT,
+  expires_at TIMESTAMPTZ,
+  last_validated_at TIMESTAMPTZ,
+  connection_status TEXT NOT NULL DEFAULT 'connected' CHECK (connection_status IN ('connected', 'expired', 'error')),
+  connected_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS linkedin_connections_user_id_idx
+  ON linkedin_connections(user_id);
+
+CREATE INDEX IF NOT EXISTS linkedin_connections_workspace_id_idx
+  ON linkedin_connections(workspace_id);
+
 -- Brands
 CREATE TABLE IF NOT EXISTS brands (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -350,6 +375,23 @@ DO $$ BEGIN
     ALTER TABLE generation_sessions ADD COLUMN publish_date DATE;
   END IF;
 END $$;
+
+CREATE TABLE IF NOT EXISTS linkedin_post_publications (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  workspace_id UUID NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+  generation_session_id UUID REFERENCES generation_sessions(id) ON DELETE SET NULL,
+  brand_id UUID REFERENCES brands(id) ON DELETE SET NULL,
+  linkedin_connection_id UUID REFERENCES linkedin_connections(id) ON DELETE SET NULL,
+  content_text TEXT NOT NULL,
+  linkedin_post_urn TEXT,
+  linkedin_share_urn TEXT,
+  status TEXT NOT NULL CHECK (status IN ('pending', 'published', 'failed')),
+  failure_code TEXT,
+  failure_message TEXT,
+  published_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 
 -- Drafts
 CREATE TABLE IF NOT EXISTS drafts (

@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import AppShell from '../../components/layout/AppShell';
 import Input from '../../components/ui/Input';
 import Dropdown from '../../components/ui/Dropdown';
 import Button from '../../components/ui/Button';
 import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
+import { buildLinkedInViewModel } from '../../lib/linkedin-view';
 import { buildSettingsViewModel } from '../../lib/settings-view';
 
 const CONTENT_FORMAT_OPTIONS = [
@@ -33,6 +34,7 @@ const INBOX_VIEW_OPTIONS = [
 
 export default function Settings() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { refreshUser } = useAuth();
   const [settings, setSettings] = useState(null);
   const [profileForm, setProfileForm] = useState({ firstName: '', lastName: '', email: '', companyName: '' });
@@ -41,6 +43,7 @@ export default function Settings() {
   const [generationForm, setGenerationForm] = useState({ defaultContentFormat: 'LinkedIn only', toneStrictness: 'Balanced', preferredOutputLength: 'Standard' });
   const [saving, setSaving] = useState({});
   const [aiTest, setAiTest] = useState({ loading: false, result: null });
+  const [linkedinAction, setLinkedinAction] = useState({ loading: false, message: '' });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -49,6 +52,16 @@ export default function Settings() {
   }, []);
 
   const viewModel = useMemo(() => buildSettingsViewModel(settings), [settings]);
+  const linkedinView = useMemo(() => buildLinkedInViewModel(settings?.linkedin), [settings?.linkedin]);
+
+  useEffect(() => {
+    const status = new URLSearchParams(location.search).get('linkedin');
+    if (status === 'connected') {
+      setLinkedinAction({ loading: false, message: 'LinkedIn connected. You can now publish personal posts from BrandOS.' });
+    } else if (status === 'error') {
+      setLinkedinAction({ loading: false, message: 'LinkedIn could not be connected. Please try again.' });
+    }
+  }, [location.search]);
 
   async function loadSettings() {
     setLoading(true);
@@ -115,6 +128,35 @@ export default function Settings() {
       setAiTest({
         loading: false,
         result: { ok: false, message: 'Unable to test the AI connection right now.' },
+      });
+    }
+  }
+
+  async function handleLinkedInConnect() {
+    setLinkedinAction({ loading: true, message: '' });
+
+    try {
+      const res = await api.get('/linkedin/connect');
+      window.location.href = res.data.authUrl;
+    } catch (err) {
+      setLinkedinAction({
+        loading: false,
+        message: err.response?.data?.message || 'Unable to start the LinkedIn connection right now.',
+      });
+    }
+  }
+
+  async function handleLinkedInDisconnect() {
+    setLinkedinAction({ loading: true, message: '' });
+
+    try {
+      await api.post('/linkedin/disconnect');
+      await loadSettings();
+      setLinkedinAction({ loading: false, message: 'LinkedIn disconnected.' });
+    } catch (err) {
+      setLinkedinAction({
+        loading: false,
+        message: err.response?.data?.message || 'Unable to disconnect LinkedIn right now.',
       });
     }
   }
@@ -325,6 +367,58 @@ export default function Settings() {
               >
                 {saving.generation ? 'Saving...' : 'Save content preferences'}
               </Button>
+            </SectionActions>
+          </SettingsSection>
+
+          <SettingsSection
+            title="LinkedIn"
+            description="Connect your personal LinkedIn account so BrandOS can publish approved LinkedIn drafts on your behalf."
+            aside={<StatusPill status={viewModel.linkedinStatus} />}
+          >
+            <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+              <div className="space-y-4">
+                <ReadonlyField
+                  label="Connection scope"
+                  value="Personal account only. This connection belongs to your signed-in BrandOS user and is not shared across the workspace."
+                />
+                <ReadonlyField
+                  label="Connected as"
+                  value={linkedinView.connectedAs || 'Not connected yet'}
+                />
+                <ReadonlyField
+                  label="Status"
+                  value={linkedinView.helper}
+                />
+              </div>
+              <div className="rounded-2xl border border-[#e7ecf3] bg-[#fbfcfe] px-4 py-4">
+                <p className="text-sm font-medium text-[#111827]">Publishing access</p>
+                <div className="mt-4 space-y-3 text-sm text-[#667085]">
+                  <StatusLine label="LinkedIn account" value={linkedinView.label} />
+                  <StatusLine label="Posting mode" value="Personal text posts" />
+                  <StatusLine label="Token state" value={linkedinView.expiresMeta || 'No active token'} />
+                </div>
+              </div>
+            </div>
+            {linkedinAction.message ? (
+              <p className="mt-4 text-sm text-[#667085]">{linkedinAction.message}</p>
+            ) : null}
+            <SectionActions>
+              <Button
+                variant="primary"
+                disabled={linkedinAction.loading}
+                onClick={handleLinkedInConnect}
+              >
+                {linkedinAction.loading ? 'Opening LinkedIn…' : linkedinView.ctaLabel}
+              </Button>
+              {settings.linkedin?.connected || settings.linkedin?.status === 'reconnect_required' ? (
+                <Button
+                  variant="secondary"
+                  disabled={linkedinAction.loading}
+                  onClick={handleLinkedInDisconnect}
+                >
+                  Disconnect
+                </Button>
+              ) : null}
             </SectionActions>
           </SettingsSection>
 

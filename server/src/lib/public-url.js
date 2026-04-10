@@ -23,3 +23,7 @@ export function getFrontendUrl(req, env = process.env) {
 export function getGoogleRedirectUri(req, env = process.env) {
   return env.GOOGLE_REDIRECT_URI || `${getRequestOrigin(req)}/api/auth/google/callback`;
 }
+
+export function getLinkedInRedirectUri(req, env = process.env) {
+  return env.LINKEDIN_REDIRECT_URI || `${getRequestOrigin(req)}/api/linkedin/callback`;
+}

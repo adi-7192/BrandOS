@@ -1,3 +1,5 @@
+import { buildLinkedInStatus } from './linkedin-view.js';
+
 function buildStatus(label, tone, meta) {
   return { label, tone, meta };
 }
@@ -7,6 +9,7 @@ export function buildSettingsViewModel(settings) {
   const inbox = settings?.inbox || {};
   const ai = settings?.ai || {};
   const security = settings?.security || {};
+  const linkedin = settings?.linkedin || {};
 
   const workspaceStatus = workspace.onboardingComplete && workspace.brandCount > 0
     ? buildStatus('Ready', 'success', `${workspace.brandCount} brands live`)
@@ -24,6 +27,8 @@ export function buildSettingsViewModel(settings) {
     ? buildStatus('Active', 'success', `${ai.provider} · ${ai.model}`)
     : buildStatus('Needs attention', 'warning', `${ai.provider} · ${ai.model}`);
 
+  const linkedinStatus = buildLinkedInStatus(linkedin);
+
   const securityMethods = [
     security.googleConnected ? 'Google' : null,
     security.passwordEnabled ? 'Password' : null,
@@ -34,6 +39,7 @@ export function buildSettingsViewModel(settings) {
     workspaceStatus,
     inboxStatus,
     aiStatus,
+    linkedinStatus,
     securityMethods,
   };
 }
