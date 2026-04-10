@@ -3,8 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import AppShell from '../../components/layout/AppShell';
 import Button from '../../components/ui/Button';
 import api from '../../services/api';
-import { buildInboxCounts, groupInboxThreads } from '../../lib/inbox-view';
+import { buildInboxCounts, buildInboxEmptyState, groupInboxThreads } from '../../lib/inbox-view';
 import { buildInboxAiCard } from '../../lib/inbox-ai-view';
+import { buildSampleBrief } from '../../lib/generation-flow';
 import {
   buildGenerationSessionPayload,
   buildSessionQuery,
@@ -68,6 +69,10 @@ export default function Inbox() {
     [aiCardMap, cards]
   );
   const drawerCard = drawerCardId ? aiCardMap.get(drawerCardId) || null : null;
+  const emptyState = useMemo(
+    () => buildInboxEmptyState({ activeTab, intakeEmail: '', gmailAvailable: false }),
+    [activeTab]
+  );
 
   const handleDismiss = async (id) => {
     await api.patch(`/inbox/${id}/status`, { status: 'dismissed' });
@@ -119,6 +124,14 @@ export default function Inbox() {
     }));
   };
 
+  const handleStartSampleFlow = () => {
+    navigate('/generate/brief', {
+      state: {
+        sampleBrief: buildSampleBrief(),
+      },
+    });
+  };
+
   return (
     <AppShell>
       {loading ? (
@@ -135,6 +148,24 @@ export default function Inbox() {
               Forward stakeholder threads to your BrandOS intake address. AI turns each thread into a concise summary, extracted work blocks, and next-step actions for your team.
             </p>
           </header>
+
+          <section className="mb-6 rounded-[24px] border border-[#dbe6f3] bg-[linear-gradient(135deg,#f8fbff_0%,#ffffff_100%)] px-5 py-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+            <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#0a66c2]">Workflow</p>
+                <h2 className="mt-2 text-xl font-semibold tracking-[-0.03em] text-slate-950">Inbox to brief to content</h2>
+                <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
+                  BrandOS turns stakeholder updates into a campaign brief first, then helps you generate on-brand LinkedIn and blog drafts from that brief.
+                </p>
+              </div>
+              <button
+                onClick={handleStartSampleFlow}
+                className="rounded-2xl border border-[#dbe3ef] bg-white px-4 py-3 text-sm font-medium text-slate-700 transition hover:border-[#c8d4e3] hover:text-slate-950"
+              >
+                Explore a sample workflow
+              </button>
+            </div>
+          </section>
 
           <section className="mb-6 rounded-[24px] border border-[#e7ebf3] bg-[#fbfcff] px-5 py-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
             <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto_auto] lg:items-center">
@@ -181,7 +212,11 @@ export default function Inbox() {
 
           <section className="space-y-4">
             {cards.length === 0 ? (
-              <EmptyInboxState activeTab={activeTab} />
+              <EmptyInboxState
+                emptyState={emptyState}
+                onOpenSettings={() => navigate('/settings')}
+                onStartSampleFlow={handleStartSampleFlow}
+              />
             ) : viewMode === 'updates' ? (
               aiCards.map((card, index) => (
                 <UpdateCard
@@ -651,15 +686,35 @@ function StatusChip({ label, tone }) {
   );
 }
 
-function EmptyInboxState({ activeTab }) {
+function EmptyInboxState({ emptyState, onOpenSettings, onStartSampleFlow }) {
   return (
-    <div className="rounded-[24px] border border-dashed border-[#d8dfeb] bg-[#fbfcfe] px-6 py-14 text-center">
+    <div className="rounded-[24px] border border-dashed border-[#d8dfeb] bg-[#fbfcfe] px-6 py-10">
       <h2 className="font-sans text-[1.4rem] font-semibold tracking-[-0.03em] text-slate-950">
-        No {activeTab} items
+        {emptyState.title}
       </h2>
-      <p className="mx-auto mt-3 max-w-xl text-sm leading-7 text-slate-500">
-        Forward a stakeholder thread to your BrandOS intake address and AI will turn it into a concise summary with campaign and brand-update actions for review.
+      <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-500">
+        {emptyState.description}
       </p>
+      {emptyState.steps.length > 0 ? (
+        <ul className="mt-5 space-y-3 text-left text-sm text-slate-600">
+          {emptyState.steps.map((step) => (
+            <li key={step} className="flex items-start gap-3">
+              <span className="mt-2 h-1.5 w-1.5 rounded-full bg-[var(--brand-primary)]" />
+              <span>{step}</span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {emptyState.actions.length > 0 ? (
+        <div className="mt-6 flex flex-wrap gap-3">
+          <Button variant="secondary" onClick={onStartSampleFlow}>
+            {emptyState.actions[0].label}
+          </Button>
+          <Button variant="primary" onClick={onOpenSettings}>
+            {emptyState.actions[1].label}
+          </Button>
+        </div>
+      ) : null}
     </div>
   );
 }

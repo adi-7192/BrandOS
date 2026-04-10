@@ -3,7 +3,7 @@ import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import Input from '../../components/ui/Input';
 import Button from '../../components/ui/Button';
-import { getPostAuthRoute } from '../../lib/auth-flow';
+import { buildAuthEntryView, getPostAuthRoute } from '../../lib/auth-flow';
 
 const GOOGLE_AUTH_URL = '/api/auth/google';
 
@@ -16,6 +16,7 @@ export default function SignIn() {
     searchParams.get('error') === 'google_failed' ? 'Google sign-in failed. Please try again.' : ''
   );
   const [loading, setLoading] = useState(false);
+  const entryView = buildAuthEntryView('signin');
 
   const handleChange = (e) => setForm(f => ({ ...f, [e.target.name]: e.target.value }));
 
@@ -38,8 +39,9 @@ export default function SignIn() {
       <div className="flex min-h-screen items-center justify-center">
         <div className="w-full max-w-md rounded-[24px] border border-brand bg-brand-surface p-8 shadow-brand-sm">
           <div className="mb-8 text-center">
-            <h1 className="font-brand-heading text-4xl font-bold tracking-[-0.03em] text-brand">Sign in to BrandOS</h1>
-            <p className="mt-3 text-sm leading-7 text-brand-muted">Continue with Google Workspace or sign in with your work email.</p>
+            <h1 className="font-brand-heading text-4xl font-bold tracking-[-0.03em] text-brand">{entryView.title}</h1>
+            <p className="mt-3 text-sm leading-7 text-brand-muted">{entryView.subtitle}</p>
+            <p className="mt-3 text-xs font-medium uppercase tracking-[0.16em] text-brand-muted">{entryView.nextStep}</p>
           </div>
 
           <Button variant="secondary" className="mb-5 w-full" onClick={() => { window.location.href = GOOGLE_AUTH_URL; }}>
@@ -68,8 +70,8 @@ export default function SignIn() {
           </div>
 
           <p className="mt-6 text-center text-sm text-brand-muted">
-            No account?{' '}
-            <Link to="/signup" className="font-medium text-brand underline">Create workspace</Link>
+            {entryView.switchLabel}{' '}
+            <Link to="/signup" className="font-medium text-brand underline">{entryView.switchCta}</Link>
           </p>
         </div>
       </div>

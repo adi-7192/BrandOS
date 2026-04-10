@@ -5,6 +5,7 @@ import Button from '../../components/ui/Button';
 import DangerConfirmModal from '../../components/ui/DangerConfirmModal';
 import api from '../../services/api';
 import {
+  buildBriefOriginMeta,
   createInitialPreviewSections,
   hasPreviewContent,
   mergePreviewSuggestions,
@@ -51,6 +52,8 @@ export default function Preview() {
   const campaignDeleteConfirmation = buildCampaignDeleteConfirmation({
     sessionTitle: brief?.campaignName || brief?.emailSubject || brief?.brandName,
   });
+  const originMeta = brief ? buildBriefOriginMeta(brief) : null;
+  const isSampleMode = brief?.mode === 'sample';
 
   useEffect(() => {
     const loadPreview = async () => {
@@ -180,6 +183,16 @@ export default function Preview() {
   }, [activeFormat, brief, loading, sections, sessionId]);
 
   const handleGenerate = async () => {
+    if (isSampleMode) {
+      navigate('/generate/creating', {
+        state: {
+          brief,
+          sections,
+        },
+      });
+      return;
+    }
+
     const persisted = await persistSession({ nextStep: 'creating' });
     navigate(`/generate/creating${buildSessionQuery(persisted.id)}`, { state: { brief, sections, sessionId: persisted.id } });
   };
@@ -232,6 +245,18 @@ export default function Preview() {
           </div>
         ) : null}
 
+        {originMeta ? (
+          <div className="mb-4 rounded-xl border border-[#dbe6f3] bg-[linear-gradient(135deg,#f8fbff_0%,#ffffff_100%)] p-4">
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-[#0a66c2] shadow-[0_1px_2px_rgba(15,23,42,0.06)]">
+                {originMeta.badge}
+              </span>
+              <p className="text-sm font-semibold text-slate-900">{originMeta.label}</p>
+            </div>
+            <p className="mt-3 text-sm leading-6 text-slate-600">{originMeta.description}</p>
+          </div>
+        ) : null}
+
         <div className="flex gap-2 mb-4">
           {['linkedin', 'blog'].map(fmt => (
             <button key={fmt} onClick={() => setActiveFormat(fmt)}
@@ -245,15 +270,21 @@ export default function Preview() {
           <div className="mb-4 flex items-start justify-between gap-4">
             <div>
               <p className="text-sm font-medium text-gray-900">AI drafted these sections from your brief.</p>
-              <p className="mt-1 text-xs text-gray-400">Review and tweak only if needed. You should not have to write this from scratch.</p>
+              <p className="mt-1 text-xs text-gray-400">
+                {isSampleMode
+                  ? 'This sample preview shows how BrandOS structures the draft before full generation.'
+                  : 'Review and tweak only if needed. You should not have to write this from scratch.'}
+              </p>
             </div>
             <button
               type="button"
               onClick={() => hydrateSuggestions({ mode: 'replace-active' })}
-              disabled={suggestionsState === 'loading'}
+              disabled={suggestionsState === 'loading' || isSampleMode}
               className="rounded-lg border border-gray-200 px-3 py-2 text-xs font-medium text-gray-600 transition hover:border-gray-300 hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {suggestionsState === 'loading'
+              {isSampleMode
+                ? 'Sample preview'
+                : suggestionsState === 'loading'
                 ? 'Refreshing…'
                 : activeFormat === 'linkedin'
                   ? 'Try another suggestion'

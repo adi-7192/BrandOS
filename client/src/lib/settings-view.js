@@ -35,11 +35,25 @@ export function buildSettingsViewModel(settings) {
     security.ssoEnabled ? 'SSO' : null,
   ].filter(Boolean);
 
+  const accessStatus = buildStatus(
+    securityMethods[0] || 'None',
+    'neutral',
+    'Available sign-in methods'
+  );
+
   return {
+    sectionOrder: [
+      'Profile',
+      'Workspace',
+      'Integrations',
+      'Content preferences',
+      'Access and sign-in',
+    ],
     workspaceStatus,
     inboxStatus,
     aiStatus,
     linkedinStatus,
     securityMethods,
+    accessStatus,
   };
 }

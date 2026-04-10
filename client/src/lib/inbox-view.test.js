@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 
 import {
   buildInboxCounts,
+  buildInboxEmptyState,
   groupInboxThreads,
   pickThreadSource,
 } from './inbox-view.js';
@@ -79,4 +80,27 @@ test('pickThreadSource returns the full source mail and related updates for a se
     createdAt: '2026-04-07T10:00:00.000Z',
     cards: [cards[0], cards[1]],
   });
+});
+
+test('buildInboxEmptyState teaches first-time users what BrandOS does when the queue is empty', () => {
+  assert.deepEqual(
+    buildInboxEmptyState({
+      activeTab: 'pending',
+      intakeEmail: '',
+      gmailAvailable: false,
+    }),
+    {
+      title: 'No stakeholder updates yet',
+      description: 'Forward a campaign or stakeholder thread into BrandOS and AI will turn it into a review-ready brief with suggested next actions.',
+      steps: [
+        'Forward a stakeholder email to your BrandOS intake address.',
+        'BrandOS extracts the campaign brief and any brand-kit updates.',
+        'Review the brief, generate content, and publish when you are ready.',
+      ],
+      actions: [
+        { id: 'sample-flow', label: 'Explore a sample workflow' },
+        { id: 'open-settings', label: 'Set up inbox forwarding' },
+      ],
+    }
+  );
 });

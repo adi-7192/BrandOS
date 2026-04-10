@@ -6,6 +6,31 @@ export function buildInboxCounts(cards) {
   };
 }
 
+export function buildInboxEmptyState({ activeTab, intakeEmail, gmailAvailable }) {
+  if (activeTab !== 'pending') {
+    return {
+      title: activeTab === 'used' ? 'No completed updates here yet' : 'No dismissed updates here yet',
+      description: 'When threads move through BrandOS, they will show up here so you can keep track of what has already been handled.',
+      steps: [],
+      actions: [],
+    };
+  }
+
+  return {
+    title: 'No stakeholder updates yet',
+    description: 'Forward a campaign or stakeholder thread into BrandOS and AI will turn it into a review-ready brief with suggested next actions.',
+    steps: [
+      `Forward a stakeholder email to ${intakeEmail || 'your BrandOS intake address'}.`,
+      'BrandOS extracts the campaign brief and any brand-kit updates.',
+      'Review the brief, generate content, and publish when you are ready.',
+    ],
+    actions: [
+      { id: 'sample-flow', label: 'Explore a sample workflow' },
+      { id: 'open-settings', label: gmailAvailable ? 'View inbox setup' : 'Set up inbox forwarding' },
+    ],
+  };
+}
+
 export function groupInboxThreads(cards) {
   const grouped = new Map();
 

@@ -186,7 +186,7 @@ export default function LandingPage() {
               to="/signup"
               className="inline-flex items-center justify-center rounded-full bg-[var(--brand-primary)] px-5 py-2.5 text-sm font-medium text-white shadow-sm shadow-[rgba(37,99,235,0.2)] transition-colors hover:bg-[var(--brand-primary-hover)]"
             >
-              Start setup
+              Create workspace
             </Link>
           </div>
         </div>
@@ -202,14 +202,21 @@ export default function LandingPage() {
                   One AI workspace that remembers every brand your team manages
                 </h1>
                 <p className="mb-10 mt-6 text-lg leading-relaxed text-slate-600 sm:text-xl">
-                  BrandOS stores each brand&apos;s voice kit, turns tagged campaign briefs into structured inputs, and generates on-brand LinkedIn and blog drafts without re-explaining context every session.
+                  BrandOS replaces scattered briefs, repeated prompting, and manual copy handoffs with one workspace that remembers each brand, turns stakeholder updates into structured briefs, and generates review-ready content faster.
                 </p>
 
                 <div className="mb-12 flex flex-col gap-4 sm:flex-row">
-                  <MarketingButton to="/signup">Start setup</MarketingButton>
+                  <MarketingButton to="/signup">Create workspace</MarketingButton>
                   <MarketingButton to="/signin" variant="secondary">
                     Sign in
                   </MarketingButton>
+                </div>
+
+                <div className="mb-8 rounded-[24px] border border-[#dbe6f3] bg-white/80 px-5 py-4 shadow-[0_10px_30px_rgba(15,23,42,0.05)]">
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">From → To</p>
+                  <p className="mt-3 text-sm leading-7 text-slate-600">
+                    From scattered emails, brand docs, and one-off AI prompts to one workspace that remembers the brand, structures the brief, and gets your team to a publish-ready draft faster.
+                  </p>
                 </div>
 
                 <div className="grid grid-cols-1 gap-3 text-sm text-slate-600 sm:grid-cols-2">

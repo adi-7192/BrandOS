@@ -6,16 +6,16 @@ import { buildKitLiveNextSteps } from './kit-live-flow.js';
 test('buildKitLiveNextSteps returns simple actionable next steps in plain english', () => {
   assert.deepEqual(buildKitLiveNextSteps(), [
     {
-      title: 'Connect Gmail',
+      title: 'Connect your inbox',
       description: 'Bring campaign briefs into BrandOS automatically so you can review new requests without copying them over by hand.',
     },
     {
-      title: 'Go to your dashboard',
-      description: 'See what needs attention next, track deadlines, and jump back into active work in one place.',
+      title: 'Connect LinkedIn',
+      description: 'Set up direct personal posting once so approved LinkedIn drafts can be published from BrandOS.',
     },
     {
-      title: 'Add another brand',
-      description: 'Set up the next brand now so every team or market has its own kit before new work starts coming in.',
+      title: 'Create your first campaign',
+      description: 'Start from the dashboard when you are ready to turn a campaign brief into review-ready content.',
     },
   ]);
 });

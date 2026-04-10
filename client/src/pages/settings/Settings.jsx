@@ -204,12 +204,12 @@ export default function Settings() {
           <div>
             <h1 className="font-brand-heading text-4xl text-[#111827]">Settings</h1>
             <p className="mt-2 max-w-2xl text-sm text-[#667085]">
-              Manage your account, workspace setup, inbox defaults, and BrandOS generation behavior.
+              Manage your profile, workspace, integrations, content defaults, and sign-in methods.
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
             <StatusPill status={viewModel.workspaceStatus} />
-            <StatusPill status={viewModel.aiStatus} />
+            <StatusPill status={viewModel.accessStatus} />
           </div>
         </header>
 
@@ -269,8 +269,22 @@ export default function Settings() {
           </SettingsSection>
 
           <SettingsSection
+            title="Integrations"
+            description="Connect the systems BrandOS uses to pull campaign context in and push approved content out."
+            aside={<StatusPill status={{ label: 'Setup once', tone: 'neutral', meta: 'Reused across workflows' }} />}
+          >
+            <div className="grid gap-4 md:grid-cols-2">
+              <MetricCard label="Inbox intake" value={viewModel.inboxStatus.label} />
+              <MetricCard label="LinkedIn publishing" value={viewModel.linkedinStatus.label} />
+            </div>
+            <p className="mt-4 rounded-2xl border border-[#e7ecf3] bg-[#fbfcfe] px-4 py-4 text-sm leading-6 text-[#667085]">
+              Connect your inbox to bring stakeholder updates into BrandOS. Connect LinkedIn once to publish approved personal LinkedIn drafts directly from the output screen.
+            </p>
+          </SettingsSection>
+
+          <SettingsSection
             title="Inbox"
-            description="Set the defaults for how forwarded stakeholder threads land inside BrandOS."
+            description="Configure how stakeholder threads arrive in BrandOS and how reviewers see the original source material."
             aside={<StatusPill status={viewModel.inboxStatus} />}
           >
             <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
@@ -386,7 +400,7 @@ export default function Settings() {
 
           <SettingsSection
             title="LinkedIn"
-            description="Publish approved LinkedIn drafts from BrandOS using your personal account."
+            description="Connect your personal LinkedIn once so BrandOS can publish approved LinkedIn drafts on your behalf. Company-page posting comes later."
             aside={<StatusPill status={viewModel.linkedinStatus} />}
           >
             <div className="grid gap-5 lg:grid-cols-[minmax(0,1.3fr)_320px]">
@@ -453,7 +467,7 @@ export default function Settings() {
                 <div className="mt-4 space-y-3 text-sm text-[#667085]">
                   <StatusLine label="Status" value={linkedinView.badgeLabel} />
                   <StatusLine label="Publishing" value={linkedinView.readinessLabel} />
-                  <StatusLine label="Connection scope" value="Personal account only" />
+                  <StatusLine label="Connection scope" value="Personal account only in v1" />
                   <StatusLine label="Connected account" value={linkedinView.connectedAs || 'No account connected'} />
                   {linkedinView.lastCheckedLabel ? (
                     <StatusLine label={linkedinView.lastCheckedLabel} value={formatDateTime(linkedinView.lastCheckedValue)} />
@@ -478,39 +492,9 @@ export default function Settings() {
           </SettingsSection>
 
           <SettingsSection
-            title="AI Status"
-            description="BrandOS manages the provider stack for you. Use this section to verify readiness and connection health."
-            aside={<StatusPill status={viewModel.aiStatus} />}
-          >
-            <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
-              <div className="grid gap-4 md:grid-cols-3">
-                <MetricCard label="Mode" value={settings.ai.platformManaged ? 'Platform-managed' : 'Custom'} />
-                <MetricCard label="Provider" value={settings.ai.provider} />
-                <MetricCard label="Model" value={settings.ai.model} />
-              </div>
-              <div className="rounded-2xl border border-[#e7ecf3] bg-[#fbfcfe] px-4 py-4">
-                <p className="text-sm font-medium text-[#111827]">Connection test</p>
-                <p className="mt-2 text-sm text-[#667085]">
-                  Run a lightweight live check against the configured provider from your current workspace session.
-                </p>
-                <div className="mt-4 flex flex-wrap items-center gap-3">
-                  <Button variant="primary" disabled={aiTest.loading} onClick={handleAiTest}>
-                    {aiTest.loading ? 'Testing...' : 'Test AI connection'}
-                  </Button>
-                  {aiTest.result && (
-                    <span className={`text-sm ${aiTest.result.ok ? 'text-[#178A5B]' : 'text-[#c94b4b]'}`}>
-                      {aiTest.result.message}
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-          </SettingsSection>
-
-          <SettingsSection
-            title="Security"
-            description="Review the authentication methods available on your account and what is enabled at the workspace level."
-            aside={<StatusPill status={{ label: 'Access', tone: 'neutral', meta: viewModel.securityMethods.join(' · ') || 'None' }} />}
+            title="Access and sign-in"
+            description="Review which sign-in methods are available for your account and which one is already connected."
+            aside={<StatusPill status={viewModel.accessStatus} />}
           >
             <div className="grid gap-4 md:grid-cols-3">
               <SecurityCard title="Google sign-in" active={settings.security.googleConnected} detail={settings.security.googleConnected ? 'Connected to this account' : 'Not connected'} />

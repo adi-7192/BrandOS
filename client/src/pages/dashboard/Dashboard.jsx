@@ -10,10 +10,12 @@ import {
   buildDraftOutputState,
   buildRecentActivity,
   buildUpcomingDeadlineItems,
+  buildWorkflowGuide,
   getEmptyDashboardSummary,
   normalizeDashboardSummary,
 } from '../../lib/dashboard-flow';
 import { buildSessionRoute } from '../../lib/generation-session';
+import { buildSampleBrief } from '../../lib/generation-flow';
 import { PLATFORM_NAV_ITEMS } from '../../lib/platform-nav';
 
 const emptySummary = getEmptyDashboardSummary();
@@ -38,6 +40,7 @@ export default function Dashboard() {
   const brandRows = useMemo(() => buildBrandPortfolioRows(summary), [summary]);
   const deadlineItems = useMemo(() => buildUpcomingDeadlineItems(summary), [summary]);
   const activity = useMemo(() => buildRecentActivity(summary), [summary]);
+  const workflowGuide = useMemo(() => buildWorkflowGuide(summary), [summary]);
 
   const handleSignOut = () => {
     signOut();
@@ -136,6 +139,14 @@ export default function Dashboard() {
     }
   };
 
+  const handleStartSampleFlow = () => {
+    navigate('/generate/brief', {
+      state: {
+        sampleBrief: buildSampleBrief(),
+      },
+    });
+  };
+
   return (
     <div className="min-h-dvh bg-white text-slate-900">
       <div className="grid min-h-dvh lg:grid-cols-[180px_minmax(0,1fr)]">
@@ -215,6 +226,46 @@ export default function Dashboard() {
                     Here&apos;s what&apos;s happening across your brands today.
                   </p>
                 </header>
+
+                {workflowGuide.visible ? (
+                  <section className="mb-8 rounded-[28px] border border-[#dbe6f3] bg-[linear-gradient(135deg,#f8fbff_0%,#ffffff_100%)] p-6 shadow-[0_16px_40px_rgba(15,23,42,0.05)]">
+                    <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+                      <div className="max-w-2xl">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#0a66c2]">How BrandOS works</p>
+                        <h2 className="mt-2 font-sans text-[1.9rem] font-semibold tracking-[-0.03em] text-slate-950">
+                          {workflowGuide.title}
+                        </h2>
+                        <p className="mt-3 text-sm leading-7 text-slate-600">
+                          {workflowGuide.description}
+                        </p>
+                      </div>
+                      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+                        <button
+                          onClick={handleStartSampleFlow}
+                          className="rounded-2xl bg-[var(--brand-primary)] px-4 py-3 text-sm font-medium text-white shadow-[0_12px_28px_rgba(37,99,235,0.25)] transition hover:bg-[var(--brand-primary-hover)]"
+                        >
+                          Explore a sample workflow
+                        </button>
+                        <button
+                          onClick={() => navigate('/inbox')}
+                          className="rounded-2xl border border-[#dbe3ef] bg-white px-4 py-3 text-sm font-medium text-slate-700 transition hover:border-[#c8d4e3] hover:text-slate-950"
+                        >
+                          Set up your inbox
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="mt-5 grid gap-4 md:grid-cols-3">
+                      {workflowGuide.steps.map((step, index) => (
+                        <div key={step.title} className="rounded-2xl border border-[#e7ecf3] bg-white px-4 py-4">
+                          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Step {index + 1}</p>
+                          <p className="mt-3 text-sm font-semibold text-slate-900">{step.title}</p>
+                          <p className="mt-2 text-sm leading-6 text-slate-600">{step.description}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                ) : null}
 
                 <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                   {stats.map((card, index) => (

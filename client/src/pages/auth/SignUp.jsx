@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import Input from '../../components/ui/Input';
 import Button from '../../components/ui/Button';
-import { getPostAuthRoute } from '../../lib/auth-flow';
+import { buildAuthEntryView, getPostAuthRoute } from '../../lib/auth-flow';
 import {
   SIGNUP_INTENT_QUESTIONS,
   armPendingSignupIntent,
@@ -26,6 +26,7 @@ export default function SignUp() {
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const entryView = buildAuthEntryView('signup');
 
   const handleChange = (e) => setForm(f => ({ ...f, [e.target.name]: e.target.value }));
 
@@ -57,8 +58,9 @@ export default function SignUp() {
     <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 px-4">
       <div className="w-full max-w-md bg-white rounded-2xl border border-gray-200 p-8 shadow-sm">
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">Create your workspace</h1>
-          <p className="mt-1 text-sm text-gray-500">Enterprise content generation, calibrated to your brands.</p>
+          <h1 className="text-2xl font-bold text-gray-900">{entryView.title}</h1>
+          <p className="mt-1 text-sm text-gray-500">{entryView.subtitle}</p>
+          <p className="mt-3 text-xs font-medium uppercase tracking-[0.16em] text-gray-400">{entryView.nextStep}</p>
         </div>
 
         <Button variant="secondary" className="w-full mb-5" onClick={() => { window.location.href = GOOGLE_AUTH_URL; }}>
@@ -118,8 +120,8 @@ export default function SignUp() {
         </div>
 
         <p className="mt-5 text-center text-sm text-gray-500">
-          Already have an account?{' '}
-          <Link to="/signin" className="text-gray-900 font-medium underline">Sign in</Link>
+          {entryView.switchLabel}{' '}
+          <Link to="/signin" className="text-gray-900 font-medium underline">{entryView.switchCta}</Link>
         </p>
       </div>
     </div>

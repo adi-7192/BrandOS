@@ -7,6 +7,7 @@ import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { getNextOutputIntentQuestion } from '../../lib/intent-capture';
 import { buildGenerationSessionPayload } from '../../lib/generation-session';
+import { buildBriefOriginMeta } from '../../lib/generation-flow';
 import { buildLinkedInPublishState } from '../../lib/linkedin-view';
 import { buildCampaignDeleteConfirmation } from '../../lib/destructive-actions';
 import {
@@ -86,6 +87,8 @@ export default function Output() {
     }),
     [activeDraft, activeTab, linkedin, publishState.loading]
   );
+  const originMeta = useMemo(() => buildBriefOriginMeta(brief), [brief]);
+  const isSampleMode = brief?.mode === 'sample';
 
   useEffect(() => {
     refreshUser().catch(() => {});
@@ -443,6 +446,18 @@ export default function Output() {
           <span className="chip chip-green">✓ {brief.kit?.restrictedWords?.length || 0} restricted words</span>
         </div>
 
+        {originMeta ? (
+          <div className="mb-4 rounded-xl border border-[#dbe6f3] bg-[linear-gradient(135deg,#f8fbff_0%,#ffffff_100%)] p-4">
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-[#0a66c2] shadow-[0_1px_2px_rgba(15,23,42,0.06)]">
+                {originMeta.badge}
+              </span>
+              <p className="text-sm font-semibold text-slate-900">{originMeta.label}</p>
+            </div>
+            <p className="mt-3 text-sm leading-6 text-slate-600">{originMeta.description}</p>
+          </div>
+        ) : null}
+
         {/* Output body */}
         <div className="rounded-xl border border-gray-200 bg-white p-4">
           <div className="mb-3 flex items-center justify-between gap-3">
@@ -665,7 +680,7 @@ export default function Output() {
           </div>
         )}
 
-        {linkedinPublishState.visible ? (
+        {!isSampleMode && linkedinPublishState.visible ? (
           <div className="mb-6 rounded-[24px] border border-[#dbe6f3] bg-[linear-gradient(135deg,#f8fbff_0%,#ffffff_100%)] p-5 shadow-[0_16px_40px_rgba(15,23,42,0.05)]">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div>
@@ -764,6 +779,15 @@ export default function Output() {
                 </div>
               </div>
             </div>
+          </div>
+        ) : null}
+        {isSampleMode ? (
+          <div className="mb-6 rounded-[24px] border border-[#dbe6f3] bg-[linear-gradient(135deg,#f8fbff_0%,#ffffff_100%)] p-5 shadow-[0_16px_40px_rgba(15,23,42,0.05)]">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#0a66c2]">Sample walkthrough</p>
+            <h2 className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-slate-950">This output is example data</h2>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
+              Use this sample to understand how BrandOS moves from a brief to an editable final draft. When your real inbox and LinkedIn are connected, this same screen becomes your live review and publishing surface.
+            </p>
           </div>
         ) : null}
 

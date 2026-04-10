@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import TopNav from '../../components/layout/TopNav';
 import api from '../../services/api';
-import { buildGeneratingContext } from '../../lib/generation-flow';
+import { buildBriefOriginMeta, buildGeneratingContext, buildSampleOutput } from '../../lib/generation-flow';
 import { buildGenerationSessionPayload, buildSessionQuery } from '../../lib/generation-session';
 
 const STEPS = [
@@ -24,8 +24,23 @@ export default function Creating() {
   const [sessionId, setSessionId] = useState(sessionIdParam || state?.sessionId || '');
   const kit = brief.kit || {};
   const context = buildGeneratingContext(brief);
+  const originMeta = buildBriefOriginMeta(brief);
 
   useEffect(() => {
+    if (brief?.mode === 'sample') {
+      const timeout = setTimeout(() => {
+        navigate('/generate/output', {
+          state: {
+            output: buildSampleOutput(),
+            brief,
+            activeTab: 'linkedin',
+          },
+        });
+      }, 2200);
+
+      return () => clearTimeout(timeout);
+    }
+
     const generate = async () => {
       let interval;
       let activeBrief = brief;
@@ -104,6 +119,16 @@ export default function Creating() {
         <div className="flex items-center gap-2 text-xs text-gray-400 mb-8">
           <span>Brief</span><span>→</span><span>Preview</span><span>→</span>
           <span className="font-medium text-gray-900">Generate</span>
+        </div>
+
+        <div className="mb-6 rounded-xl border border-[#dbe6f3] bg-[linear-gradient(135deg,#f8fbff_0%,#ffffff_100%)] p-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-[#0a66c2] shadow-[0_1px_2px_rgba(15,23,42,0.06)]">
+              {originMeta.badge}
+            </span>
+            <p className="text-sm font-semibold text-slate-900">{originMeta.label}</p>
+          </div>
+          <p className="mt-3 text-sm leading-6 text-slate-600">{originMeta.description}</p>
         </div>
 
         <div className="flex gap-6">
