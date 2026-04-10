@@ -15,8 +15,8 @@ const OUTPUT_LENGTH_OPTIONS = new Set(['concise', 'standard', 'detailed']);
 
 router.get('/', async (req, res, next) => {
   try {
-    const { user, workspace, brandCount } = await getSettingsState(req.user.id);
-    res.json({ settings: buildSettingsResponse({ user, workspace, brandCount }) });
+    const state = await getSettingsState(req.user.id);
+    res.json({ settings: buildSettingsResponse(state) });
   } catch (err) {
     next(err);
   }
@@ -115,7 +115,7 @@ router.post('/test-ai', async (_req, res) => {
   }
 });
 
-function buildSettingsResponse({ user, workspace, brandCount, linkedin }) {
+export function buildSettingsResponse({ user, workspace, brandCount, linkedin }) {
   const intakeDomain = process.env.RESEND_INBOUND_DOMAIN || process.env.INTAKE_EMAIL_DOMAIN;
   const intakeEmail = buildWorkspaceIntakeEmail(workspace.id, intakeDomain);
   const inboundAvailable = Boolean(intakeDomain && process.env.RESEND_API_KEY && process.env.RESEND_WEBHOOK_SECRET);
