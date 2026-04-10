@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { shouldClearAuthOnError } from '../lib/onboarding-flow';
+import { clearClientAuth } from '../lib/auth-session';
 
 const api = axios.create({
   baseURL: '/api',
@@ -18,7 +19,7 @@ api.interceptors.response.use(
   (res) => res,
   (err) => {
     if (shouldClearAuthOnError(err)) {
-      localStorage.removeItem('token');
+      clearClientAuth({ api });
       window.location.href = '/signin';
     }
     return Promise.reject(err);

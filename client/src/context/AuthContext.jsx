@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import api from '../services/api';
+import { applyClientAuth, clearClientAuth } from '../lib/auth-session';
 
 const AuthContext = createContext(null);
 
@@ -16,9 +17,12 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
-      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      applyClientAuth({ api, token });
       refreshUser()
-        .catch(() => localStorage.removeItem('token'))
+        .catch(() => {
+          clearClientAuth({ api });
+          setUser(null);
+        })
         .finally(() => setLoading(false));
     } else {
       setLoading(false);
@@ -28,8 +32,7 @@ export function AuthProvider({ children }) {
   const signIn = async (credentials) => {
     const res = await api.post('/auth/signin', credentials);
     const { token, user } = res.data;
-    localStorage.setItem('token', token);
-    api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+    applyClientAuth({ api, token });
     setUser(user);
     return user;
   };
@@ -37,15 +40,13 @@ export function AuthProvider({ children }) {
   const signUp = async (data) => {
     const res = await api.post('/auth/signup', data);
     const { token, user } = res.data;
-    localStorage.setItem('token', token);
-    api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+    applyClientAuth({ api, token });
     setUser(user);
     return user;
   };
 
   const handleGoogleToken = async (token) => {
-    localStorage.setItem('token', token);
-    api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+    applyClientAuth({ api, token });
     return refreshUser();
   };
 
@@ -56,8 +57,7 @@ export function AuthProvider({ children }) {
   };
 
   const signOut = () => {
-    localStorage.removeItem('token');
-    delete api.defaults.headers.common['Authorization'];
+    clearClientAuth({ api });
     setUser(null);
   };
 
