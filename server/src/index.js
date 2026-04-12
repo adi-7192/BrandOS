@@ -72,13 +72,12 @@ const allowedOrigins = rawAllowedOrigins
 
 app.use(cors({
   origin: (origin, callback) => {
-    // Allow server-to-server requests (no Origin header) only in development
-    if (!origin && process.env.NODE_ENV !== 'production') {
-      return callback(null, true);
-    }
-    if (origin && allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    }
+    // No Origin header = browser navigation (OAuth redirects, direct links) or
+    // server-to-server call. Neither is subject to CORS enforcement — browsers
+    // don't set Origin on top-level navigations and server clients are not
+    // bound by CORS. Allow unconditionally; JWT auth handles actual security.
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) return callback(null, true);
     callback(new Error('Not allowed by CORS'));
   },
   credentials: true,
