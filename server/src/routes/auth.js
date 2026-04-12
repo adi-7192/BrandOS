@@ -134,24 +134,36 @@ router.get('/google/callback', async (req, res, next) => {
 
     const companyName = profile.hd || profile.email.split('@')[1] || 'My Company';
 
-    // Upsert: find by google_id or email, create if neither exists
-    const { rows } = await pool.query(
-      `INSERT INTO users (first_name, last_name, email, google_id, company_name, workspace_profile_completed)
-       VALUES ($1, $2, $3, $4, $5, FALSE)
-       ON CONFLICT (email) DO UPDATE
-         SET google_id = EXCLUDED.google_id,
-             first_name = COALESCE(NULLIF(users.first_name, ''), EXCLUDED.first_name),
-             last_name  = COALESCE(NULLIF(users.last_name,  ''), EXCLUDED.last_name)
-       RETURNING *`,
-      [
-        profile.given_name || profile.name?.split(' ')[0] || '',
-        profile.family_name || profile.name?.split(' ').slice(1).join(' ') || '',
-        profile.email.toLowerCase(),
-        profile.id,
-        companyName,
-      ]
-    );
-    const user = rows[0];
+    // Upsert: find by google_id or email, create if neither exists.
+    // We look up by google_id first to avoid a double-conflict INSERT: if the
+    // user has logged in with Google before, their row already has both email
+    // AND google_id set. Inserting with ON CONFLICT (email) would also hit the
+    // google_id unique constraint (which is not the arbiter), causing Postgres
+    // to throw a unique-violation error instead of applying the DO UPDATE.
+    const firstName = profile.given_name || profile.name?.split(' ')[0] || '';
+    const lastName  = profile.family_name || profile.name?.split(' ').slice(1).join(' ') || '';
+    const email     = profile.email.toLowerCase();
+
+    let user;
+    const existing = await pool.query('SELECT * FROM users WHERE google_id = $1', [profile.id]);
+    if (existing.rowCount > 0) {
+      user = existing.rows[0];
+    } else {
+      // First time with this Google account: insert new row or link an existing
+      // email/password account (ON CONFLICT on email is safe here because
+      // google_id is not yet set on any row).
+      const { rows } = await pool.query(
+        `INSERT INTO users (first_name, last_name, email, google_id, company_name, workspace_profile_completed)
+         VALUES ($1, $2, $3, $4, $5, FALSE)
+         ON CONFLICT (email) DO UPDATE
+           SET google_id = EXCLUDED.google_id,
+               first_name = COALESCE(NULLIF(users.first_name, ''), EXCLUDED.first_name),
+               last_name  = COALESCE(NULLIF(users.last_name,  ''), EXCLUDED.last_name)
+         RETURNING *`,
+        [firstName, lastName, email, profile.id, companyName]
+      );
+      user = rows[0];
+    }
 
     // Create workspace if this is the first time
     const wsCheck = await pool.query('SELECT id FROM workspaces WHERE user_id = $1', [user.id]);
