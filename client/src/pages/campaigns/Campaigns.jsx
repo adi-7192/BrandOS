@@ -14,6 +14,7 @@ export default function Campaigns() {
   const { brands, fetchBrands } = useBrand();
   const [campaigns, setCampaigns] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(false);
   const [activeFilter, setActiveFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -31,6 +32,7 @@ export default function Campaigns() {
       .catch(() => {
         if (!mounted) return;
         setCampaigns([]);
+        setFetchError(true);
       })
       .finally(() => {
         if (mounted) setLoading(false);
@@ -72,6 +74,11 @@ export default function Campaigns() {
         </div>
       ) : (
         <div className="animate-dashboard-enter">
+          {fetchError && (
+            <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              Could not load campaigns. Please refresh and try again.
+            </div>
+          )}
           <div className="mb-8 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
             <div>
               <h1 className="font-sans text-[2.2rem] font-semibold tracking-[-0.035em] text-slate-950 sm:text-[2.6rem]">

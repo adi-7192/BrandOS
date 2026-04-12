@@ -369,6 +369,7 @@ export default function BrandEditor() {
             description={brandDeleteConfirmation.description}
             warningItems={brandDeleteConfirmation.warningItems}
             confirmLabel={brandDeleteConfirmation.confirmLabel}
+            confirmText={brandDeleteConfirmation.confirmText}
             loading={brandDeleteState.loading}
             onCancel={closeBrandDelete}
             onConfirm={confirmDeleteBrand}

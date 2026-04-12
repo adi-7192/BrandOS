@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, Link, useSearchParams } from 'react-router-dom';
+import { Navigate, useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import Input from '../../components/ui/Input';
 import Button from '../../components/ui/Button';
@@ -10,13 +10,15 @@ const GOOGLE_AUTH_URL = '/api/auth/google';
 export default function SignIn() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { signIn } = useAuth();
+  const { signIn, user, loading: authLoading } = useAuth();
   const [form, setForm] = useState({ email: '', password: '' });
   const [error, setError] = useState(
     searchParams.get('error') === 'google_failed' ? 'Google sign-in failed. Please try again.' : ''
   );
   const [loading, setLoading] = useState(false);
   const entryView = buildAuthEntryView('signin');
+
+  if (!authLoading && user) return <Navigate to="/dashboard" replace />;
 
   const handleChange = (e) => setForm(f => ({ ...f, [e.target.name]: e.target.value }));
 

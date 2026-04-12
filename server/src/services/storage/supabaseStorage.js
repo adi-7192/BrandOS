@@ -30,9 +30,16 @@ export function getSupabaseStorageClient({
  * @param {string} brandId - Used to namespace the file path
  * @param {string} mimetype - e.g. 'application/pdf'
  */
+// Map trusted MIME types to their canonical extensions.
+// Never derive the extension from the original filename — it is user-controlled.
+const MIME_EXT = {
+  'application/pdf': 'pdf',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
+};
+
 export async function uploadBrandGuideline({ buffer, filename, brandId, resourceKey, mimetype }) {
   const supabase = getSupabaseStorageClient();
-  const ext = filename.split('.').pop();
+  const ext = MIME_EXT[mimetype] ?? 'bin';
   const namespace = resourceKey || brandId || 'brand-guidelines';
   const safeFilename = String(filename || 'guideline')
     .replace(/\.[^.]+$/, '')

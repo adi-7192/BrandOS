@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { useOnboarding } from '../../context/OnboardingContext';
 import OnboardingShell from '../../components/layout/OnboardingShell';
 import KitProgressBar from '../../components/layout/KitProgressBar';
@@ -19,8 +19,11 @@ export default function S5aGenerating() {
   const ob = useOnboarding();
   const [currentStep, setCurrentStep] = useState(0);
   const [error, setError] = useState('');
+  const canGenerate = Boolean(ob.brandName.trim()) && ob.contentTypes.length > 0;
 
   useEffect(() => {
+    if (!canGenerate) return;
+
     let stepIdx = 0;
     const interval = setInterval(() => {
       stepIdx += 1;
@@ -54,15 +57,19 @@ export default function S5aGenerating() {
     runExtraction();
 
     return () => clearInterval(interval);
-  }, []);
+  }, [canGenerate]);
 
   // Auto-advance after steps complete + give extraction time
   useEffect(() => {
+    if (!canGenerate) return;
     if (currentStep >= STEPS.length) {
       const timer = setTimeout(() => navigate('/onboarding/review-kit'), 1000);
       return () => clearTimeout(timer);
     }
-  }, [currentStep, navigate]);
+  }, [canGenerate, currentStep, navigate]);
+
+  if (!ob.brandName.trim()) return <Navigate to="/onboarding/brand-name" replace />;
+  if (ob.contentTypes.length === 0) return <Navigate to="/onboarding/content-types" replace />;
 
   return (
     <OnboardingShell phase="Phase 2 · build brand kit">

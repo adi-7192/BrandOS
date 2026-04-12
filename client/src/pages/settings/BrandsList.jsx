@@ -8,9 +8,11 @@ export default function BrandsList() {
   const navigate = useNavigate();
   const { brands, fetchBrands } = useBrand();
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
     fetchBrands()
+      .catch(() => setError(true))
       .finally(() => setLoading(false));
   }, [fetchBrands]);
 
@@ -21,6 +23,10 @@ export default function BrandsList() {
       {loading ? (
         <div className="animate-dashboard-enter rounded-[24px] border border-[#e7ebf3] bg-white px-6 py-16 text-center text-sm text-slate-500 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
           Loading brand kits...
+        </div>
+      ) : error ? (
+        <div className="rounded-[24px] border border-red-200 bg-red-50 px-6 py-14 text-center text-sm text-red-600">
+          Could not load brand kits. Please refresh and try again.
         </div>
       ) : (
         <div className="animate-dashboard-enter">

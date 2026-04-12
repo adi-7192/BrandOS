@@ -1,4 +1,5 @@
-import { useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { useOnboarding } from '../../context/OnboardingContext';
 import OnboardingShell from '../../components/layout/OnboardingShell';
 import KitProgressBar from '../../components/layout/KitProgressBar';
@@ -14,10 +15,26 @@ export default function S4aBrandContent() {
     websiteUrls,
     pastContentExamples,
     brandGuidelinesFile,
+    contentTypes,
     update,
   } = useOnboarding();
 
-  const handleFileChange = (e) => update({ brandGuidelinesFile: e.target.files[0] || null });
+  if (!brandName.trim()) return <Navigate to="/onboarding/brand-name" replace />;
+  if (contentTypes.length === 0) return <Navigate to="/onboarding/content-types" replace />;
+
+  const MAX_FILE_BYTES = 8 * 1024 * 1024; // 8 MB — matches server Multer limit
+  const [fileError, setFileError] = useState('');
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0] || null;
+    if (file && file.size > MAX_FILE_BYTES) {
+      setFileError('File exceeds the 8 MB limit. Please upload a smaller PDF or DOCX.');
+      e.target.value = '';
+      return;
+    }
+    setFileError('');
+    update({ brandGuidelinesFile: file });
+  };
   const seedUrls = [websiteUrl, ...(websiteUrls || [])];
 
   const handleWebsiteUrlChange = (index, value) => {
@@ -118,8 +135,11 @@ export default function S4aBrandContent() {
             onChange={handleFileChange}
             className="block w-full text-sm text-gray-500 file:mr-3 file:rounded-lg file:border-0 file:bg-gray-100 file:px-3 file:py-2 file:text-sm file:font-medium hover:file:bg-gray-200"
           />
-          {brandGuidelinesFile && (
-            <p className="text-xs text-gray-400 mt-1">{brandGuidelinesFile.name}</p>
+          {fileError && (
+            <p className="mt-1 text-xs text-red-500">{fileError}</p>
+          )}
+          {!fileError && brandGuidelinesFile && (
+            <p className="mt-1 text-xs text-gray-400">{brandGuidelinesFile.name}</p>
           )}
         </div>
 

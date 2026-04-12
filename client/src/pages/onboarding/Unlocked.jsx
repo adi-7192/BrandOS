@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { useOnboarding } from '../../context/OnboardingContext';
 import { useAuth } from '../../context/AuthContext';
 import OnboardingShell from '../../components/layout/OnboardingShell';
@@ -8,6 +8,9 @@ export default function Unlocked() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { brandName, team, contentTypes } = useOnboarding();
+
+  if (!brandName.trim()) return <Navigate to="/onboarding/brand-name" replace />;
+  if (contentTypes.length === 0) return <Navigate to="/onboarding/content-types" replace />;
 
   const summaryRows = [
     { label: 'Workspace', value: user?.companyName || '—' },

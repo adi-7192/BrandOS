@@ -31,8 +31,9 @@ router.get('/', async (req, res, next) => {
         `SELECT ic.*, b.name as brand_name
          FROM inbox_cards ic
          LEFT JOIN brands b ON b.id = ic.brand_id
-         WHERE COALESCE(b.workspace_id, ic.workspace_id) = $1 AND ic.status = $2
-         ORDER BY ic.created_at DESC`,
+         WHERE COALESCE(ic.workspace_id, b.workspace_id) = $1 AND ic.status = $2
+         ORDER BY ic.created_at DESC
+         LIMIT 50`,
         [ws.id, status]
       ),
       pool.query(
@@ -42,7 +43,7 @@ router.get('/', async (req, res, next) => {
             COUNT(*) FILTER (WHERE ic.status = 'dismissed') AS dismissed_count
          FROM inbox_cards ic
          LEFT JOIN brands b ON b.id = ic.brand_id
-         WHERE COALESCE(b.workspace_id, ic.workspace_id) = $1`,
+         WHERE COALESCE(ic.workspace_id, b.workspace_id) = $1`,
         [ws.id]
       ),
     ]);
@@ -68,7 +69,7 @@ router.patch('/:id/status', async (req, res, next) => {
     const card = await getInboxCard(req.params.id, ws.id);
     if (!card) return res.status(404).json({ message: 'Inbox item not found.' });
 
-    await pool.query('UPDATE inbox_cards SET status = $1 WHERE id = $2', [status, req.params.id]);
+    await pool.query('UPDATE inbox_cards SET status = $1 WHERE id = $2 AND workspace_id = $3', [status, req.params.id, ws.id]);
     res.json({ ok: true });
   } catch (err) { next(err); }
 });
@@ -181,7 +182,7 @@ router.post('/:id/route/confirm', async (req, res, next) => {
            overall_score = $11,
            publish_date = $12,
            status = $13
-       WHERE id = $14`,
+       WHERE id = $14 AND workspace_id = $15`,
       [
         brand.id,
         instruction || null,
@@ -197,6 +198,7 @@ router.post('/:id/route/confirm', async (req, res, next) => {
         briefResult.publishDate || null,
         resolveOverallStatus({ campaignStatus: campaignActionStatus, brandStatus: brandActionStatus }),
         req.params.id,
+        ws.id,
       ]
     );
 
@@ -231,8 +233,8 @@ router.post('/:id/apply-brand-updates', async (req, res, next) => {
       `UPDATE inbox_cards
        SET brand_update_action_status = 'done',
            status = $1
-       WHERE id = $2`,
-      [nextOverallStatus, req.params.id]
+       WHERE id = $2 AND workspace_id = $3`,
+      [nextOverallStatus, req.params.id, ws.id]
     );
     await client.query('COMMIT');
 
@@ -261,8 +263,8 @@ router.post('/:id/complete-campaign', async (req, res, next) => {
       `UPDATE inbox_cards
        SET campaign_action_status = 'done',
            status = $1
-       WHERE id = $2`,
-      [nextOverallStatus, req.params.id]
+       WHERE id = $2 AND workspace_id = $3`,
+      [nextOverallStatus, req.params.id, ws.id]
     );
 
     const refreshed = await getInboxCard(req.params.id, ws.id);
@@ -281,7 +283,7 @@ async function getInboxCard(cardId, workspaceId, client = pool) {
      FROM inbox_cards ic
      LEFT JOIN brands b ON b.id = ic.brand_id
      WHERE ic.id = $1
-       AND COALESCE(b.workspace_id, ic.workspace_id) = $2
+       AND COALESCE(ic.workspace_id, b.workspace_id) = $2
      LIMIT 1`,
     [cardId, workspaceId]
   );

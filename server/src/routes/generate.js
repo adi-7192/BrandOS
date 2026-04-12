@@ -74,6 +74,15 @@ router.post('/sessions', async (req, res, next) => {
       activeTab = 'linkedin',
       lastInstruction = '',
     } = req.body;
+
+    const wsResult = await pool.query('SELECT id FROM workspaces WHERE user_id = $1', [req.user.id]);
+    const workspaceId = wsResult.rows[0]?.id;
+    const brandCheck = await pool.query(
+      'SELECT id FROM brands WHERE id = $1 AND workspace_id = $2',
+      [brandId, workspaceId]
+    );
+    if (!brandCheck.rows[0]) return res.status(404).json({ message: 'Brand not found.' });
+
     const publishDate = normalizePublishDateValue(briefPayload?.publishDate || '');
     const validationError = validateGenerationSessionPayload({
       status,
@@ -118,6 +127,21 @@ router.patch('/sessions/:id', async (req, res, next) => {
     const existing = await hydrateSessionRow(req.params.id, req.user.id);
     if (!existing || existing.status === 'abandoned') {
       return res.status(404).json({ message: 'Generation session not found.' });
+    }
+
+    // If the caller is changing briefPayload.brandId, verify the new brand
+    // belongs to the authenticated user's workspace. Without this check a user
+    // could store a cross-workspace brand reference in the session record.
+    if (req.body.briefPayload?.brandId !== undefined) {
+      const wsResult = await pool.query('SELECT id FROM workspaces WHERE user_id = $1', [req.user.id]);
+      const workspaceId = wsResult.rows[0]?.id;
+      const brandCheck = workspaceId ? await pool.query(
+        'SELECT id FROM brands WHERE id = $1 AND workspace_id = $2',
+        [req.body.briefPayload.brandId, workspaceId]
+      ) : { rows: [] };
+      if (!brandCheck.rows[0]) {
+        return res.status(404).json({ message: 'Brand not found.' });
+      }
     }
 
     const nextPayload = {
@@ -203,7 +227,12 @@ router.post('/brief', async (req, res, next) => {
 
     if (cardIds.length === 0) return res.json({ brief: {} });
 
-    const placeholders = cardIds.map((_, i) => `$${i + 1}`).join(', ');
+    const wsResult = await pool.query('SELECT id FROM workspaces WHERE user_id = $1', [req.user.id]);
+    const workspaceId = wsResult.rows[0]?.id;
+    if (!workspaceId) return res.json({ brief: {} });
+
+    // $1 = workspaceId; card IDs start at $2
+    const placeholders = cardIds.map((_, i) => `$${i + 2}`).join(', ');
     const { rows } = await pool.query(
       `SELECT ic.*, b.name as brand_name, b.language,
               k.voice_adjectives, k.restricted_words, k.vocabulary,
@@ -218,8 +247,8 @@ router.post('/brief', async (req, res, next) => {
        FROM inbox_cards ic
        JOIN brands b ON b.id = ic.brand_id
        LEFT JOIN brand_kits k ON k.brand_id = b.id AND k.is_active = TRUE
-       WHERE ic.id IN (${placeholders})`,
-      cardIds
+       WHERE ic.id IN (${placeholders}) AND b.workspace_id = $1`,
+      [workspaceId, ...cardIds]
     );
 
     res.json({ brief: buildCanonicalBrief(rows, cardIds) });
@@ -231,7 +260,9 @@ router.post('/brief', async (req, res, next) => {
 router.post('/create', async (req, res, next) => {
   try {
     const { brief, sections } = req.body;
-    const output = await generateContent({ brief, sections });
+    const kit = await fetchVerifiedBrandKit(brief?.brandId, req.user.id);
+    if (!kit) return res.status(403).json({ message: 'Brand not found or access denied.' });
+    const output = await generateContent({ brief: { ...brief, kit }, sections });
     res.json({ output });
   } catch (err) { next(err); }
 });
@@ -241,7 +272,9 @@ router.post('/create', async (req, res, next) => {
 router.post('/preview', async (req, res, next) => {
   try {
     const { brief } = req.body;
-    const sections = await generatePreviewSuggestions({ brief });
+    const kit = await fetchVerifiedBrandKit(brief?.brandId, req.user.id);
+    if (!kit) return res.status(403).json({ message: 'Brand not found or access denied.' });
+    const sections = await generatePreviewSuggestions({ brief: { ...brief, kit } });
     res.json({ sections });
   } catch (err) { next(err); }
 });
@@ -251,7 +284,9 @@ router.post('/preview', async (req, res, next) => {
 router.post('/iterate', async (req, res, next) => {
   try {
     const { brief, instruction, currentContent, format } = req.body;
-    const output = await iterateContent({ brief, instruction, currentContent, format });
+    const kit = await fetchVerifiedBrandKit(brief?.brandId, req.user.id);
+    if (!kit) return res.status(403).json({ message: 'Brand not found or access denied.' });
+    const output = await iterateContent({ brief: { ...brief, kit }, instruction, currentContent, format });
     res.json({ output });
   } catch (err) { next(err); }
 });
@@ -260,7 +295,9 @@ router.post('/iterate', async (req, res, next) => {
 router.post('/rewrite-selection', async (req, res, next) => {
   try {
     const { brief, format, currentText, selectedText, instruction } = req.body;
-    const selection = await rewriteSelection({ brief, format, currentText, selectedText, instruction });
+    const kit = await fetchVerifiedBrandKit(brief?.brandId, req.user.id);
+    if (!kit) return res.status(403).json({ message: 'Brand not found or access denied.' });
+    const selection = await rewriteSelection({ brief: { ...brief, kit }, format, currentText, selectedText, instruction });
     res.json({ selection });
   } catch (err) { next(err); }
 });
@@ -269,6 +306,14 @@ router.post('/rewrite-selection', async (req, res, next) => {
 router.post('/save-draft', async (req, res, next) => {
   try {
     const { brandId, inboxCardId, format, content, instruction } = req.body;
+
+    const wsResult = await pool.query('SELECT id FROM workspaces WHERE user_id = $1', [req.user.id]);
+    const workspaceId = wsResult.rows[0]?.id;
+    const brandCheck = await pool.query(
+      'SELECT id FROM brands WHERE id = $1 AND workspace_id = $2',
+      [brandId, workspaceId]
+    );
+    if (!brandCheck.rows[0]) return res.status(404).json({ message: 'Brand not found.' });
 
     const last = await pool.query(
       'SELECT version_number FROM drafts WHERE brand_id = $1 AND format = $2 ORDER BY version_number DESC LIMIT 1',
@@ -287,6 +332,38 @@ router.post('/save-draft', async (req, res, next) => {
 });
 
 export default router;
+
+async function fetchVerifiedBrandKit(brandId, userId) {
+  if (!brandId) return null;
+  const wsResult = await pool.query('SELECT id FROM workspaces WHERE user_id = $1', [userId]);
+  const workspaceId = wsResult.rows[0]?.id;
+  if (!workspaceId) return null;
+
+  const { rows } = await pool.query(
+    `SELECT k.voice_adjectives, k.vocabulary, k.restricted_words,
+            k.channel_rules_linkedin, k.channel_rules_blog,
+            k.website_summary, k.guideline_text_excerpt
+     FROM brand_kits k
+     JOIN brands b ON b.id = k.brand_id
+     WHERE b.id = $1 AND b.workspace_id = $2 AND k.is_active = TRUE
+     LIMIT 1`,
+    [brandId, workspaceId]
+  );
+
+  if (!rows[0]) return null;
+  const row = rows[0];
+  return {
+    voiceAdjectives: row.voice_adjectives || [],
+    vocabulary: row.vocabulary || [],
+    restrictedWords: row.restricted_words || [],
+    channelRules: {
+      linkedin: row.channel_rules_linkedin || '',
+      blog: row.channel_rules_blog || '',
+    },
+    websiteSummary: row.website_summary || '',
+    guidelineTextExcerpt: row.guideline_text_excerpt || '',
+  };
+}
 
 async function hydrateSessionRow(sessionId, userId) {
   const { rows } = await pool.query(

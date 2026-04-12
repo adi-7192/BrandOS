@@ -9,6 +9,7 @@ export function buildBrandDeleteConfirmation({ brandName }) {
       'Uploaded guideline files for this brand will be permanently deleted.',
     ],
     confirmLabel: 'Delete brand kit permanently',
+    confirmText: brandName || undefined,
   };
 }
 

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { Navigate, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import Input from '../../components/ui/Input';
 import Button from '../../components/ui/Button';
@@ -18,7 +18,7 @@ const GOOGLE_AUTH_URL = '/api/auth/google';
 
 export default function SignUp() {
   const navigate = useNavigate();
-  const { signUp } = useAuth();
+  const { signUp, user, loading: authLoading } = useAuth();
   const [form, setForm] = useState({ firstName: '', lastName: '', email: '', companyName: '', password: '' });
   const [intentAnswers, setIntentAnswers] = useState(() => {
     const pending = loadPendingSignupIntent();
@@ -27,6 +27,8 @@ export default function SignUp() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const entryView = buildAuthEntryView('signup');
+
+  if (!authLoading && user) return <Navigate to="/dashboard" replace />;
 
   const handleChange = (e) => setForm(f => ({ ...f, [e.target.name]: e.target.value }));
 

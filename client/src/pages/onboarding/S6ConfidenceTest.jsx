@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { useOnboarding } from '../../context/OnboardingContext';
 import { useAuth } from '../../context/AuthContext';
 import OnboardingShell from '../../components/layout/OnboardingShell';
@@ -33,6 +33,7 @@ export default function S6ConfidenceTest() {
   const [freeText, setFreeText] = useState('');
 
   useEffect(() => {
+    if (!ob.kitCards) return;
     const generate = async () => {
       try {
         const res = await api.post('/onboarding/confidence-sample', buildConfidenceSamplePayload(ob));
@@ -48,6 +49,8 @@ export default function S6ConfidenceTest() {
     };
     generate();
   }, []);
+
+  if (!ob.kitCards) return <Navigate to="/onboarding/generating" replace />;
 
   const handleRegenerate = async () => {
     if (!canRegenerateConfidenceSample({ selectedChips, freeText, regenerateCount, regenerating })) {

@@ -31,6 +31,7 @@ export default function Dashboard() {
   const [summary, setSummary] = useState(emptySummary);
   const [dashboardBrands, setDashboardBrands] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(false);
   const [editingBrandId, setEditingBrandId] = useState('');
   const [brandEditorState, setBrandEditorState] = useState(null);
   const [brandEditorSaveState, setBrandEditorSaveState] = useState({ saving: false, message: '', tone: 'neutral' });
@@ -44,7 +45,7 @@ export default function Dashboard() {
         setSummary(normalizeDashboardSummary(summaryRes.data.summary));
         setDashboardBrands(Array.isArray(brandsRes) ? brandsRes : []);
       })
-      .catch(() => setSummary(getEmptyDashboardSummary()))
+      .catch(() => { setSummary(getEmptyDashboardSummary()); setFetchError(true); })
       .finally(() => setLoading(false));
   }, [fetchBrands]);
 
@@ -283,9 +284,34 @@ export default function Dashboard() {
         <main className="bg-white">
           <div className="border-b border-[#e9edf5]" />
           <div className="px-5 py-8 sm:px-8 lg:px-12 lg:py-10">
+            {fetchError && !loading && (
+              <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                Could not load your workspace data. Please refresh and try again.
+              </div>
+            )}
             {loading ? (
-              <div className="animate-dashboard-enter rounded-[24px] border border-[#e7ebf3] bg-white px-6 py-16 text-center text-sm text-slate-500 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-                Loading your workspace...
+              <div className="animate-pulse" aria-busy="true" aria-label="Loading workspace">
+                <div className="mb-8">
+                  <div className="h-10 w-56 rounded-2xl bg-slate-100" />
+                  <div className="mt-3 h-5 w-80 rounded-xl bg-slate-100" />
+                </div>
+                <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                  {[0, 1, 2, 3].map((i) => (
+                    <div
+                      key={i}
+                      className="rounded-[22px] border border-[#e7ebf3] bg-white px-5 py-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]"
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1">
+                          <div className="h-4 w-24 rounded-lg bg-slate-100" />
+                          <div className="mt-5 h-9 w-14 rounded-xl bg-slate-100" />
+                          <div className="mt-2 h-4 w-20 rounded-lg bg-slate-100" />
+                        </div>
+                        <div className="h-11 w-11 rounded-xl bg-slate-100" />
+                      </div>
+                    </div>
+                  ))}
+                </section>
               </div>
             ) : (
               <div className="animate-dashboard-enter">

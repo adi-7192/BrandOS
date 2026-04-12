@@ -23,15 +23,23 @@ test('buildOnboardingSavePayload includes onboarding and kit fields expected by 
     guidelineStoragePath: 'user-1/brand-guide.pdf',
     guidelineTextExcerpt: 'Use neighbourhood-first language.',
     audienceType: 'Young professionals',
+    audienceTypeOther: '',
     buyerSeniority: 'Manager',
     ageRange: '25–34',
     industrySector: 'Retail',
     industryTarget: 'Retail and e-commerce',
+    industryTargetOther: '',
+    audiencePainPoint: 'Scaling content without losing quality',
     funnelStages: ['Top of funnel — awareness', 'Mid funnel — consideration'],
     toneShift: 'Keep baseline — no shift',
+    toneShiftOther: '',
     proofStyle: 'Other',
     proofStyleOther: 'Founder quote-led with one strong stat',
     contentGoal: 'Brand visibility',
+    contentGoalOther: '',
+    ctaStyle: 'Book a demo or schedule a call',
+    ctaStyleOther: '',
+    emojiUsage: 'Sparingly — 1–2 per post maximum',
     publishingFrequency: 'Weekly',
     voiceFormality: 3,
     campaignCoreWhy: 'Spring should feel elevated, not promotional.',
@@ -66,10 +74,13 @@ test('buildOnboardingSavePayload includes onboarding and kit fields expected by 
     ageRange: '25–34',
     industrySector: 'Retail',
     industryTarget: 'Retail and e-commerce',
+    audiencePainPoint: 'Scaling content without losing quality',
     funnelStages: ['Top of funnel — awareness', 'Mid funnel — consideration'],
     toneShift: 'Keep baseline — no shift',
     proofStyle: 'Founder quote-led with one strong stat',
     contentGoal: 'Brand visibility',
+    ctaStyle: 'Book a demo or schedule a call',
+    emojiUsage: 'Sparingly — 1–2 per post maximum',
     publishingFrequency: 'Weekly',
     voiceFormality: 3,
     campaignCoreWhy: 'Spring should feel elevated, not promotional.',
@@ -83,6 +94,33 @@ test('buildOnboardingSavePayload includes onboarding and kit fields expected by 
       },
     },
   });
+});
+
+test('buildOnboardingSavePayload resolves custom audience and industry Other values', () => {
+  const payload = buildOnboardingSavePayload({
+    audienceType: "Custom — I'll describe my audience",
+    audienceTypeOther: 'Independent fashion retailers aged 28–45',
+    industryTarget: "Other — I'll describe it",
+    industryTargetOther: 'Independent art galleries and creative studios',
+    toneShift: 'Other',
+    toneShiftOther: 'More provocative — challenge conventional thinking',
+    contentGoal: 'Other',
+    contentGoalOther: 'Build trust with first-time buyers',
+    ctaStyle: 'Other',
+    ctaStyleOther: 'Soft nudge — invite a reply',
+    proofStyle: 'Data-led — statistics and research',
+    proofStyleOther: '',
+    funnelStages: [],
+    websiteUrls: [],
+    kitCards: null,
+  });
+
+  assert.equal(payload.audienceType, 'Independent fashion retailers aged 28–45');
+  assert.equal(payload.industryTarget, 'Independent art galleries and creative studios');
+  assert.equal(payload.toneShift, 'More provocative — challenge conventional thinking');
+  assert.equal(payload.contentGoal, 'Build trust with first-time buyers');
+  assert.equal(payload.ctaStyle, 'Soft nudge — invite a reply');
+  assert.equal(payload.proofStyle, 'Data-led — statistics and research');
 });
 
 test('buildOnboardingSavePayload falls back to safe default kit cards when extraction has not populated them', () => {
@@ -102,15 +140,23 @@ test('buildOnboardingSavePayload falls back to safe default kit cards when extra
     guidelineStoragePath: '',
     guidelineTextExcerpt: '',
     audienceType: '',
+    audienceTypeOther: '',
     buyerSeniority: '',
     ageRange: '',
     industrySector: '',
     industryTarget: '',
+    industryTargetOther: '',
+    audiencePainPoint: '',
     funnelStages: [],
     toneShift: '',
+    toneShiftOther: '',
     proofStyle: '',
     proofStyleOther: '',
     contentGoal: '',
+    contentGoalOther: '',
+    ctaStyle: '',
+    ctaStyleOther: '',
+    emojiUsage: '',
     publishingFrequency: 'Weekly',
     voiceFormality: null,
     campaignCoreWhy: '',

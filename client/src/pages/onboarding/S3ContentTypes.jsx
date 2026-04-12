@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { useOnboarding } from '../../context/OnboardingContext';
 import OnboardingShell from '../../components/layout/OnboardingShell';
 import Button from '../../components/ui/Button';
@@ -9,6 +9,8 @@ const COMING_SOON = ['Email newsletters', 'Ad copy', 'Press releases', 'Video sc
 export default function S3ContentTypes() {
   const navigate = useNavigate();
   const { brandName, contentTypes, contentTypesInterest, update } = useOnboarding();
+
+  if (!brandName.trim()) return <Navigate to="/onboarding/brand-name" replace />;
 
   const toggle = (type, available) => {
     if (available) {

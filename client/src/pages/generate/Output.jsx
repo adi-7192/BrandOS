@@ -756,6 +756,7 @@ export default function Output() {
               </div>
               <button
                 type="button"
+                aria-label="Dismiss suggestion"
                 onClick={handleIntentDismiss}
                 className="text-sm font-medium text-brand-muted transition-colors hover:text-brand"
               >

@@ -63,6 +63,7 @@ Return ONLY a JSON object:
 
   // Enforce: no source quote → cap at 0.6
   for (const field of Object.keys(extracted)) {
+    if (!extracted[field] || typeof extracted[field] !== 'object') continue;
     if (!extracted[field].sourceQuote) {
       extracted[field].confidence = Math.min(extracted[field].confidence || 0, 0.6);
     }
@@ -84,13 +85,14 @@ Return ONLY a JSON object:
 
   // Matched vs unmatched (for UI chips)
   const matchedFields = Object.entries(extracted)
-    .filter(([, v]) => v.value && v.confidence >= 0.4)
+    .filter(([, v]) => v && typeof v === 'object' && v.value && v.confidence >= 0.4)
     .map(([k]) => k);
   const unmatchedFields = Object.keys(FIELD_WEIGHTS).filter(f => !matchedFields.includes(f));
 
   // Flatten for storage
   const flatExtracted = {};
   for (const [field, data] of Object.entries(extracted)) {
+    if (!data || typeof data !== 'object') continue;
     flatExtracted[field] = data.value;
     flatExtracted[`${field}_confidence`] = data.confidence;
     flatExtracted[`${field}_source`] = data.sourceQuote;

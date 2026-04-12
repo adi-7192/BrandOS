@@ -1,6 +1,37 @@
 import 'dotenv/config';
+
+// Fail fast if JWT_SECRET is missing or too short — a weak secret lets anyone
+// forge tokens. Minimum 32 characters gives 256 bits of entropy for HS256.
+if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
+  console.error('FATAL: JWT_SECRET must be set and at least 32 characters long.');
+  process.exit(1);
+}
+
+// Fail fast if LinkedIn token encryption key is missing or weak.
+// The key is the sole protection for access/refresh tokens stored in the DB.
+if (!process.env.LINKEDIN_TOKEN_ENCRYPTION_KEY || process.env.LINKEDIN_TOKEN_ENCRYPTION_KEY.length < 32) {
+  console.error('FATAL: LINKEDIN_TOKEN_ENCRYPTION_KEY must be set and at least 32 characters long.');
+  process.exit(1);
+}
+
+// In production, ALLOWED_ORIGINS must be set explicitly — the localhost default
+// would silently block all real-browser traffic.
+if (process.env.NODE_ENV === 'production' && !process.env.ALLOWED_ORIGINS) {
+  console.error('FATAL: ALLOWED_ORIGINS must be set in production to configure the CORS allowlist.');
+  process.exit(1);
+}
+
+// In production, FRONTEND_URL must be set so OAuth redirect URIs are derived
+// correctly rather than guessed from the request origin.
+if (process.env.NODE_ENV === 'production' && !process.env.FRONTEND_URL) {
+  console.error('FATAL: FRONTEND_URL must be set in production for OAuth redirect URI derivation.');
+  process.exit(1);
+}
+
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 
 import authRouter from './routes/auth.js';
 import onboardingRouter from './routes/onboarding.js';
@@ -18,24 +49,71 @@ import { errorHandler } from './middleware/errorHandler.js';
 const app = express();
 const PORT = process.env.PORT || 4000;
 
-// Allow CORS for local development and Vercel domains
-const allowedOrigins = [
-  'http://localhost:3000',
-  /\.vercel\.app$/
-];
+// Security headers — CSP locks down asset sources; HSTS enforces HTTPS for 2 years
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'none'"],
+    },
+  },
+  hsts: {
+    maxAge: 63072000,
+    includeSubDomains: true,
+    preload: true,
+  },
+}));
+
+// CORS — explicit allowlist; no wildcards.
+// In production set ALLOWED_ORIGINS=https://yourdomain.com (comma-separated).
+const rawAllowedOrigins = process.env.ALLOWED_ORIGINS;
+const allowedOrigins = rawAllowedOrigins
+  ? rawAllowedOrigins.split(',').map(o => o.trim())
+  : ['http://localhost:3000'];
 
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.some(pattern => 
-      typeof pattern === 'string' ? pattern === origin : pattern.test(origin)
-    )) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
+    // Allow server-to-server requests (no Origin header) only in development
+    if (!origin && process.env.NODE_ENV !== 'production') {
+      return callback(null, true);
     }
+    if (origin && allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    callback(new Error('Not allowed by CORS'));
   },
-  credentials: true
+  credentials: true,
 }));
+
+// Rate limiters
+const rateLimitResponse = { message: 'Too many requests, please try again later.' };
+
+const signinLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: rateLimitResponse,
+});
+
+const generateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: rateLimitResponse,
+});
+
+const inboundLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: rateLimitResponse,
+});
+
+app.use('/api/auth/signin', signinLimiter);
+app.use('/api/generate', generateLimiter);
+app.use('/api/inbound/email', inboundLimiter);
 
 app.use('/api/inbound', express.raw({ type: 'application/json' }), inboundRouter);
 app.use(express.json());

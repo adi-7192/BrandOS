@@ -40,9 +40,13 @@ router.get('/callback', async (req, res) => {
       redirectUri,
     });
     const profile = await fetchLinkedInUserInfo({ accessToken: tokenData.access_token });
-    const expiresAt = tokenData.expires_in
-      ? new Date(Date.now() + (Number(tokenData.expires_in) * 1000)).toISOString()
-      : null;
+    // LinkedIn always issues 60-day tokens (5184000 s). If expires_in is absent
+    // fall back to that rather than storing NULL, which would bypass expiry
+    // checks in mapLinkedInConnectionStatus (isExpired defaults to false for
+    // null expires_at).
+    const expiresAt = new Date(
+      Date.now() + ((Number(tokenData.expires_in) || 5184000) * 1000)
+    ).toISOString();
 
     await pool.query(
       `INSERT INTO linkedin_connections (
@@ -70,7 +74,7 @@ router.get('/callback', async (req, res) => {
         workspace.id,
         profile.sub,
         profile.name || [profile.given_name, profile.family_name].filter(Boolean).join(' '),
-        profile.email || '',
+        profile.email ? encryptSecret(profile.email) : '',
         buildPersonUrn(profile.sub),
         encryptSecret(tokenData.access_token),
         tokenData.refresh_token ? encryptSecret(tokenData.refresh_token) : null,
@@ -150,6 +154,21 @@ router.post('/publish', async (req, res, next) => {
     const linkedin = mapLinkedInConnectionStatus(connection);
 
     if (!linkedin.canPublish || !connection) {
+      const err = new Error('Reconnect LinkedIn in Settings before publishing.');
+      err.status = 409;
+      throw err;
+    }
+
+    // Defence-in-depth: reject tokens whose stored expiry has passed even if
+    // connection_status was not updated (e.g. existing rows with null expires_at
+    // written before the 60-day default was introduced).
+    if (connection.expires_at && new Date(connection.expires_at) <= new Date()) {
+      await client.query(
+        `UPDATE linkedin_connections
+         SET connection_status = 'expired', updated_at = NOW()
+         WHERE id = $1`,
+        [connection.id]
+      );
       const err = new Error('Reconnect LinkedIn in Settings before publishing.');
       err.status = 409;
       throw err;

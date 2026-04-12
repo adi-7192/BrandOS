@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { useOnboarding } from '../../context/OnboardingContext';
 import OnboardingShell from '../../components/layout/OnboardingShell';
 import Button from '../../components/ui/Button';
@@ -51,6 +51,8 @@ export default function S7KitLive() {
       cancelled = true;
     };
   }, []);
+
+  if (!ob.confidenceTestResult) return <Navigate to="/onboarding/confidence-test" replace />;
 
   const handleIntentAnswer = async (answer) => {
     await api.post('/intent', {

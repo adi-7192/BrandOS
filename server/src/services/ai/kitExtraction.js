@@ -59,7 +59,7 @@ export async function extractBrandKit(params) {
     console.warn('Brand kit extraction returned invalid JSON. Using fallback kit cards.');
   }
 
-  return data;
+  return { kitCards: data, extractionFailed: usedFallback };
 }
 
 export function buildKitExtractionUserMessage(params) {
@@ -75,6 +75,7 @@ export function buildKitExtractionUserMessage(params) {
     ageRange,
     industrySector,
     industryTarget,
+    audiencePainPoint,
     campaignType,
     funnelStages,
     funnelStage,
@@ -84,6 +85,8 @@ export function buildKitExtractionUserMessage(params) {
     primaryMarket,
     toneShift,
     proofStyle,
+    ctaStyle,
+    emojiUsage,
     voiceFormality,
   } = params;
   const formattedFunnelStages = formatFunnelStages(normalizeFunnelStages(funnelStages || funnelStage), ', ');
@@ -93,6 +96,7 @@ Market: ${primaryMarket || 'Not specified'}
 Language: ${brandLanguage || 'English'}
 Audience: ${audienceType || 'Not specified'} — ${buyerSeniority || ''}
 Age range: ${ageRange || 'Not specified'}
+Audience primary challenge: ${audiencePainPoint || 'Not specified'}
 Industry sector: ${industrySector || 'Not specified'}
 Target industry: ${industryTarget || 'Not specified'}
 Campaign type: ${campaignType || 'Not specified'}
@@ -100,6 +104,8 @@ Funnel stages: ${formattedFunnelStages || 'Not specified'}
 Content goal: ${contentGoal || 'Not specified'}
 Tone shift: ${toneShift || 'Keep baseline'}
 Proof style: ${proofStyle || 'Not specified'}
+CTA style: ${ctaStyle || 'Not specified'}
+Emoji usage: ${emojiUsage || 'Not specified'}
 Formality level: ${voiceFormality ?? 'Balanced'}
 Publishing frequency: ${publishingFrequency || 'Weekly'}
 

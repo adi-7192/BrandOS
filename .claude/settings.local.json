@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__plugin_code-review-graph_code-review-graph__build_or_update_graph_tool",
+      "Bash(node --test server/src/**/*.test.js client/src/lib/*.test.js)"
+    ]
+  }
+}

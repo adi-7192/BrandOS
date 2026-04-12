@@ -49,7 +49,8 @@ test('buildConfidenceUserMessage includes critique when regenerating a sample', 
   assert.match(message, /Refine this existing LinkedIn sample for BHV Marais\./);
   assert.match(message, /Current sample:/);
   assert.match(message, /Feedback to address: Too long, CTA missing/);
-  assert.match(message, /Additional notes: Needs more intimacy\./);
+  assert.match(message, /Additional notes:/);
+  assert.match(message, /Needs more intimacy\./);
   assert.match(message, /Keep the same underlying campaign intent while improving the draft/);
   assert.match(message, /Funnel stages: Top of funnel, Mid funnel/);
 });
@@ -76,6 +77,9 @@ test('buildGenerationUserMessage includes brand memory fields beyond voice and r
         vocabulary: ['craft', 'neighbourhood'],
         restrictedWords: ['cheap'],
         guidelineTextExcerpt: 'Use neighbourhood-first language. Avoid promotional hype.',
+        ctaStyle: 'Visit our website or read more',
+        emojiUsage: 'Never — keep content emoji-free',
+        audiencePainPoint: 'Keeping the local feel while scaling nationally.',
         channelRules: {
           linkedin: 'Hook in line 1 · Keep it punchy',
           blog: 'Use subheadings and examples',
@@ -95,6 +99,9 @@ test('buildGenerationUserMessage includes brand memory fields beyond voice and r
   assert.match(message, /Brand-specific LinkedIn rule: Hook in line 1 · Keep it punchy/);
   assert.match(message, /Brand-specific blog rule: Use subheadings and examples/);
   assert.match(message, /Guideline excerpt: Use neighbourhood-first language\. Avoid promotional hype\./);
+  assert.match(message, /CTA style: Visit our website or read more/);
+  assert.match(message, /Emoji usage: Never — keep content emoji-free/);
+  assert.match(message, /Audience primary challenge: Keeping the local feel while scaling nationally\./);
 });
 
 test('buildPreviewSuggestionUserMessage asks the model to prefill editable preview sections from the brief', () => {
@@ -111,6 +118,8 @@ test('buildPreviewSuggestionUserMessage asks the model to prefill editable previ
         voiceAdjectives: ['Clear', 'Confident'],
         vocabulary: ['virtual try-on', 'conversion lift'],
         restrictedWords: ['guaranteed'],
+        ctaStyle: 'Book a demo or schedule a call',
+        emojiUsage: 'Sparingly — 1–2 per post maximum',
         channelRules: {
           linkedin: 'Lead with the shopper problem',
           blog: 'Use a clear promise in the headline',
@@ -125,6 +134,8 @@ test('buildPreviewSuggestionUserMessage asks the model to prefill editable previ
   assert.match(message, /Audience: E-commerce teams/);
   assert.match(message, /Key message: Shoppers can try styles before they buy\./);
   assert.match(message, /Proof style: Brand default/);
+  assert.match(message, /CTA style: Book a demo or schedule a call/);
+  assert.match(message, /Emoji usage: Sparingly — 1–2 per post maximum/);
   assert.match(message, /Return ONLY a JSON object/);
   assert.match(message, /"hook": "opening line suggestion"/);
 });
@@ -147,8 +158,8 @@ test('buildSelectionRewriteUserMessage targets only the selected passage for one
   });
 
   assert.match(message, /Rewrite only the selected Linkedin passage for Moodway\./);
-  assert.match(message, /Selected passage:\nThis line needs work\./);
-  assert.match(message, /Instruction: Make it sharper and shorter\./);
+  assert.match(message, /<selected_passage>\nThis line needs work\./);
+  assert.match(message, /<user_instruction>\nMake it sharper and shorter\./);
   assert.match(message, /Return ONLY a JSON object/);
   assert.match(message, /"selection": "rewritten passage only"/);
 });

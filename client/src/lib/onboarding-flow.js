@@ -1,5 +1,13 @@
 import { normalizeKitCards } from './kit-review.js';
-import { normalizeFunnelStages, resolveProofStyle } from './brand-kit-fields.js';
+import {
+  normalizeFunnelStages,
+  resolveProofStyle,
+  resolveAudienceType,
+  resolveIndustryTarget,
+  resolveToneShift,
+  resolveContentGoal,
+  resolveCtaStyle,
+} from './brand-kit-fields.js';
 
 export function buildOnboardingSavePayload(state) {
   return {
@@ -17,15 +25,18 @@ export function buildOnboardingSavePayload(state) {
     guidelineFileName: state.guidelineFileName,
     guidelineStoragePath: state.guidelineStoragePath,
     guidelineTextExcerpt: state.guidelineTextExcerpt,
-    audienceType: state.audienceType,
+    audienceType: resolveAudienceType(state),
     buyerSeniority: state.buyerSeniority,
     ageRange: state.ageRange,
     industrySector: state.industrySector,
-    industryTarget: state.industryTarget,
+    industryTarget: resolveIndustryTarget(state),
+    audiencePainPoint: state.audiencePainPoint,
     funnelStages: normalizeFunnelStages(state.funnelStages || state.funnelStage),
-    toneShift: state.toneShift,
+    toneShift: resolveToneShift(state),
     proofStyle: resolveProofStyle(state),
-    contentGoal: state.contentGoal,
+    contentGoal: resolveContentGoal(state),
+    ctaStyle: resolveCtaStyle(state),
+    emojiUsage: state.emojiUsage,
     publishingFrequency: state.publishingFrequency,
     voiceFormality: state.voiceFormality,
     campaignCoreWhy: state.campaignCoreWhy,

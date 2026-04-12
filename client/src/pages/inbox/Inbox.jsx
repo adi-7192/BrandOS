@@ -23,9 +23,11 @@ export default function Inbox() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [openThreads, setOpenThreads] = useState({});
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
 
   const loadInbox = useCallback(async (status) => {
     setLoading(true);
+    setLoadError(false);
     try {
       const res = await api.get(`/inbox?status=${status}`);
       const nextCards = res.data.cards || [];
@@ -47,6 +49,7 @@ export default function Inbox() {
       setCounts({ pending: 0, used: 0, dismissed: 0 });
       setDrawerCardId(null);
       setDrawerOpen(false);
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -140,6 +143,11 @@ export default function Inbox() {
         </div>
       ) : (
         <div className="animate-dashboard-enter">
+          {loadError && (
+            <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              Could not load inbox. Please try again.
+            </div>
+          )}
           <header className="mb-8">
             <h1 className="font-sans text-[2.2rem] font-semibold tracking-[-0.035em] text-slate-950 sm:text-[2.6rem]">
               Brand Inbox
@@ -205,7 +213,9 @@ export default function Inbox() {
               </div>
 
               <div className="text-sm text-slate-400">
-                {cards.length} {cards.length === 1 ? 'item' : 'items'}
+                {cards.length === 50
+                  ? 'Showing first 50 items'
+                  : `${cards.length} ${cards.length === 1 ? 'item' : 'items'}`}
               </div>
             </div>
           </section>
@@ -618,8 +628,14 @@ function OriginalMailDrawer({ open, card, onClose }) {
   useEffect(() => {
     if (!open) {
       setShowTechnicalDetails(false);
+      return;
     }
-  }, [open, card?.id]);
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [open]); // onClose is always () => setDrawerOpen(false) — stable enough to omit
 
   if (!open || !card) {
     return null;
@@ -632,11 +648,16 @@ function OriginalMailDrawer({ open, card, onClose }) {
         className="absolute inset-0 bg-slate-950/20"
         onClick={onClose}
       />
-      <aside className="absolute right-0 top-0 flex h-full w-full max-w-[460px] flex-col border-l border-[#e7ebf3] bg-white shadow-[-12px_0_32px_rgba(15,23,42,0.16)]">
+      <aside
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="drawer-email-title"
+        className="absolute right-0 top-0 flex h-full w-full max-w-[460px] flex-col border-l border-[#e7ebf3] bg-white shadow-[-12px_0_32px_rgba(15,23,42,0.16)]"
+      >
         <div className="flex items-start justify-between gap-4 border-b border-[#eef2f7] px-5 py-5">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">Original email</p>
-            <h2 className="mt-2 font-sans text-[1.3rem] font-semibold tracking-[-0.03em] text-slate-950">
+            <h2 id="drawer-email-title" className="mt-2 font-sans text-[1.3rem] font-semibold tracking-[-0.03em] text-slate-950">
               {card.originalMail.subject}
             </h2>
             <p className="mt-2 text-sm text-slate-500">

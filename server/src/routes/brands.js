@@ -16,8 +16,9 @@ router.get('/', async (req, res, next) => {
     const { rows } = await pool.query(
       `SELECT b.*, k.voice_adjectives, k.vocabulary, k.restricted_words, k.content_goal,
               k.audience_type, k.buyer_seniority, k.age_range,
-              k.industry_sector, k.industry_target, k.funnel_stages, k.funnel_stage,
-              k.tone_shift, k.proof_style,
+              k.industry_sector, k.industry_target, k.audience_pain_point,
+              k.funnel_stages, k.funnel_stage,
+              k.tone_shift, k.proof_style, k.cta_style, k.emoji_usage,
               k.publishing_frequency, k.formality_level, k.campaign_core_why,
               k.past_content_examples, k.website_url, k.website_urls, k.website_summary,
               k.guideline_file_url, k.guideline_file_name, k.guideline_storage_path, k.guideline_text_excerpt,
@@ -25,7 +26,8 @@ router.get('/', async (req, res, next) => {
        FROM brands b
        LEFT JOIN brand_kits k ON k.brand_id = b.id AND k.is_active = TRUE
        WHERE b.workspace_id = $1
-       ORDER BY b.created_at DESC`,
+       ORDER BY b.created_at DESC
+       LIMIT 50`,
       [ws.id]
     );
     res.json({ brands: rows.map(formatBrand) });
@@ -35,7 +37,9 @@ router.get('/', async (req, res, next) => {
 // GET /api/brands/:id
 router.get('/:id', async (req, res, next) => {
   try {
-    const rows = await hydrateBrandRows({ brandId: req.params.id });
+    const ws = await getWorkspace(req.user.id);
+    if (!ws) return res.status(404).json({ message: 'Brand not found.' });
+    const rows = await hydrateBrandRows({ brandId: req.params.id, workspaceId: ws.id });
     if (!rows[0]) return res.status(404).json({ message: 'Brand not found.' });
     res.json({ brand: formatBrand(rows[0]) });
   } catch (err) { next(err); }
@@ -58,9 +62,15 @@ router.patch('/:id', async (req, res, next) => {
 
     if (!brandResult.rows[0]) return res.status(404).json({ message: 'Brand not found.' });
 
+    // Require explicit user confirmation so that programmatic or stale-tab
+    // submissions cannot silently overwrite the brand kit.
+    if (!req.body?.confirmed) {
+      return res.status(400).json({ message: 'Explicit confirmation is required to update the brand kit.' });
+    }
+
     const patch = normalizeEditableBrandKitPatch(req.body?.kit || {});
     if (Object.keys(patch).length === 0) {
-      const rows = await hydrateBrandRows({ brandId: req.params.id, client });
+      const rows = await hydrateBrandRows({ brandId: req.params.id, workspaceId: workspace.id, client });
       return res.json({ brand: formatBrand(rows[0]) });
     }
 
@@ -75,7 +85,7 @@ router.patch('/:id', async (req, res, next) => {
     );
     await client.query('COMMIT');
 
-    const rows = await hydrateBrandRows({ brandId: req.params.id, client });
+    const rows = await hydrateBrandRows({ brandId: req.params.id, workspaceId: workspace.id, client });
     res.json({ brand: formatBrand(rows[0]) });
   } catch (err) {
     await client.query('ROLLBACK').catch(() => {});
@@ -127,21 +137,22 @@ async function getWorkspace(userId) {
   return rows[0];
 }
 
-async function hydrateBrandRows({ brandId, client = pool }) {
+async function hydrateBrandRows({ brandId, workspaceId, client = pool }) {
   const { rows } = await client.query(
     `SELECT b.*, k.voice_adjectives, k.vocabulary, k.restricted_words,
             k.channel_rules_linkedin, k.channel_rules_blog, k.content_goal,
             k.audience_type, k.buyer_seniority, k.age_range,
-            k.industry_sector, k.industry_target, k.funnel_stages, k.funnel_stage,
-            k.tone_shift, k.proof_style,
+            k.industry_sector, k.industry_target, k.audience_pain_point,
+            k.funnel_stages, k.funnel_stage,
+            k.tone_shift, k.proof_style, k.cta_style, k.emoji_usage,
             k.publishing_frequency, k.formality_level, k.campaign_core_why,
             k.past_content_examples, k.website_url, k.website_urls, k.website_summary,
             k.guideline_file_url, k.guideline_file_name, k.guideline_storage_path, k.guideline_text_excerpt,
             k.version as kit_version
      FROM brands b
      LEFT JOIN brand_kits k ON k.brand_id = b.id AND k.is_active = TRUE
-     WHERE b.id = $1`,
-    [brandId]
+     WHERE b.id = $1 AND b.workspace_id = $2`,
+    [brandId, workspaceId]
   );
 
   return rows;
@@ -227,9 +238,12 @@ const BRAND_KIT_FIELD_MAP = {
   ageRange: 'age_range',
   industrySector: 'industry_sector',
   industryTarget: 'industry_target',
+  audiencePainPoint: 'audience_pain_point',
   funnelStages: 'funnel_stages',
   toneShift: 'tone_shift',
   proofStyle: 'proof_style',
+  ctaStyle: 'cta_style',
+  emojiUsage: 'emoji_usage',
   voiceFormality: 'formality_level',
   campaignCoreWhy: 'campaign_core_why',
   pastContentExamples: 'past_content_examples',
@@ -259,10 +273,13 @@ function formatBrand(row) {
       ageRange: row.age_range,
       industrySector: row.industry_sector,
       industryTarget: row.industry_target,
+      audiencePainPoint: row.audience_pain_point,
       funnelStages,
       funnelStage: formatFunnelStages(funnelStages) || row.funnel_stage,
       toneShift: row.tone_shift,
       proofStyle: row.proof_style,
+      ctaStyle: row.cta_style,
+      emojiUsage: row.emoji_usage,
       voiceFormality: row.formality_level,
       campaignCoreWhy: row.campaign_core_why,
       pastContentExamples: row.past_content_examples,

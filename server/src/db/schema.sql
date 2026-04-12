@@ -194,6 +194,27 @@ CREATE TABLE IF NOT EXISTS brand_kits (
 DO $$ BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'brand_kits' AND column_name = 'cta_style'
+  ) THEN
+    ALTER TABLE brand_kits ADD COLUMN cta_style TEXT;
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'brand_kits' AND column_name = 'emoji_usage'
+  ) THEN
+    ALTER TABLE brand_kits ADD COLUMN emoji_usage TEXT;
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'brand_kits' AND column_name = 'audience_pain_point'
+  ) THEN
+    ALTER TABLE brand_kits ADD COLUMN audience_pain_point TEXT;
+  END IF;
+END $$;
+
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
     WHERE table_name = 'brand_kits' AND column_name = 'funnel_stages'
   ) THEN
     ALTER TABLE brand_kits ADD COLUMN funnel_stages TEXT[] DEFAULT '{}';
@@ -397,7 +418,7 @@ CREATE TABLE IF NOT EXISTS linkedin_post_publications (
 CREATE TABLE IF NOT EXISTS drafts (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   brand_id UUID REFERENCES brands(id) ON DELETE CASCADE,
-  inbox_card_id UUID REFERENCES inbox_cards(id),
+  inbox_card_id UUID REFERENCES inbox_cards(id) ON DELETE SET NULL,
   format TEXT NOT NULL CHECK (format IN ('linkedin', 'blog')),
   content TEXT,
   version_number INTEGER DEFAULT 1,

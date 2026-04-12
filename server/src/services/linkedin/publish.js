@@ -1,3 +1,5 @@
+import { safeDecryptEmail } from './crypto.js';
+
 export const LINKEDIN_UGC_POSTS_URL = 'https://api.linkedin.com/v2/ugcPosts';
 
 export function buildLinkedInTextPostRequest({ authorUrn, content }) {
@@ -42,7 +44,7 @@ export function mapLinkedInConnectionStatus(connection, options = {}) {
     connected: status === 'connected',
     status,
     displayName: connection.linkedin_display_name || '',
-    email: connection.linkedin_email || '',
+    email: safeDecryptEmail(connection.linkedin_email),
     expiresAt,
     lastValidatedAt: connection.last_validated_at || null,
     canPublish: status === 'connected',

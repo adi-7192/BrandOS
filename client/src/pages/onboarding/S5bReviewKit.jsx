@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { useOnboarding } from '../../context/OnboardingContext';
 import OnboardingShell from '../../components/layout/OnboardingShell';
 import KitProgressBar from '../../components/layout/KitProgressBar';
@@ -81,6 +81,8 @@ export default function S5bReviewKit() {
     () => buildGuidelineDisplay({ guidelineFileName }),
     [guidelineFileName]
   );
+
+  if (!kitCards) return <Navigate to="/onboarding/generating" replace />;
   const lowConfidence = s4aSkipped;
 
   const approve = (key) => {

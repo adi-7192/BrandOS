@@ -30,11 +30,19 @@ function getActionStatuses(classification) {
 router.post('/email', async (req, res, next) => {
   const payload = Buffer.isBuffer(req.body) ? req.body.toString('utf8') : String(req.body || '');
 
+  let event;
   try {
-    const event = verifyInboundWebhook({
-      payload,
-      headers: req.headers,
-    });
+    event = verifyInboundWebhook({ payload, headers: req.headers });
+  } catch (err) {
+    // Return a generic 400 for any verification failure (bad signature, replay,
+    // missing headers). Never forward the raw Svix error message to the caller —
+    // it could leak timing or structural details. Configuration errors (missing
+    // secret) are re-thrown so they surface in server logs as 500s.
+    if (err.message?.startsWith('Missing RESEND_WEBHOOK_SECRET')) return next(err);
+    return res.status(400).json({ message: 'Webhook signature verification failed.' });
+  }
+
+  try {
 
     if (event.type !== 'email.received') {
       return res.status(200).json({ ok: true, ignored: true });
@@ -144,7 +152,8 @@ router.post('/email', async (req, res, next) => {
         $11,$12,$13,$14,
         $15,$16,
         $17,$18,$19,$20,$21,$22,$23
-      )`,
+      )
+      ON CONFLICT (provider_email_id) WHERE provider_email_id IS NOT NULL DO NOTHING`,
       [
         workspace.id,
         brand?.id || null,

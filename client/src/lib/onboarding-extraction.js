@@ -1,4 +1,13 @@
-import { normalizeFunnelStages, resolveProofStyle } from './brand-kit-fields.js';
+import {
+  normalizeFunnelStages,
+  resolveProofStyle,
+  resolveAudienceType,
+  resolveIndustryTarget,
+  resolveCampaignType,
+  resolveToneShift,
+  resolveContentGoal,
+  resolveCtaStyle,
+} from './brand-kit-fields.js';
 
 export function buildExtractKitRequest(state) {
   const websiteUrls = [...new Set(
@@ -11,16 +20,19 @@ export function buildExtractKitRequest(state) {
     websiteUrl: state.websiteUrl,
     websiteUrls,
     pastContentExamples: state.pastContentExamples,
-    audienceType: state.audienceType,
+    audienceType: resolveAudienceType(state),
     buyerSeniority: state.buyerSeniority,
     ageRange: state.ageRange,
     industrySector: state.industrySector,
-    industryTarget: state.industryTarget,
-    campaignType: state.campaignType,
+    industryTarget: resolveIndustryTarget(state),
+    audiencePainPoint: state.audiencePainPoint,
+    campaignType: resolveCampaignType(state),
     funnelStages: normalizeFunnelStages(state.funnelStages || state.funnelStage),
-    toneShift: state.toneShift,
+    toneShift: resolveToneShift(state),
     proofStyle: resolveProofStyle(state),
-    contentGoal: state.contentGoal,
+    contentGoal: resolveContentGoal(state),
+    ctaStyle: resolveCtaStyle(state),
+    emojiUsage: state.emojiUsage,
     publishingFrequency: state.publishingFrequency,
     voiceFormality: state.voiceFormality,
     brandLanguage: state.brandLanguage,

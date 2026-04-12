@@ -288,6 +288,7 @@ export function buildBrandKitEditorState(brand) {
 
 export function buildBrandKitUpdatePayload(formState = {}) {
   return {
+    confirmed: true,
     kit: BRAND_KIT_EDITABLE_FIELDS.reduce((payload, field) => {
       const value = formState[field];
 

@@ -43,6 +43,8 @@ export function signLinkedInState(payload, options = {}) {
   return `${encoded}.${signature}`;
 }
 
+const LINKEDIN_STATE_MAX_AGE_MS = 10 * 60 * 1000; // 10 minutes
+
 export function readLinkedInState(token, options = {}) {
   const [encoded, actualSignature] = String(token || '').split('.');
   if (!encoded || !actualSignature) {
@@ -54,11 +56,22 @@ export function readLinkedInState(token, options = {}) {
     .update(encoded)
     .digest('base64url');
 
-  if (actualSignature !== expectedSignature) {
+  // Constant-time comparison prevents HMAC oracle / timing attacks.
+  const actualBuf = Buffer.from(actualSignature, 'base64url');
+  const expectedBuf = Buffer.from(expectedSignature, 'base64url');
+  if (actualBuf.length !== expectedBuf.length || !crypto.timingSafeEqual(actualBuf, expectedBuf)) {
     throw new Error('LinkedIn state signature is invalid.');
   }
 
-  return JSON.parse(fromBase64Url(encoded));
+  const parsed = JSON.parse(fromBase64Url(encoded));
+
+  // Reject replayed states older than 10 minutes.
+  const issuedAt = parsed.issuedAt ? Date.parse(parsed.issuedAt) : NaN;
+  if (isNaN(issuedAt) || Date.now() - issuedAt > LINKEDIN_STATE_MAX_AGE_MS) {
+    throw new Error('LinkedIn state has expired.');
+  }
+
+  return parsed;
 }
 
 export function buildPersonUrn(memberId) {
