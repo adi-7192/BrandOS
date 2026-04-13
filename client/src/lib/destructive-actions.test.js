@@ -21,6 +21,7 @@ test('buildBrandDeleteConfirmation explains the full permanent cascade clearly',
       'Uploaded guideline files for this brand will be permanently deleted.',
     ],
     confirmLabel: 'Delete brand kit permanently',
+    confirmText: 'BHV Marais',
   });
 });
 

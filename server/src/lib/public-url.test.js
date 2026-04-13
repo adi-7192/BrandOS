@@ -68,7 +68,7 @@ test('frontend and google urls fall back to request origin when env vars are abs
 test('getLinkedInRedirectUri prefers explicit environment variables and falls back to request origin', () => {
   const req = {
     headers: {
-      host: 'brandos.test',
+      host: 'localhost:4000',
     },
   };
 
@@ -79,6 +79,6 @@ test('getLinkedInRedirectUri prefers explicit environment variables and falls ba
 
   assert.equal(
     getLinkedInRedirectUri(req, {}),
-    'http://brandos.test/api/linkedin/callback'
+    'http://localhost:4000/api/linkedin/callback'
   );
 });

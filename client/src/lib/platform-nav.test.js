@@ -7,6 +7,7 @@ test('PLATFORM_NAV_ITEMS keeps the main workspace navigation consistent across s
   assert.deepEqual(PLATFORM_NAV_ITEMS, [
     { to: '/dashboard', label: 'Overview', end: true },
     { to: '/settings/brands', label: 'Brand Kits', end: false },
+    { to: '/campaigns', label: 'Campaigns', end: true },
     { to: '/inbox', label: 'Inbox', end: true },
     { to: '/settings', label: 'Settings', end: true },
   ]);

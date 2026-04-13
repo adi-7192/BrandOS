@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { shouldClearAuthOnError } from '../lib/onboarding-flow';
-import { clearClientAuth } from '../lib/auth-session';
+import { clearClientAuth, getClientAuthToken } from '../lib/auth-session';
 
 const api = axios.create({
   baseURL: '/api',
@@ -9,7 +9,7 @@ const api = axios.create({
 
 // Attach stored token on every request
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
+  const token = getClientAuthToken();
   if (token) config.headers['Authorization'] = `Bearer ${token}`;
   return config;
 });

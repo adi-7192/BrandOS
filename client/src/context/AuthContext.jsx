@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import api from '../services/api';
-import { applyClientAuth, clearClientAuth } from '../lib/auth-session';
+import { applyClientAuth, clearClientAuth, getClientAuthToken } from '../lib/auth-session';
 
 const AuthContext = createContext(null);
 
@@ -17,7 +17,7 @@ export function AuthProvider({ children }) {
   };
 
   useEffect(() => {
-    const token = sessionStorage.getItem('token');
+    const token = getClientAuthToken();
     if (token) {
       applyClientAuth({ api, token });
       refreshUser()
