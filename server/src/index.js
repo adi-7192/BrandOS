@@ -96,7 +96,7 @@ const signinLimiter = rateLimit({
 
 const generateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 20,
+  max: 30,          // 30 AI calls per 15 min per IP — covers normal working sessions
   standardHeaders: true,
   legacyHeaders: false,
   message: rateLimitResponse,
@@ -111,7 +111,11 @@ const inboundLimiter = rateLimit({
 });
 
 app.use('/api/auth/signin', signinLimiter);
-app.use('/api/generate', generateLimiter);
+// Rate-limit only the AI-heavy endpoints, not session management (GET/PATCH sessions)
+app.use('/api/generate/create', generateLimiter);
+app.use('/api/generate/preview', generateLimiter);
+app.use('/api/generate/iterate', generateLimiter);
+app.use('/api/generate/rewrite-selection', generateLimiter);
 app.use('/api/inbound/email', inboundLimiter);
 
 app.use('/api/inbound', express.raw({ type: 'application/json' }), inboundRouter);
