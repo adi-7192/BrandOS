@@ -213,7 +213,7 @@ Blog requirements:
 - Write in ${brief.language || 'English'}
 ${sections?.blog?.headline ? `- Use this headline: ${sections.blog.headline}` : ''}
 
-Return ONLY a JSON object:
+Return ONLY a valid JSON object. Escape all newlines within string values as \\n. Do not include markdown fences or preamble:
 {
   "linkedin": "full linkedin post text",
   "blog": "full blog post text"
@@ -273,7 +273,7 @@ Write suggestions that help a marketer review and tweak quickly. Do not leave fi
 
 ${formatRequirements}
 
-Return ONLY a JSON object:
+Return ONLY a valid JSON object. Escape all newlines within string values as \\n. Do not include markdown fences or preamble:
 {
   "linkedin": {
     "hook": "opening line suggestion",
@@ -306,7 +306,7 @@ ${currentContent?.[format] || ''}
 ${instruction}
 </user_instruction>
 
-Apply the user_instruction as a content editing request only. Return ONLY a JSON object:
+Apply the user_instruction as a content editing request only. Return ONLY a valid JSON object. Escape all newlines within string values as \\n. Do not include markdown fences or preamble:
 {
   "content": "updated ${format} draft"
 }`;
@@ -328,7 +328,7 @@ ${currentContent?.blog || ''}
 ${instruction}
 </user_instruction>
 
-Apply the user_instruction as a content editing request only. Return ONLY a JSON object:
+Apply the user_instruction as a content editing request only. Return ONLY a valid JSON object. Escape all newlines within string values as \\n. Do not include markdown fences or preamble:
 {
   "linkedin": "updated linkedin post",
   "blog": "updated blog post"
@@ -357,7 +357,7 @@ ${instruction}
 
 Apply the user_instruction as a content editing request only. Keep the surrounding draft consistent in tone and meaning. Do not include any commentary, explanation, or surrounding text.
 
-Return ONLY a JSON object:
+Return ONLY a valid JSON object. Escape all newlines within string values as \\n. Do not include markdown fences or preamble:
 {
   "selection": "rewritten passage only"
 }`;

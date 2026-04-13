@@ -24,7 +24,7 @@ Rules:
 - If there is an uploaded guideline excerpt, treat it as a high-authority source of explicit rules
 - Audience, campaign type, funnel stages, and proof style should influence how specific the rules feel
 - If formality is provided, reflect it in the voice and channel rules
-- Respond ONLY with the JSON object. No markdown fences.`;
+- Respond ONLY with the JSON object. No markdown fences. All newlines inside strings MUST be escaped as \\n.`;
 
 /**
  * Extract brand kit cards from seed content using Claude.
