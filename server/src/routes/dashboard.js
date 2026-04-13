@@ -133,13 +133,17 @@ router.get('/summary', async (req, res, next) => {
              b.name AS brand_name,
              COALESCE(NULLIF(gs.brief_payload->>'campaignName', ''), NULLIF(gs.brief_payload->>'campaign_name', ''), gs.session_title, b.name, 'Untitled campaign') AS title,
              gs.publish_date,
-             'In progress' AS state_label,
+             CASE gs.status
+               WHEN 'completed' THEN 'Completed'
+               WHEN 'saved' THEN 'Draft saved'
+               ELSE 'In progress'
+             END AS state_label,
              gs.updated_at AS updated_at,
              COALESCE(gs.source_card_ids, ARRAY[]::text[]) AS source_card_ids,
              gs.current_step
            FROM generation_sessions gs
            JOIN brands b ON b.id = gs.brand_id
-           WHERE gs.user_id = $2 AND gs.status = 'in_progress' AND gs.publish_date IS NOT NULL
+           WHERE gs.user_id = $2 AND gs.status != 'abandoned' AND gs.publish_date IS NOT NULL
          ) AS deadline_candidates
          ORDER BY publish_date ASC, updated_at DESC
          LIMIT 12`,

@@ -1,8 +1,10 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import api from '../services/api';
 import { applyClientAuth, clearClientAuth } from '../lib/auth-session';
 
 const AuthContext = createContext(null);
+
+const INACTIVITY_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
@@ -15,7 +17,7 @@ export function AuthProvider({ children }) {
   };
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
+    const token = sessionStorage.getItem('token');
     if (token) {
       applyClientAuth({ api, token });
       refreshUser()
@@ -56,10 +58,28 @@ export function AuthProvider({ children }) {
     return res.data.user;
   };
 
-  const signOut = () => {
+  const signOut = useCallback(() => {
     clearClientAuth({ api });
     setUser(null);
-  };
+  }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    let timer = setTimeout(signOut, INACTIVITY_TIMEOUT_MS);
+    const reset = () => {
+      clearTimeout(timer);
+      timer = setTimeout(signOut, INACTIVITY_TIMEOUT_MS);
+    };
+    window.addEventListener('mousemove', reset);
+    window.addEventListener('keydown', reset);
+    window.addEventListener('click', reset);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('mousemove', reset);
+      window.removeEventListener('keydown', reset);
+      window.removeEventListener('click', reset);
+    };
+  }, [user, signOut]);
 
   return (
     <AuthContext.Provider value={{ user, loading, signIn, signUp, signOut, handleGoogleToken, refreshUser, updateProfile }}>

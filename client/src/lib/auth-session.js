@@ -1,6 +1,6 @@
 const TOKEN_KEY = 'token';
 
-export function applyClientAuth({ api, storage = globalThis.localStorage, token }) {
+export function applyClientAuth({ api, storage = globalThis.sessionStorage, token }) {
   if (!token) {
     clearClientAuth({ api, storage });
     return;
@@ -11,7 +11,7 @@ export function applyClientAuth({ api, storage = globalThis.localStorage, token 
   api.defaults.headers.common.Authorization = `Bearer ${token}`;
 }
 
-export function clearClientAuth({ api, storage = globalThis.localStorage }) {
+export function clearClientAuth({ api, storage = globalThis.sessionStorage }) {
   storage?.removeItem?.(TOKEN_KEY);
   if (api?.defaults?.headers?.common && 'Authorization' in api.defaults.headers.common) {
     delete api.defaults.headers.common.Authorization;

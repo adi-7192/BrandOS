@@ -401,6 +401,7 @@ test('buildBrandKitUpdatePayload trims text fields and converts list inputs into
   });
 
   assert.deepEqual(payload, {
+    confirmed: true,
     kit: {
       voiceAdjectives: ['Warm', 'Direct'],
       vocabulary: ['Craft', 'Neighbourhood'],

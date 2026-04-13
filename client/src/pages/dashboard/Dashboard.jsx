@@ -108,10 +108,7 @@ export default function Dashboard() {
 
   const handleDeadlineClick = (item) => {
     if (item.kind === 'session') {
-      const session = summary.recentSessions.find((entry) => entry.id === item.id);
-      if (session) {
-        navigate(buildSessionRoute(session));
-      }
+      navigate(buildSessionRoute({ id: item.id, currentStep: item.currentStep }));
       return;
     }
 
@@ -492,11 +489,24 @@ export default function Dashboard() {
           >
             <div className="flex items-center justify-between border-b border-[#eef2f7] px-5 py-4 sm:px-6">
               <div>
-                <h2 className="font-sans text-[1.45rem] font-semibold tracking-[-0.03em] text-slate-950">
+                <p className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-400">Publishing Schedule</p>
+                <h2 className="mt-2 font-sans text-[1.45rem] font-semibold tracking-[-0.03em] text-slate-950">
                   Upcoming Deadlines
                 </h2>
               </div>
-              <span className="text-sm text-slate-400">Publish dates</span>
+              <div className="flex items-center gap-3">
+                {deadlineItems.length > 0 && (
+                  <span className="rounded-full bg-[#f6f8fb] px-3 py-1 text-xs font-semibold text-slate-500">
+                    {deadlineItems.length}
+                  </span>
+                )}
+                <button
+                  onClick={() => navigate('/campaigns')}
+                  className="text-sm font-medium text-[var(--brand-primary)] transition-colors hover:text-[var(--brand-primary-hover)]"
+                >
+                  View all →
+                </button>
+              </div>
             </div>
 
             {deadlineItems.length > 0 ? (
