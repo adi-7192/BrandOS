@@ -478,7 +478,7 @@ export default function Output() {
   return (
     <div className="min-h-screen bg-[var(--brand-bg)]">
       <TopNav eyebrow="Campaign flow" meta="Generated content ready to review" />
-      <div className="max-w-3xl mx-auto px-6 py-8">
+      <div className="mx-auto max-w-4xl px-5 py-8 sm:px-8 lg:px-10 lg:py-10">
         <div className="mb-5 flex items-center justify-between gap-4">
           <div className="text-xs text-slate-400">
             Campaign output
@@ -498,7 +498,7 @@ export default function Output() {
         </div>
 
         {deleteError ? (
-          <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <div className="mb-4 rounded-[24px] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
             {deleteError}
           </div>
         ) : null}
@@ -507,7 +507,7 @@ export default function Output() {
         <div className="flex gap-2 mb-5">
           {['linkedin', 'blog'].map(tab => (
             <button key={tab} onClick={() => setActiveTab(tab)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium capitalize transition-colors ${activeTab === tab ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-600'}`}>
+              className={`rounded-lg px-4 py-2 text-sm font-medium capitalize transition-colors ${activeTab === tab ? 'bg-[var(--brand-primary)] text-white shadow-[0_12px_24px_rgba(37,99,235,0.18)]' : 'border border-[#e7ebf3] bg-white text-slate-600 hover:text-slate-900'}`}>
               {tab === 'linkedin' ? 'LinkedIn post' : 'Blog post'}
             </button>
           ))}
@@ -524,7 +524,7 @@ export default function Output() {
         </div>
 
         {originMeta ? (
-          <div className="mb-4 rounded-xl border border-[#dbe6f3] bg-[linear-gradient(135deg,#f8fbff_0%,#ffffff_100%)] p-4">
+          <div className="mb-4 rounded-[24px] border border-[#dbe6f3] bg-[linear-gradient(135deg,#f8fbff_0%,#ffffff_100%)] p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
             <div className="flex flex-wrap items-center gap-3">
               <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-[#0a66c2] shadow-[0_1px_2px_rgba(15,23,42,0.06)]">
                 {originMeta.badge}
@@ -536,7 +536,7 @@ export default function Output() {
         ) : null}
 
         {/* Output body */}
-        <div className="rounded-xl border border-gray-200 bg-white p-4">
+        <div className="rounded-[24px] border border-[#e7ebf3] bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
           <div className="mb-3 flex items-center justify-between gap-3">
             <div>
               <p className="text-sm font-medium text-gray-900">Editable draft</p>
@@ -558,7 +558,7 @@ export default function Output() {
             onChange={(e) => setContent((current) => ({ ...current, [activeTab]: e.target.value }))}
             onMouseUp={updateSelectionFromEditor}
             onKeyUp={updateSelectionFromEditor}
-            className="min-h-[220px] w-full resize-y rounded-xl border border-gray-200 bg-white p-4 text-sm text-gray-800 focus:border-gray-900 focus:outline-none"
+            className="min-h-[220px] w-full resize-y rounded-lg border border-[var(--brand-border)] bg-white p-4 text-sm text-gray-800 focus:border-[var(--brand-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary-soft)]"
           />
         </div>
 
@@ -579,7 +579,7 @@ export default function Output() {
           )}
         </div>
 
-        <div className="mb-6 rounded-xl border border-gray-200 bg-white p-4">
+        <div className="mb-6 rounded-[24px] border border-[#e7ebf3] bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="text-sm font-medium text-gray-900">Improve this draft</p>
@@ -632,7 +632,7 @@ export default function Output() {
             value={feedbackNote}
             onChange={(e) => setFeedbackNote(e.target.value)}
             placeholder="Tell AI what to improve, for example: keep the proof points but make the opening more premium."
-            className="mt-4 min-h-[92px] w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-800 focus:border-gray-900 focus:outline-none"
+            className="mt-4 min-h-[92px] w-full rounded-lg border border-[var(--brand-border)] px-4 py-3 text-sm text-gray-800 focus:border-[var(--brand-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary-soft)]"
           />
 
           <div className="mt-4 flex items-center gap-3">
@@ -646,7 +646,7 @@ export default function Output() {
         </div>
 
         {selection.hasSelection && (
-          <div className="mb-6 rounded-xl border border-blue-200 bg-blue-50 p-4">
+          <div className="mb-6 rounded-[24px] border border-[#dbe6f3] bg-[#f8fbff] p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-sm font-medium text-brand">Rewrite selected text</p>
@@ -689,7 +689,7 @@ export default function Output() {
               value={selectionFeedbackNote}
               onChange={(e) => setSelectionFeedbackNote(e.target.value)}
               placeholder="Optional: tell AI exactly how to improve the selected passage."
-              className="mt-4 min-h-[80px] w-full rounded-xl border border-blue-100 px-4 py-3 text-sm text-gray-800 focus:border-brand focus:outline-none"
+              className="mt-4 min-h-[80px] w-full rounded-lg border border-[var(--brand-border)] px-4 py-3 text-sm text-gray-800 focus:border-[var(--brand-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary-soft)]"
             />
 
             <div className="mt-4 flex items-center gap-3">
@@ -737,7 +737,7 @@ export default function Output() {
           </p>
         )}
         {outputIntentQuestion && !intentHidden && (
-          <div className="mb-6 rounded-xl border border-brand bg-brand-surface-subtle px-4 py-4 animate-dashboard-enter">
+          <div className="mb-6 animate-dashboard-enter rounded-[24px] border border-brand bg-brand-surface-subtle px-5 py-5">
             <div className="flex items-start justify-between gap-4">
               <div className="flex-1">
                 <p className="text-sm font-medium text-brand">{outputIntentQuestion.label}</p>

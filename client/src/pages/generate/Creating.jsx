@@ -18,6 +18,7 @@ export default function Creating() {
   const navigate = useNavigate();
   const { state, search } = useLocation();
   const [currentStep, setCurrentStep] = useState(0);
+  const [generationError, setGenerationError] = useState('');
   const sessionIdParam = new URLSearchParams(search).get('sessionId');
   const [brief, setBrief] = useState(state?.brief || {});
   const [sections, setSections] = useState(state?.sections || {});
@@ -95,33 +96,48 @@ export default function Creating() {
         navigate(`/generate/output${buildSessionQuery(activeSessionId)}`, { state: { output: res.data.output, brief: activeBrief, sessionId: activeSessionId } });
       } catch {
         if (interval) clearInterval(interval);
-        if (activeSessionId) {
-          await api.patch(`/generate/sessions/${activeSessionId}`, buildGenerationSessionPayload({
-            brief: activeBrief,
-            sections: activeSections,
-            output: { linkedin: '', blog: '' },
-            currentStep: 'output',
-            activeTab: 'linkedin',
-            lastInstruction: '',
-          })).catch(() => {});
-        }
-        navigate(`/generate/output${buildSessionQuery(activeSessionId)}`, { state: { output: { linkedin: '', blog: '' }, brief: activeBrief, sessionId: activeSessionId } });
+        setGenerationError('Content generation failed. Please go back to the brief and try again.');
       }
     };
 
     generate();
   }, [navigate, sessionIdParam, state]);
 
+  if (generationError) {
+    return (
+      <div className="min-h-screen bg-[var(--brand-bg)]">
+        <TopNav eyebrow="Campaign flow" meta="Generating content" />
+        <div className="mx-auto max-w-3xl px-5 py-8 sm:px-8 lg:px-10 lg:py-10">
+          <div className="flex items-center gap-2 text-xs text-gray-400 mb-8">
+            <span>Brief</span><span>→</span><span>Preview</span><span>→</span>
+            <span className="font-medium text-gray-900">Generate</span>
+          </div>
+
+          <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-4 mb-6">
+            <p className="text-sm text-red-700">{generationError}</p>
+          </div>
+
+          <button
+            onClick={() => window.history.back()}
+            className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:text-slate-900"
+          >
+            ← Go back to brief
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[var(--brand-bg)]">
       <TopNav eyebrow="Campaign flow" meta="Generating content" />
-      <div className="max-w-2xl mx-auto px-6 py-8">
+      <div className="mx-auto max-w-3xl px-5 py-8 sm:px-8 lg:px-10 lg:py-10">
         <div className="flex items-center gap-2 text-xs text-gray-400 mb-8">
           <span>Brief</span><span>→</span><span>Preview</span><span>→</span>
           <span className="font-medium text-gray-900">Generate</span>
         </div>
 
-        <div className="mb-6 rounded-xl border border-[#dbe6f3] bg-[linear-gradient(135deg,#f8fbff_0%,#ffffff_100%)] p-4">
+        <div className="mb-6 rounded-[24px] border border-[#dbe6f3] bg-[linear-gradient(135deg,#f8fbff_0%,#ffffff_100%)] p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
           <div className="flex flex-wrap items-center gap-3">
             <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-[#0a66c2] shadow-[0_1px_2px_rgba(15,23,42,0.06)]">
               {originMeta.badge}
@@ -131,17 +147,17 @@ export default function Creating() {
           <p className="mt-3 text-sm leading-6 text-slate-600">{originMeta.description}</p>
         </div>
 
-        <div className="flex gap-6">
+        <div className="flex flex-col gap-6 md:flex-row">
           {/* Generation steps */}
           <div className="flex-1">
             <div className="flex justify-center mb-6">
-              <div className="h-10 w-10 animate-spin rounded-full border-4 border-gray-200 border-t-gray-900" />
+              <div className="h-10 w-10 animate-spin rounded-full border-4 border-[#e7ebf3] border-t-[var(--brand-primary)]" />
             </div>
-            <h1 className="text-xl font-bold text-gray-900 text-center mb-2">Writing for {brief.brandName || 'your brand'}…</h1>
+            <h1 className="mb-2 text-center font-sans text-[1.75rem] font-semibold tracking-[-0.03em] text-slate-950">Writing for {brief.brandName || 'your brand'}…</h1>
             <div className="space-y-2 mt-6">
               {STEPS.map((stepFn, i) => (
                 <div key={i} className={`flex items-center gap-3 text-sm transition-opacity ${i < currentStep ? 'opacity-100' : 'opacity-30'}`}>
-                  <span className={`h-5 w-5 flex-shrink-0 rounded-full flex items-center justify-center text-xs ${i < currentStep ? 'bg-gray-900 text-white' : 'bg-gray-200'}`}>
+                  <span className={`flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full text-xs ${i < currentStep ? 'bg-[var(--brand-primary)] text-white' : 'bg-[#e7ebf3] text-slate-500'}`}>
                     {i < currentStep ? '✓' : i + 1}
                   </span>
                   {stepFn(brief.brandName, kit, brief.language)}
@@ -151,7 +167,7 @@ export default function Creating() {
           </div>
 
           {/* Context panel */}
-          <div className="w-52 flex-shrink-0 rounded-xl border border-gray-200 bg-white p-4">
+          <div className="w-full flex-shrink-0 rounded-[24px] border border-[#e7ebf3] bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)] md:w-56">
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">Context being applied</p>
             <div className="space-y-2 text-xs text-gray-600">
               <div><span className="text-gray-400">Brand voice</span><br />{context.voice}</div>

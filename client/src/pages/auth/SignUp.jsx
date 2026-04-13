@@ -57,26 +57,27 @@ export default function SignUp() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 px-4">
-      <div className="w-full max-w-md bg-white rounded-2xl border border-gray-200 p-8 shadow-sm">
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">{entryView.title}</h1>
-          <p className="mt-1 text-sm text-gray-500">{entryView.subtitle}</p>
-          <p className="mt-3 text-xs font-medium uppercase tracking-[0.16em] text-gray-400">{entryView.nextStep}</p>
+    <div className="min-h-screen bg-brand px-4 py-8">
+      <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center">
+        <div className="w-full max-w-md rounded-[24px] border border-brand bg-brand-surface p-8 shadow-brand-sm">
+        <div className="mb-8 text-center">
+          <h1 className="font-brand-heading text-4xl font-bold tracking-[-0.03em] text-brand">{entryView.title}</h1>
+          <p className="mt-3 text-sm leading-7 text-brand-muted">{entryView.subtitle}</p>
+          <p className="mt-3 text-xs font-medium uppercase tracking-[0.16em] text-brand-muted">{entryView.nextStep}</p>
         </div>
 
-        <Button variant="secondary" className="w-full mb-5" onClick={() => { window.location.href = GOOGLE_AUTH_URL; }}>
+        <Button variant="secondary" className="mb-5 w-full" onClick={() => { window.location.href = GOOGLE_AUTH_URL; }}>
           Continue with Google Workspace
         </Button>
 
-        <div className="flex items-center gap-3 mb-5">
-          <hr className="flex-1 border-gray-200" />
-          <span className="text-xs text-gray-400">or sign up with work email</span>
-          <hr className="flex-1 border-gray-200" />
+        <div className="mb-5 flex items-center gap-3">
+          <hr className="flex-1 border-brand" />
+          <span className="text-xs text-brand-muted">or sign up with work email</span>
+          <hr className="flex-1 border-brand" />
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <div className="flex gap-3">
+          <div className="grid gap-3 sm:grid-cols-2">
             <Input name="firstName" label="First name" value={form.firstName} onChange={handleChange} required />
             <Input name="lastName" label="Last name" value={form.lastName} onChange={handleChange} required />
           </div>
@@ -112,19 +113,20 @@ export default function SignUp() {
 
           {error && <p className="text-sm text-red-500">{error}</p>}
 
-          <Button type="submit" variant="primary" disabled={loading} className="w-full mt-1">
+          <Button type="submit" variant="primary" disabled={loading} className="mt-1 w-full">
             {loading ? 'Creating workspace…' : 'Create workspace'}
           </Button>
         </form>
 
-        <div className="mt-5 flex flex-col gap-1 text-xs text-gray-400 text-center">
+        <div className="mt-5 flex flex-col gap-1 text-center text-xs text-brand-muted">
           <span>SSO configurable post-setup · GDPR compliant · Enterprise SLA available</span>
         </div>
 
-        <p className="mt-5 text-center text-sm text-gray-500">
+        <p className="mt-5 text-center text-sm text-brand-muted">
           {entryView.switchLabel}{' '}
-          <Link to="/signin" className="text-gray-900 font-medium underline">{entryView.switchCta}</Link>
+          <Link to="/signin" className="font-medium text-brand underline">{entryView.switchCta}</Link>
         </p>
+        </div>
       </div>
     </div>
   );

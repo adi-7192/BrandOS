@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useBrand } from '../../context/BrandContext';
 import api from '../../services/api';
+import AppShell from '../../components/layout/AppShell';
 import {
   applyUpdatedBrandToCollection,
   buildBrandKitEditorState,
@@ -20,13 +21,12 @@ import {
 } from '../../lib/dashboard-flow';
 import { buildSessionRoute } from '../../lib/generation-session';
 import { buildSampleBrief } from '../../lib/generation-flow';
-import { PLATFORM_NAV_ITEMS } from '../../lib/platform-nav';
 
 const emptySummary = getEmptyDashboardSummary();
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const { fetchBrands } = useBrand();
   const [summary, setSummary] = useState(emptySummary);
   const [dashboardBrands, setDashboardBrands] = useState([]);
@@ -61,11 +61,6 @@ export default function Dashboard() {
   const deadlineItems = useMemo(() => buildUpcomingDeadlineItems(summary), [summary]);
   const activity = useMemo(() => buildRecentActivity(summary), [summary]);
   const workflowGuide = useMemo(() => buildWorkflowGuide(summary), [summary]);
-
-  const handleSignOut = () => {
-    signOut();
-    navigate('/signin');
-  };
 
   const handleActivityClick = (item) => {
     if (item.kind === 'session') {
@@ -220,443 +215,369 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="min-h-dvh bg-white text-slate-900">
-      <div className="grid min-h-dvh lg:grid-cols-[180px_minmax(0,1fr)]">
-        <aside className="border-b border-[#1b2333] bg-[#0b1020] text-white lg:sticky lg:top-0 lg:h-dvh lg:border-b-0 lg:border-r">
-          <div className="flex h-full flex-col">
-            <div className="border-b border-[#1b2333] px-4 py-5">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[linear-gradient(135deg,#2563eb,#5b8cff)] text-white shadow-[0_8px_24px_rgba(37,99,235,0.35)]">
-                  <span className="text-lg font-semibold">B</span>
-                </div>
-                <div>
-                  <p className="text-lg font-semibold tracking-[-0.02em] text-white">BrandOS</p>
-                  <p className="text-xs text-[#8e9ab0]">Content marketing</p>
+    <AppShell>
+      {fetchError && !loading && (
+        <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+          Could not load your workspace data. Please refresh and try again.
+        </div>
+      )}
+      {loading ? (
+        <div className="animate-pulse" aria-busy="true" aria-label="Loading workspace">
+          <div className="mb-8">
+            <div className="h-10 w-56 rounded-2xl bg-slate-100" />
+            <div className="mt-3 h-5 w-80 rounded-xl bg-slate-100" />
+          </div>
+          <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            {[0, 1, 2, 3].map((i) => (
+              <div
+                key={i}
+                className="rounded-[22px] border border-[#e7ebf3] bg-white px-5 py-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]"
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1">
+                    <div className="h-4 w-24 rounded-lg bg-slate-100" />
+                    <div className="mt-5 h-9 w-14 rounded-xl bg-slate-100" />
+                    <div className="mt-2 h-4 w-20 rounded-lg bg-slate-100" />
+                  </div>
+                  <div className="h-11 w-11 rounded-xl bg-slate-100" />
                 </div>
               </div>
-            </div>
+            ))}
+          </section>
+        </div>
+      ) : (
+        <div className="animate-dashboard-enter">
+          <header className="mb-8">
+            <h1 className="font-sans text-[2.35rem] font-semibold tracking-[-0.035em] text-slate-950 sm:text-[2.8rem]">
+              {greeting}, {user?.firstName || 'team'}.
+            </h1>
+            <p className="mt-2 max-w-2xl text-base text-slate-500">
+              Here&apos;s what&apos;s happening across your brands today.
+            </p>
+          </header>
 
-            <div className="overflow-x-auto px-3 py-5 lg:overflow-visible">
-              <p className="px-3 pb-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#657089]">Main</p>
-              <div className="flex gap-2 lg:flex-col">
-                {PLATFORM_NAV_ITEMS.map((item) => (
-                  <NavLink
-                    key={item.to}
-                    to={item.to}
-                    end={item.end}
-                    className={({ isActive }) =>
-                      `flex min-w-fit items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition-colors ${
-                        isActive
-                          ? 'bg-[#171f31] text-white'
-                          : 'text-[#c2cad8] hover:bg-[#12192a] hover:text-white'
-                      }`
-                    }
+          {workflowGuide.visible ? (
+            <section className="mb-8 rounded-[28px] border border-[#dbe6f3] bg-[linear-gradient(135deg,#f8fbff_0%,#ffffff_100%)] p-6 shadow-[0_16px_40px_rgba(15,23,42,0.05)]">
+              <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+                <div className="max-w-2xl">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#0a66c2]">How BrandOS works</p>
+                  <h2 className="mt-2 font-sans text-[1.9rem] font-semibold tracking-[-0.03em] text-slate-950">
+                    {workflowGuide.title}
+                  </h2>
+                  <p className="mt-3 text-sm leading-7 text-slate-600">
+                    {workflowGuide.description}
+                  </p>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+                  <button
+                    onClick={handleStartSampleFlow}
+                    className="rounded-2xl bg-[var(--brand-primary)] px-4 py-3 text-sm font-medium text-white shadow-[0_12px_28px_rgba(37,99,235,0.25)] transition hover:bg-[var(--brand-primary-hover)]"
                   >
-                    {({ isActive }) => (
-                      <>
-                        <SidebarIcon name={getSidebarIconName(item.to)} active={isActive} />
-                        <span>{item.label}</span>
-                      </>
-                    )}
-                  </NavLink>
+                    Explore a sample workflow
+                  </button>
+                  <button
+                    onClick={() => navigate('/inbox')}
+                    className="rounded-2xl border border-[#dbe3ef] bg-white px-4 py-3 text-sm font-medium text-slate-700 transition hover:border-[#c8d4e3] hover:text-slate-950"
+                  >
+                    Set up your inbox
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-5 grid gap-4 md:grid-cols-3">
+                {workflowGuide.steps.map((step, index) => (
+                  <div key={step.title} className="rounded-2xl border border-[#e7ecf3] bg-white px-4 py-4">
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Step {index + 1}</p>
+                    <p className="mt-3 text-sm font-semibold text-slate-900">{step.title}</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-600">{step.description}</p>
+                  </div>
                 ))}
               </div>
-            </div>
+            </section>
+          ) : null}
 
-            <div className="mt-auto border-t border-[#1b2333] px-4 py-5">
-              <div className="rounded-2xl bg-[#12192a] px-3 py-3">
-                <p className="text-sm font-medium text-white">
-                  {user?.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : 'Content manager'}
+          <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            {stats.map((card, index) => (
+              <StatCard key={card.label} card={card} delay={index} onClick={() => handleStatClick(card)} />
+            ))}
+          </section>
+
+          <section className="mt-8">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-400">Action Center</p>
+                <h2 className="mt-2 font-sans text-[1.75rem] font-semibold tracking-[-0.03em] text-slate-950">
+                  Choose what to pick up next.
+                </h2>
+                <p className="mt-1 max-w-3xl text-sm text-slate-500">
+                  New intake and ongoing work stay in the same place so you can decide what matters most right now.
                 </p>
-                <p className="mt-1 text-xs text-[#8e9ab0]">{user?.companyName || user?.email || 'Workspace'}</p>
               </div>
-
               <button
-                onClick={handleSignOut}
-                className="mt-4 text-sm font-medium text-[#8e9ab0] transition-colors hover:text-white"
+                onClick={() => navigate('/inbox')}
+                className="text-sm font-medium text-[var(--brand-primary)] transition-colors hover:text-[var(--brand-primary-hover)]"
               >
-                Sign out
+                Open inbox →
               </button>
             </div>
-          </div>
-        </aside>
 
-        <main className="bg-white">
-          <div className="border-b border-[#e9edf5]" />
-          <div className="px-5 py-8 sm:px-8 lg:px-12 lg:py-10">
-            {fetchError && !loading && (
-              <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                Could not load your workspace data. Please refresh and try again.
-              </div>
-            )}
-            {loading ? (
-              <div className="animate-pulse" aria-busy="true" aria-label="Loading workspace">
-                <div className="mb-8">
-                  <div className="h-10 w-56 rounded-2xl bg-slate-100" />
-                  <div className="mt-3 h-5 w-80 rounded-xl bg-slate-100" />
-                </div>
-                <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                  {[0, 1, 2, 3].map((i) => (
-                    <div
-                      key={i}
-                      className="rounded-[22px] border border-[#e7ebf3] bg-white px-5 py-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]"
+            <div className="mt-5 grid gap-6 xl:grid-cols-2">
+              <ActionCard
+                title="New Briefs to Review"
+                count={summary.counts.pendingBriefs}
+                delay="180ms"
+              >
+                {briefItems.length > 0 ? (
+                  briefItems.map((item) => (
+                    <button
+                      key={item.id}
+                      onClick={() => handleBriefActionClick(item)}
+                      className="group flex w-full items-start justify-between gap-4 border-b border-[#eef2f7] px-5 py-5 text-left transition-colors hover:bg-[#fafcff] last:border-b-0 sm:px-6"
                     >
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1">
-                          <div className="h-4 w-24 rounded-lg bg-slate-100" />
-                          <div className="mt-5 h-9 w-14 rounded-xl bg-slate-100" />
-                          <div className="mt-2 h-4 w-20 rounded-lg bg-slate-100" />
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Pill tone={item.qualityTone}>{item.qualityLabel}</Pill>
+                          <span className="text-xs font-medium uppercase tracking-[0.14em] text-slate-400">
+                            {item.brandName}
+                          </span>
                         </div>
-                        <div className="h-11 w-11 rounded-xl bg-slate-100" />
+                        <p className="mt-3 text-[1.05rem] font-medium tracking-[-0.02em] text-slate-900">
+                          {item.title}
+                        </p>
+                        <p className="mt-1 text-sm text-slate-500">{item.meta}</p>
                       </div>
-                    </div>
-                  ))}
-                </section>
-              </div>
-            ) : (
-              <div className="animate-dashboard-enter">
-                <header className="mb-8">
-                  <h1 className="font-sans text-[2.35rem] font-semibold tracking-[-0.035em] text-slate-950 sm:text-[2.8rem]">
-                    {greeting}, {user?.firstName || 'team'}.
-                  </h1>
-                  <p className="mt-2 max-w-2xl text-base text-slate-500">
-                    Here&apos;s what&apos;s happening across your brands today.
-                  </p>
-                </header>
-
-                {workflowGuide.visible ? (
-                  <section className="mb-8 rounded-[28px] border border-[#dbe6f3] bg-[linear-gradient(135deg,#f8fbff_0%,#ffffff_100%)] p-6 shadow-[0_16px_40px_rgba(15,23,42,0.05)]">
-                    <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
-                      <div className="max-w-2xl">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#0a66c2]">How BrandOS works</p>
-                        <h2 className="mt-2 font-sans text-[1.9rem] font-semibold tracking-[-0.03em] text-slate-950">
-                          {workflowGuide.title}
-                        </h2>
-                        <p className="mt-3 text-sm leading-7 text-slate-600">
-                          {workflowGuide.description}
+                      <div className="shrink-0 text-right">
+                        <p className="text-sm text-slate-400">{formatRelativeTime(item.createdAt)}</p>
+                        <p className="mt-3 text-sm font-medium text-[var(--brand-primary)] group-hover:text-[var(--brand-primary-hover)]">
+                          {item.actionLabel} →
                         </p>
                       </div>
-                      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+                    </button>
+                  ))
+                ) : (
+                  <EmptyActionState
+                    title="Your intake queue is clear"
+                    copy="New extracted briefs will appear here when stakeholder emails are processed."
+                    actionLabel="Open inbox"
+                    onAction={() => navigate('/inbox')}
+                  />
+                )}
+              </ActionCard>
+
+              <ActionCard
+                title="Continue Working"
+                count={summary.recentSessions.length + summary.recentDrafts.length}
+                delay="240ms"
+              >
+                {continueWorkingItems.length > 0 ? (
+                  continueWorkingItems.map((item) => (
+                    <button
+                      key={`${item.kind}-${item.id}`}
+                      onClick={() => handleContinueWorkingClick(item)}
+                      className="group flex w-full items-start justify-between gap-4 border-b border-[#eef2f7] px-5 py-5 text-left transition-colors hover:bg-[#fafcff] last:border-b-0 sm:px-6"
+                    >
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Pill tone={item.kind === 'session' ? 'green' : 'amber'}>{item.itemType}</Pill>
+                          <span className="text-xs font-medium uppercase tracking-[0.14em] text-slate-400">
+                            {item.brandName}
+                          </span>
+                        </div>
+                        <p className="mt-3 text-[1.05rem] font-medium tracking-[-0.02em] text-slate-900">
+                          {item.title}
+                        </p>
+                      </div>
+                      <div className="shrink-0 text-right">
+                        <p className="text-sm text-slate-400">{formatRelativeTime(item.updatedAt)}</p>
+                        <p className="mt-3 text-sm font-medium text-[var(--brand-primary)] group-hover:text-[var(--brand-primary-hover)]">
+                          {item.actionLabel} →
+                        </p>
+                      </div>
+                    </button>
+                  ))
+                ) : (
+                  <EmptyActionState
+                    title="No active work right now"
+                    copy="Saved drafts and live sessions will show up here when there is something to resume."
+                  />
+                )}
+              </ActionCard>
+            </div>
+          </section>
+
+          <section
+            className="animate-dashboard-enter mt-8 overflow-hidden rounded-[24px] border border-[#e7ebf3] bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]"
+            style={{ animationDelay: '300ms' }}
+          >
+            <div className="flex flex-col gap-3 border-b border-[#eef2f7] px-5 py-4 sm:flex-row sm:items-end sm:justify-between sm:px-6">
+              <div>
+                <p className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-400">Workspace Health</p>
+                <h2 className="mt-2 font-sans text-[1.45rem] font-semibold tracking-[-0.03em] text-slate-950">
+                  Brand Portfolio
+                </h2>
+              </div>
+              <button
+                onClick={() => navigate('/settings/brands')}
+                className="text-sm font-medium text-[var(--brand-primary)] transition-colors hover:text-[var(--brand-primary-hover)]"
+              >
+                View all kits →
+              </button>
+            </div>
+
+            {brandRows.length > 0 ? (
+              <div>
+                {brandRows.map((row) => (
+                  <div
+                    key={row.id}
+                    className="border-b border-[#eef2f7] last:border-b-0"
+                  >
+                    <div className="group flex w-full flex-col gap-4 px-5 py-5 text-left transition-colors hover:bg-[#fafcff] sm:px-6 lg:flex-row lg:items-center lg:justify-between">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-3">
+                          <p className="text-[1.02rem] font-medium tracking-[-0.02em] text-slate-900">{row.name}</p>
+                          <Pill tone={row.statusTone}>{row.statusLabel}</Pill>
+                        </div>
+                        <p className="mt-1 text-sm text-slate-500">{row.descriptor}</p>
+                        <p className="mt-3 text-sm text-slate-500">{row.toneSummary}</p>
+                      </div>
+                      <div className="flex shrink-0 flex-wrap items-center gap-3">
+                        <span className="rounded-full bg-[#f6f8fb] px-3 py-1 text-xs font-semibold text-slate-500">
+                          {row.pendingBriefLabel}
+                        </span>
+                        <Pill tone={row.guidelineTone}>{row.guidelineLabel}</Pill>
                         <button
-                          onClick={handleStartSampleFlow}
-                          className="rounded-2xl bg-[var(--brand-primary)] px-4 py-3 text-sm font-medium text-white shadow-[0_12px_28px_rgba(37,99,235,0.25)] transition hover:bg-[var(--brand-primary-hover)]"
+                          type="button"
+                          onClick={() => handleOpenBrandEditor(row.id)}
+                          className="text-sm font-medium text-[var(--brand-primary)] transition-colors hover:text-[var(--brand-primary-hover)]"
                         >
-                          Explore a sample workflow
+                          {row.primaryActionLabel}
                         </button>
                         <button
-                          onClick={() => navigate('/inbox')}
-                          className="rounded-2xl border border-[#dbe3ef] bg-white px-4 py-3 text-sm font-medium text-slate-700 transition hover:border-[#c8d4e3] hover:text-slate-950"
+                          type="button"
+                          onClick={() => navigate(row.href)}
+                          className="text-sm font-medium text-slate-500 transition-colors hover:text-slate-700"
                         >
-                          Set up your inbox
+                          {row.secondaryActionLabel} →
                         </button>
                       </div>
                     </div>
-
-                    <div className="mt-5 grid gap-4 md:grid-cols-3">
-                      {workflowGuide.steps.map((step, index) => (
-                        <div key={step.title} className="rounded-2xl border border-[#e7ecf3] bg-white px-4 py-4">
-                          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Step {index + 1}</p>
-                          <p className="mt-3 text-sm font-semibold text-slate-900">{step.title}</p>
-                          <p className="mt-2 text-sm leading-6 text-slate-600">{step.description}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </section>
-                ) : null}
-
-                <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                  {stats.map((card, index) => (
-                    <StatCard key={card.label} card={card} delay={index} onClick={() => handleStatClick(card)} />
-                  ))}
-                </section>
-
-                <section className="mt-8">
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-                    <div>
-                      <p className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-400">Action Center</p>
-                      <h2 className="mt-2 font-sans text-[1.75rem] font-semibold tracking-[-0.03em] text-slate-950">
-                        Choose what to pick up next.
-                      </h2>
-                      <p className="mt-1 max-w-3xl text-sm text-slate-500">
-                        New intake and ongoing work stay in the same place so you can decide what matters most right now.
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => navigate('/inbox')}
-                      className="text-sm font-medium text-[var(--brand-primary)] transition-colors hover:text-[var(--brand-primary-hover)]"
-                    >
-                      Open inbox →
-                    </button>
+                    {editingBrandId === row.id && brandEditorState ? (
+                      <BrandKitInlineEditor
+                        state={brandEditorState}
+                        saveState={brandEditorSaveState}
+                        onChange={handleBrandEditorChange}
+                        onCancel={handleCancelBrandEditor}
+                        onSave={() => handleSaveBrandChanges(row.id)}
+                      />
+                    ) : null}
                   </div>
-
-                  <div className="mt-5 grid gap-6 xl:grid-cols-2">
-                    <ActionCard
-                      title="New Briefs to Review"
-                      count={summary.counts.pendingBriefs}
-                      delay="180ms"
-                    >
-                      {briefItems.length > 0 ? (
-                        briefItems.map((item) => (
-                          <button
-                            key={item.id}
-                            onClick={() => handleBriefActionClick(item)}
-                            className="group flex w-full items-start justify-between gap-4 border-b border-[#eef2f7] px-5 py-5 text-left transition-colors hover:bg-[#fafcff] last:border-b-0 sm:px-6"
-                          >
-                            <div className="min-w-0">
-                              <div className="flex flex-wrap items-center gap-2">
-                                <Pill tone={item.qualityTone}>{item.qualityLabel}</Pill>
-                                <span className="text-xs font-medium uppercase tracking-[0.14em] text-slate-400">
-                                  {item.brandName}
-                                </span>
-                              </div>
-                              <p className="mt-3 text-[1.05rem] font-medium tracking-[-0.02em] text-slate-900">
-                                {item.title}
-                              </p>
-                              <p className="mt-1 text-sm text-slate-500">{item.meta}</p>
-                            </div>
-                            <div className="shrink-0 text-right">
-                              <p className="text-sm text-slate-400">{formatRelativeTime(item.createdAt)}</p>
-                              <p className="mt-3 text-sm font-medium text-[var(--brand-primary)] group-hover:text-[var(--brand-primary-hover)]">
-                                {item.actionLabel} →
-                              </p>
-                            </div>
-                          </button>
-                        ))
-                      ) : (
-                        <EmptyActionState
-                          title="Your intake queue is clear"
-                          copy="New extracted briefs will appear here when stakeholder emails are processed."
-                          actionLabel="Open inbox"
-                          onAction={() => navigate('/inbox')}
-                        />
-                      )}
-                    </ActionCard>
-
-                    <ActionCard
-                      title="Continue Working"
-                      count={summary.recentSessions.length + summary.recentDrafts.length}
-                      delay="240ms"
-                    >
-                      {continueWorkingItems.length > 0 ? (
-                        continueWorkingItems.map((item) => (
-                          <button
-                            key={`${item.kind}-${item.id}`}
-                            onClick={() => handleContinueWorkingClick(item)}
-                            className="group flex w-full items-start justify-between gap-4 border-b border-[#eef2f7] px-5 py-5 text-left transition-colors hover:bg-[#fafcff] last:border-b-0 sm:px-6"
-                          >
-                            <div className="min-w-0">
-                              <div className="flex flex-wrap items-center gap-2">
-                                <Pill tone={item.kind === 'session' ? 'green' : 'amber'}>{item.itemType}</Pill>
-                                <span className="text-xs font-medium uppercase tracking-[0.14em] text-slate-400">
-                                  {item.brandName}
-                                </span>
-                              </div>
-                              <p className="mt-3 text-[1.05rem] font-medium tracking-[-0.02em] text-slate-900">
-                                {item.title}
-                              </p>
-                            </div>
-                            <div className="shrink-0 text-right">
-                              <p className="text-sm text-slate-400">{formatRelativeTime(item.updatedAt)}</p>
-                              <p className="mt-3 text-sm font-medium text-[var(--brand-primary)] group-hover:text-[var(--brand-primary-hover)]">
-                                {item.actionLabel} →
-                              </p>
-                            </div>
-                          </button>
-                        ))
-                      ) : (
-                        <EmptyActionState
-                          title="No active work right now"
-                          copy="Saved drafts and live sessions will show up here when there is something to resume."
-                        />
-                      )}
-                    </ActionCard>
-                  </div>
-                </section>
-
-                <section
-                  className="animate-dashboard-enter mt-8 overflow-hidden rounded-[24px] border border-[#e7ebf3] bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]"
-                  style={{ animationDelay: '300ms' }}
+                ))}
+              </div>
+            ) : (
+              <div className="px-6 py-12 text-sm text-slate-500">
+                <p>Create your first brand kit to start building a healthier workspace view.</p>
+                <button
+                  onClick={() => navigate('/onboarding/brand-name')}
+                  className="mt-4 text-sm font-medium text-[var(--brand-primary)] transition-colors hover:text-[var(--brand-primary-hover)]"
                 >
-                  <div className="flex flex-col gap-3 border-b border-[#eef2f7] px-5 py-4 sm:flex-row sm:items-end sm:justify-between sm:px-6">
-                    <div>
-                      <p className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-400">Workspace Health</p>
-                      <h2 className="mt-2 font-sans text-[1.45rem] font-semibold tracking-[-0.03em] text-slate-950">
-                        Brand Portfolio
-                      </h2>
-                    </div>
-                    <button
-                      onClick={() => navigate('/settings/brands')}
-                      className="text-sm font-medium text-[var(--brand-primary)] transition-colors hover:text-[var(--brand-primary-hover)]"
-                    >
-                      View all kits →
-                    </button>
-                  </div>
-
-                  {brandRows.length > 0 ? (
-                    <div>
-                      {brandRows.map((row) => (
-                        <div
-                          key={row.id}
-                          className="border-b border-[#eef2f7] last:border-b-0"
-                        >
-                          <div className="group flex w-full flex-col gap-4 px-5 py-5 text-left transition-colors hover:bg-[#fafcff] sm:px-6 lg:flex-row lg:items-center lg:justify-between">
-                            <div className="min-w-0">
-                              <div className="flex flex-wrap items-center gap-3">
-                                <p className="text-[1.02rem] font-medium tracking-[-0.02em] text-slate-900">{row.name}</p>
-                                <Pill tone={row.statusTone}>{row.statusLabel}</Pill>
-                              </div>
-                              <p className="mt-1 text-sm text-slate-500">{row.descriptor}</p>
-                              <p className="mt-3 text-sm text-slate-500">{row.toneSummary}</p>
-                            </div>
-                            <div className="flex shrink-0 flex-wrap items-center gap-3">
-                              <span className="rounded-full bg-[#f6f8fb] px-3 py-1 text-xs font-semibold text-slate-500">
-                                {row.pendingBriefLabel}
-                              </span>
-                              <Pill tone={row.guidelineTone}>{row.guidelineLabel}</Pill>
-                              <button
-                                type="button"
-                                onClick={() => handleOpenBrandEditor(row.id)}
-                                className="text-sm font-medium text-[var(--brand-primary)] transition-colors hover:text-[var(--brand-primary-hover)]"
-                              >
-                                {row.primaryActionLabel}
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => navigate(row.href)}
-                                className="text-sm font-medium text-slate-500 transition-colors hover:text-slate-700"
-                              >
-                                {row.secondaryActionLabel} →
-                              </button>
-                            </div>
-                          </div>
-                          {editingBrandId === row.id && brandEditorState ? (
-                            <BrandKitInlineEditor
-                              state={brandEditorState}
-                              saveState={brandEditorSaveState}
-                              onChange={handleBrandEditorChange}
-                              onCancel={handleCancelBrandEditor}
-                              onSave={() => handleSaveBrandChanges(row.id)}
-                            />
-                          ) : null}
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="px-6 py-12 text-sm text-slate-500">
-                      <p>Create your first brand kit to start building a healthier workspace view.</p>
-                      <button
-                        onClick={() => navigate('/onboarding/brand-name')}
-                        className="mt-4 text-sm font-medium text-[var(--brand-primary)] transition-colors hover:text-[var(--brand-primary-hover)]"
-                      >
-                        Start setup →
-                      </button>
-                    </div>
-                  )}
-                </section>
-
-                <section
-                  className="animate-dashboard-enter mt-8 overflow-hidden rounded-[24px] border border-[#e7ebf3] bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]"
-                  style={{ animationDelay: '360ms' }}
-                >
-                  <div className="flex items-center justify-between border-b border-[#eef2f7] px-5 py-4 sm:px-6">
-                    <div>
-                      <h2 className="font-sans text-[1.45rem] font-semibold tracking-[-0.03em] text-slate-950">
-                        Upcoming Deadlines
-                      </h2>
-                    </div>
-                    <span className="text-sm text-slate-400">Publish dates</span>
-                  </div>
-
-                  {deadlineItems.length > 0 ? (
-                    <div>
-                      {deadlineItems.map((item) => (
-                        <button
-                          key={`${item.kind}-${item.id}`}
-                          onClick={() => handleDeadlineClick(item)}
-                          className="group flex w-full flex-col gap-4 border-b border-[#eef2f7] px-5 py-5 text-left transition-colors hover:bg-[#fafcff] last:border-b-0 sm:px-6 lg:flex-row lg:items-center lg:justify-between"
-                        >
-                          <div className="min-w-0">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <Pill tone={item.urgencyTone}>{item.urgencyLabel}</Pill>
-                              <span className="text-xs font-medium uppercase tracking-[0.14em] text-slate-400">
-                                {item.brandName}
-                              </span>
-                            </div>
-                            <p className="mt-3 text-[1.02rem] font-medium tracking-[-0.02em] text-slate-900">
-                              {item.title}
-                            </p>
-                            <p className="mt-1 text-sm text-slate-500">{item.stateLabel}</p>
-                          </div>
-                          <div className="flex shrink-0 items-center gap-3">
-                            <span className="rounded-full bg-[#f6f8fb] px-3 py-1 text-xs font-semibold text-slate-500">
-                              {formatDeadlineDate(item.publishDate)}
-                            </span>
-                            <span className="text-sm font-medium text-[var(--brand-primary)] group-hover:text-[var(--brand-primary-hover)]">
-                              Open →
-                            </span>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="px-6 py-12 text-sm text-slate-500">
-                      Upcoming publish dates will appear here once briefs or live sessions have confirmed go-live dates.
-                    </div>
-                  )}
-                </section>
-
-                <section
-                  className="animate-dashboard-enter mt-8 overflow-hidden rounded-[24px] border border-[#e7ebf3] bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]"
-                  style={{ animationDelay: '420ms' }}
-                >
-                  <div className="flex items-center justify-between border-b border-[#eef2f7] px-5 py-4 sm:px-6">
-                    <div>
-                      <h2 className="font-sans text-[1.45rem] font-semibold tracking-[-0.03em] text-slate-950">
-                        Recent Activity
-                      </h2>
-                    </div>
-                    <span className="text-sm text-slate-400">Last 7 days</span>
-                  </div>
-
-                  {activity.length > 0 ? (
-                    <div>
-                      {activity.map((item) => (
-                        <button
-                          key={item.id}
-                          onClick={() => handleActivityClick(item)}
-                          className="group flex w-full items-start justify-between gap-5 border-b border-[#eef2f7] px-5 py-5 text-left transition-colors hover:bg-[#fafcff] last:border-b-0 sm:px-6"
-                        >
-                          <div>
-                            <p className="text-[1.02rem] font-medium tracking-[-0.02em] text-slate-900">{item.title}</p>
-                            <p className="mt-1 text-sm text-slate-500">{item.subject}</p>
-                          </div>
-                          <span className="shrink-0 pt-1 text-sm text-slate-400 group-hover:text-slate-500">
-                            {formatRelativeTime(item.when)}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="px-6 py-12 text-sm text-slate-500">
-                      Activity will appear here as new briefs arrive, drafts are saved, and brand kits are updated.
-                    </div>
-                  )}
-                </section>
+                  Start setup →
+                </button>
               </div>
             )}
-          </div>
-        </main>
-      </div>
-    </div>
-  );
-}
+          </section>
 
-function getSidebarIconName(path) {
-  if (path === '/dashboard') return 'grid';
-  if (path === '/settings/brands') return 'layers';
-  if (path === '/campaigns') return 'campaigns';
-  if (path === '/inbox') return 'inbox';
-  return 'settings';
+          <section
+            className="animate-dashboard-enter mt-8 overflow-hidden rounded-[24px] border border-[#e7ebf3] bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]"
+            style={{ animationDelay: '360ms' }}
+          >
+            <div className="flex items-center justify-between border-b border-[#eef2f7] px-5 py-4 sm:px-6">
+              <div>
+                <h2 className="font-sans text-[1.45rem] font-semibold tracking-[-0.03em] text-slate-950">
+                  Upcoming Deadlines
+                </h2>
+              </div>
+              <span className="text-sm text-slate-400">Publish dates</span>
+            </div>
+
+            {deadlineItems.length > 0 ? (
+              <div>
+                {deadlineItems.map((item) => (
+                  <button
+                    key={`${item.kind}-${item.id}`}
+                    onClick={() => handleDeadlineClick(item)}
+                    className="group flex w-full flex-col gap-4 border-b border-[#eef2f7] px-5 py-5 text-left transition-colors hover:bg-[#fafcff] last:border-b-0 sm:px-6 lg:flex-row lg:items-center lg:justify-between"
+                  >
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Pill tone={item.urgencyTone}>{item.urgencyLabel}</Pill>
+                        <span className="text-xs font-medium uppercase tracking-[0.14em] text-slate-400">
+                          {item.brandName}
+                        </span>
+                      </div>
+                      <p className="mt-3 text-[1.02rem] font-medium tracking-[-0.02em] text-slate-900">
+                        {item.title}
+                      </p>
+                      <p className="mt-1 text-sm text-slate-500">{item.stateLabel}</p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-3">
+                      <span className="rounded-full bg-[#f6f8fb] px-3 py-1 text-xs font-semibold text-slate-500">
+                        {formatDeadlineDate(item.publishDate)}
+                      </span>
+                      <span className="text-sm font-medium text-[var(--brand-primary)] group-hover:text-[var(--brand-primary-hover)]">
+                        Open →
+                      </span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="px-6 py-12 text-sm text-slate-500">
+                Upcoming publish dates will appear here once briefs or live sessions have confirmed go-live dates.
+              </div>
+            )}
+          </section>
+
+          <section
+            className="animate-dashboard-enter mt-8 overflow-hidden rounded-[24px] border border-[#e7ebf3] bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]"
+            style={{ animationDelay: '420ms' }}
+          >
+            <div className="flex items-center justify-between border-b border-[#eef2f7] px-5 py-4 sm:px-6">
+              <div>
+                <h2 className="font-sans text-[1.45rem] font-semibold tracking-[-0.03em] text-slate-950">
+                  Recent Activity
+                </h2>
+              </div>
+              <span className="text-sm text-slate-400">Last 7 days</span>
+            </div>
+
+            {activity.length > 0 ? (
+              <div>
+                {activity.map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => handleActivityClick(item)}
+                    className="group flex w-full items-start justify-between gap-5 border-b border-[#eef2f7] px-5 py-5 text-left transition-colors hover:bg-[#fafcff] last:border-b-0 sm:px-6"
+                  >
+                    <div>
+                      <p className="text-[1.02rem] font-medium tracking-[-0.02em] text-slate-900">{item.title}</p>
+                      <p className="mt-1 text-sm text-slate-500">{item.subject}</p>
+                    </div>
+                    <span className="shrink-0 pt-1 text-sm text-slate-400 group-hover:text-slate-500">
+                      {formatRelativeTime(item.when)}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="px-6 py-12 text-sm text-slate-500">
+                Activity will appear here as new briefs arrive, drafts are saved, and brand kits are updated.
+              </div>
+            )}
+          </section>
+        </div>
+      )}
+    </AppShell>
+  );
 }
 
 function ActionCard({ title, count, delay, children }) {
@@ -821,7 +742,7 @@ function BrandKitInlineEditor({ state, saveState, onChange, onCancel, onSave }) 
       {saveState.message ? (
         <div className={`mt-4 rounded-2xl px-4 py-3 text-sm ${
           saveState.tone === 'error'
-            ? 'border border-red-200 bg-red-50 text-red-700'
+            ? 'border border-red-200 bg-red-50 text-red-600'
             : 'border border-emerald-200 bg-emerald-50 text-emerald-700'
         }`}>
           {saveState.message}
@@ -881,11 +802,6 @@ function mergeBrandPortfolioData(summaryBrands = [], fullBrands = []) {
   }
 
   return merged;
-}
-
-function SidebarIcon({ name, active }) {
-  const stroke = active ? '#ffffff' : '#a9b4c7';
-  return <IconSvg name={name} stroke={stroke} className="h-5 w-5 shrink-0" />;
 }
 
 function MetricIcon({ name }) {

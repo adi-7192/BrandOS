@@ -259,7 +259,7 @@ export default function Brief() {
   return (
     <div className="min-h-screen bg-[var(--brand-bg)]">
       <TopNav eyebrow="Campaign flow" meta="Brief → Preview → Generate" />
-      <div className="max-w-2xl mx-auto px-6 py-8">
+      <div className="mx-auto max-w-3xl px-5 py-8 sm:px-8 lg:px-10 lg:py-10">
         {/* Progress */}
         <div className="mb-8 flex items-center justify-between gap-4">
           <div className="flex items-center gap-2 text-xs text-gray-400">
@@ -281,13 +281,13 @@ export default function Brief() {
         </div>
 
         {deleteError ? (
-          <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <div className="mb-4 rounded-[24px] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
             {deleteError}
           </div>
         ) : null}
 
         {/* Brand pill */}
-        <div className="flex items-center gap-3 mb-6 rounded-xl border border-gray-200 bg-white p-4">
+        <div className="mb-6 flex items-center gap-3 rounded-[24px] border border-[#e7ebf3] bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
           <div className="h-10 w-10 rounded-full bg-purple-100 flex items-center justify-center text-sm font-bold text-purple-700">
             {brief?.brandName?.[0] || 'B'}
           </div>
@@ -303,7 +303,7 @@ export default function Brief() {
         ) : (
           <div className="flex flex-col gap-4">
             {originMeta ? (
-              <div className="rounded-xl border border-[#dbe6f3] bg-[linear-gradient(135deg,#f8fbff_0%,#ffffff_100%)] p-4">
+              <div className="rounded-[24px] border border-[#dbe6f3] bg-[linear-gradient(135deg,#f8fbff_0%,#ffffff_100%)] p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
                 <div className="flex flex-wrap items-center gap-3">
                   <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-[#0a66c2] shadow-[0_1px_2px_rgba(15,23,42,0.06)]">
                     {originMeta.badge}
@@ -328,7 +328,7 @@ export default function Brief() {
               </div>
             ) : null}
 
-            <div className="grid gap-3 rounded-xl border border-gray-200 bg-white p-4 md:grid-cols-2">
+            <div className="grid gap-3 rounded-[24px] border border-[#e7ebf3] bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)] md:grid-cols-2">
               <ContextItem label="Language" value={brief?.language || 'English'} />
               <ContextItem label="Brand voice" value={brief?.kit?.voiceAdjectives?.join(' · ') || 'Pending'} />
               <ContextItem label="Guardrails" value={`${brief?.kit?.restrictedWords?.length || 0} restricted words`} />
@@ -343,7 +343,7 @@ export default function Brief() {
                 value={campaignName}
                 onChange={(e) => setCampaignName(e.target.value)}
                 placeholder="e.g. Summer workshop series"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:outline-none"
+                className="w-full rounded-lg border border-[var(--brand-border)] px-3 py-2.5 text-sm focus:border-[var(--brand-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary-soft)]"
               />
             </FieldBlock>
 
@@ -360,7 +360,7 @@ export default function Brief() {
                 type="date"
                 value={publishDate}
                 onChange={(e) => setPublishDate(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:outline-none"
+                className="w-full rounded-lg border border-[var(--brand-border)] px-3 py-2.5 text-sm focus:border-[var(--brand-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary-soft)]"
               />
               <p className="text-xs text-gray-400 mt-1">Use the campaign&apos;s go-live date so the dashboard can flag upcoming deadlines correctly.</p>
             </FieldBlock>
@@ -388,7 +388,7 @@ export default function Brief() {
                 value={keyMessage}
                 onChange={(e) => setKeyMessage(e.target.value)}
                 placeholder="What should the audience understand, feel, or do after reading this piece?"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm resize-none focus:border-gray-900 focus:outline-none"
+                className="w-full resize-none rounded-lg border border-[var(--brand-border)] px-3 py-2.5 text-sm focus:border-[var(--brand-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary-soft)]"
               />
             </FieldBlock>
 
