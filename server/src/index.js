@@ -94,13 +94,25 @@ const signinLimiter = rateLimit({
   message: rateLimitResponse,
 });
 
-const generateLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 30,          // 30 AI calls per 15 min per IP — covers normal working sessions
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: rateLimitResponse,
-});
+// TODO(rate-limiting): Generation rate limits are disabled for now.
+// When re-enabling, surface the limit to users with clear messaging:
+//   "You've used all X generations for this session. Your limit resets in Y minutes."
+// Use a per-user (not per-IP) key derived from the JWT so the limit follows the account,
+// not the IP address. Consider a custom handler (instead of message: {...}) so the
+// frontend can render a dedicated "limit reached" state rather than a generic error.
+//
+// const generateLimiter = rateLimit({
+//   windowMs: 60 * 60 * 1000,  // 1 hour
+//   max: 50,                     // 50 AI calls per hour per user
+//   standardHeaders: true,
+//   legacyHeaders: false,
+//   keyGenerator: (req) => req.user?.id || req.ip,
+//   handler: (req, res) => res.status(429).json({
+//     code: 'GENERATION_LIMIT_REACHED',
+//     message: 'You have reached your generation limit for this hour. Please try again later.',
+//     retryAfter: Math.ceil(req.rateLimit.resetTime / 1000),
+//   }),
+// });
 
 const inboundLimiter = rateLimit({
   windowMs: 60 * 1000,
@@ -111,11 +123,10 @@ const inboundLimiter = rateLimit({
 });
 
 app.use('/api/auth/signin', signinLimiter);
-// Rate-limit only the AI-heavy endpoints, not session management (GET/PATCH sessions)
-app.use('/api/generate/create', generateLimiter);
-app.use('/api/generate/preview', generateLimiter);
-app.use('/api/generate/iterate', generateLimiter);
-app.use('/api/generate/rewrite-selection', generateLimiter);
+// app.use('/api/generate/create', generateLimiter);   // disabled — see TODO above
+// app.use('/api/generate/preview', generateLimiter);
+// app.use('/api/generate/iterate', generateLimiter);
+// app.use('/api/generate/rewrite-selection', generateLimiter);
 app.use('/api/inbound/email', inboundLimiter);
 
 app.use('/api/inbound', express.raw({ type: 'application/json' }), inboundRouter);
