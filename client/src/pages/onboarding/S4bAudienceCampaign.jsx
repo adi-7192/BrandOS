@@ -1,5 +1,5 @@
 import { Navigate, useNavigate } from 'react-router-dom';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useOnboarding } from '../../context/OnboardingContext';
 import OnboardingShell from '../../components/layout/OnboardingShell';
 import KitProgressBar from '../../components/layout/KitProgressBar';
@@ -22,6 +22,9 @@ import {
   B2C_AUDIENCE_TYPES,
   YOUNG_AUDIENCE_TYPES,
   OLDER_AGE_RANGES,
+  buildAgeRangeDropdownLabel,
+  formatAgeRanges,
+  normalizeAgeRanges,
   normalizeFunnelStages,
 } from '../../lib/brand-kit-fields';
 
@@ -30,15 +33,32 @@ export default function S4bAudienceCampaign() {
   const ob = useOnboarding();
   const [formalityEnabled, setFormalityEnabled] = useState(ob.voiceFormality !== null);
   const [formality, setFormality] = useState(ob.voiceFormality ?? 3);
+  const [ageDropdownOpen, setAgeDropdownOpen] = useState(false);
+  const ageDropdownRef = useRef(null);
+
+  useEffect(() => {
+    if (!ageDropdownOpen) return undefined;
+
+    const handlePointerDown = (event) => {
+      if (ageDropdownRef.current?.contains(event.target)) return;
+      setAgeDropdownOpen(false);
+    };
+
+    document.addEventListener('mousedown', handlePointerDown);
+    return () => document.removeEventListener('mousedown', handlePointerDown);
+  }, [ageDropdownOpen]);
 
   if (!ob.brandName.trim()) return <Navigate to="/onboarding/brand-name" replace />;
   if (ob.contentTypes.length === 0) return <Navigate to="/onboarding/content-types" replace />;
 
   const formalityLabel = ['Conversational', 'Leans conversational', 'Balanced', 'Leans formal', 'Formal'][formality - 1];
   const selectedFunnelStages = normalizeFunnelStages(ob.funnelStages);
+  const selectedAgeRanges = normalizeAgeRanges(ob.ageRange);
+  const ageRangeLabel = buildAgeRangeDropdownLabel(selectedAgeRanges);
 
   const isB2CAudience = B2C_AUDIENCE_TYPES.has(ob.audienceType);
-  const showYoungAgeWarning = YOUNG_AUDIENCE_TYPES.has(ob.audienceType) && OLDER_AGE_RANGES.has(ob.ageRange);
+  const showYoungAgeWarning = YOUNG_AUDIENCE_TYPES.has(ob.audienceType)
+    && selectedAgeRanges.some((ageRange) => OLDER_AGE_RANGES.has(ageRange));
 
   const canSubmit = ob.publishingFrequency !== '';
 
@@ -56,6 +76,13 @@ export default function S4bAudienceCampaign() {
       ? selectedFunnelStages.filter((entry) => entry !== option)
       : [...selectedFunnelStages, option];
     ob.update({ funnelStages: nextStages });
+  };
+
+  const toggleAgeRange = (option) => {
+    const nextAgeRanges = selectedAgeRanges.includes(option)
+      ? selectedAgeRanges.filter((entry) => entry !== option)
+      : [...selectedAgeRanges, option];
+    ob.update({ ageRange: formatAgeRanges(nextAgeRanges) });
   };
 
   const handleAudienceTypeChange = (e) => {
@@ -142,13 +169,52 @@ export default function S4bAudienceCampaign() {
               />
             )}
 
-            <div className="flex flex-col gap-1">
-              <Dropdown
-                label="Age range"
-                {...f('ageRange')}
-                options={AGE_RANGE_OPTIONS}
-                tooltip="Sets the cultural references and vocabulary register for every piece of content."
-              />
+            <div ref={ageDropdownRef} className="relative flex flex-col gap-1">
+              <label className="flex items-center gap-1 text-sm font-medium text-gray-700">
+                Age range
+                <span className="group relative ml-1 cursor-help text-gray-400 hover:text-gray-600">
+                  ?
+                  <span className="absolute left-0 top-6 z-10 hidden w-64 rounded-md bg-slate-950 p-2 text-xs text-white group-hover:block">
+                    Sets the cultural references and vocabulary register for every piece of content. Pick every range that applies.
+                  </span>
+                </span>
+              </label>
+              <button
+                type="button"
+                aria-expanded={ageDropdownOpen}
+                aria-haspopup="true"
+                onClick={() => setAgeDropdownOpen((open) => !open)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Escape') setAgeDropdownOpen(false);
+                }}
+                className="flex w-full items-center justify-between rounded-lg border border-[var(--brand-border)] bg-[var(--brand-surface)] px-3 py-2.5 text-left text-sm text-[var(--brand-text)] transition-colors focus:border-[var(--brand-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary-soft)]"
+              >
+                <span className={selectedAgeRanges.length ? '' : 'text-[var(--brand-text-muted)]'}>
+                  {ageRangeLabel}
+                </span>
+                <span className="text-xs text-[var(--brand-text-muted)]">{ageDropdownOpen ? 'Close' : 'Open'}</span>
+              </button>
+              {ageDropdownOpen && (
+                <div className="absolute left-0 right-0 top-full z-20 mt-2 rounded-lg border border-[var(--brand-border)] bg-white p-2 shadow-[0_12px_30px_rgba(15,23,42,0.12)]">
+                  {AGE_RANGE_OPTIONS.map((option) => {
+                    const active = selectedAgeRanges.includes(option);
+                    return (
+                      <label
+                        key={option}
+                        className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg px-3 py-2 text-sm text-[var(--brand-text)] transition-colors hover:bg-[var(--brand-surface-subtle)]"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={active}
+                          onChange={() => toggleAgeRange(option)}
+                          className="h-4 w-4 rounded border-[var(--brand-border)] text-[var(--brand-primary)] focus:ring-[var(--brand-primary)]"
+                        />
+                        <span>{option}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
               {showYoungAgeWarning && (
                 <p className="text-xs text-amber-600 px-1">
                   Young professionals are typically 18–34 — the selected age range may be inconsistent.

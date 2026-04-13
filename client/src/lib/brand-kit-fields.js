@@ -143,6 +143,26 @@ export function formatFunnelStages(value, separator = ' · ') {
   return normalizeFunnelStages(value).join(separator);
 }
 
+export function normalizeAgeRanges(value) {
+  if (Array.isArray(value)) {
+    return [...new Set(value.map((entry) => String(entry || '').trim()).filter(Boolean))];
+  }
+
+  return String(value || '')
+    .split(/\s*·\s*/)
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+}
+
+export function formatAgeRanges(value, separator = ' · ') {
+  return normalizeAgeRanges(value).join(separator);
+}
+
+export function buildAgeRangeDropdownLabel(value) {
+  const formatted = formatAgeRanges(value);
+  return formatted || 'Select age ranges...';
+}
+
 function resolveOtherField(selected, customTriggers, other) {
   const s = String(selected || '').trim();
   const o = String(other || '').trim();

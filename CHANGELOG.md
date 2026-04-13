@@ -21,6 +21,8 @@ All notable changes to this project will be documented in this file.
 
 ### 🚀 Onboarding & AI Extraction
 - **Audience & Industry Expansion**: Added comprehensive field options for buyer seniority, industry targeting, age ranges, and tone shifts.
+- **Age Range Multi-Select**: Changed onboarding age range selection into a checkbox dropdown so brand kits can capture multiple audience age ranges.
+- **Confidence Test Flow**: Fixed the confidence test approval step so users move forward to the kit-live screen after submitting.
 - **Improved Extraction**: Enhanced AI extraction logic to handle complex audience descriptions and normalize brand kit fields.
 - **Normalization Utilities**: Centralized field formatting and normalization logic in shared libraries for consistent client/server behavior.
 

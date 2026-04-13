@@ -9,6 +9,7 @@ import api from '../../services/api';
 import { buildOnboardingSavePayload } from '../../lib/onboarding-flow';
 import {
   canApproveConfidenceReaction,
+  buildConfidenceApprovalResult,
   buildConfidenceRegenerationPayload,
   buildConfidenceSamplePayload,
   canRegenerateConfidenceSample,
@@ -84,7 +85,19 @@ export default function S6ConfidenceTest() {
     setSaving(true);
     try {
       await api.post('/onboarding/save-kit', buildOnboardingSavePayload(ob));
-      await refreshUser();
+      ob.update({
+        confidenceTestResult: buildConfidenceApprovalResult({
+          reaction,
+          regenerateCount,
+          originalSample: generatedSample,
+          currentSample: sampleDraft,
+        }),
+      });
+      try {
+        await refreshUser();
+      } catch {
+        // The kit is saved; do not strand the user here if the follow-up user refresh fails.
+      }
       navigate('/onboarding/kit-live');
     } catch (err) {
       setSaveError(err.response?.data?.message || 'Could not complete setup. Please try again.');

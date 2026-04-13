@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import {
   buildConfidenceSamplePayload,
   buildConfidenceRegenerationPayload,
+  buildConfidenceApprovalResult,
   canRegenerateConfidenceSample,
   canApproveConfidenceReaction,
   hasMeaningfulConfidenceEdit,
@@ -152,5 +153,39 @@ test('canApproveConfidenceReaction allows almost-there after regeneration or mea
       currentSample: 'Edited sample',
     }),
     true
+  );
+});
+
+test('buildConfidenceApprovalResult records the completed confidence test before kit-live navigation', () => {
+  assert.deepEqual(
+    buildConfidenceApprovalResult({
+      reaction: 'positive',
+      regenerateCount: 0,
+      originalSample: 'Original sample',
+      currentSample: 'Original sample',
+      approvedAt: '2026-04-13T10:15:00.000Z',
+    }),
+    {
+      reaction: 'positive',
+      regenerateCount: 0,
+      edited: false,
+      approvedAt: '2026-04-13T10:15:00.000Z',
+    }
+  );
+
+  assert.deepEqual(
+    buildConfidenceApprovalResult({
+      reaction: 'mixed',
+      regenerateCount: 1,
+      originalSample: 'Original sample',
+      currentSample: 'Edited sample',
+      approvedAt: '2026-04-13T10:16:00.000Z',
+    }),
+    {
+      reaction: 'mixed',
+      regenerateCount: 1,
+      edited: true,
+      approvedAt: '2026-04-13T10:16:00.000Z',
+    }
   );
 });

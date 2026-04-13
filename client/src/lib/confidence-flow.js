@@ -30,6 +30,21 @@ export function hasMeaningfulConfidenceEdit(originalSample, currentSample) {
   return String(originalSample || '').trim() !== String(currentSample || '').trim();
 }
 
+export function buildConfidenceApprovalResult({
+  reaction,
+  regenerateCount,
+  originalSample,
+  currentSample,
+  approvedAt = new Date().toISOString(),
+}) {
+  return {
+    reaction,
+    regenerateCount,
+    edited: hasMeaningfulConfidenceEdit(originalSample, currentSample),
+    approvedAt,
+  };
+}
+
 export function canApproveConfidenceReaction({
   reaction,
   regenerateCount,

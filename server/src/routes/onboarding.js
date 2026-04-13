@@ -8,6 +8,7 @@ import { extractGuidelineText } from '../services/extraction/guidelineText.js';
 import { crawlWebsiteSources, normalizeSeedUrls, parseWebsiteUrlsInput } from '../services/extraction/websiteSource.js';
 import { uploadBrandGuideline } from '../services/storage/supabaseStorage.js';
 import {
+  formatAgeRanges,
   normalizeFunnelStages,
   resolveProofStyle,
   resolveAudienceType,
@@ -129,6 +130,7 @@ router.post('/save-kit', async (req, res, next) => {
       ...kitParams
     } = req.body;
     const funnelStages = normalizeFunnelStages(kitParams.funnelStages || kitParams.funnelStage);
+    const ageRange = formatAgeRanges(kitParams.ageRanges || kitParams.ageRange);
     const proofStyle = resolveProofStyle(kitParams);
     const audienceType = resolveAudienceType(kitParams);
     const industryTarget = resolveIndustryTarget(kitParams);
@@ -186,7 +188,7 @@ router.post('/save-kit', async (req, res, next) => {
         kitParams.publishingFrequency,
         audienceType || null,
         kitParams.buyerSeniority,
-        kitParams.ageRange,
+        ageRange || null,
         kitParams.industrySector,
         industryTarget || null,
         kitParams.audiencePainPoint || null,

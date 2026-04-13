@@ -1,5 +1,6 @@
 import { normalizeKitCards } from './kit-review.js';
 import {
+  formatAgeRanges,
   normalizeFunnelStages,
   resolveProofStyle,
   resolveAudienceType,
@@ -27,7 +28,7 @@ export function buildOnboardingSavePayload(state) {
     guidelineTextExcerpt: state.guidelineTextExcerpt,
     audienceType: resolveAudienceType(state),
     buyerSeniority: state.buyerSeniority,
-    ageRange: state.ageRange,
+    ageRange: formatAgeRanges(state.ageRanges || state.ageRange),
     industrySector: state.industrySector,
     industryTarget: resolveIndustryTarget(state),
     audiencePainPoint: state.audiencePainPoint,
