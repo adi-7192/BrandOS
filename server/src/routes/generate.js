@@ -6,6 +6,7 @@ import { generateContent, generatePreviewSuggestions, iterateContent, rewriteSel
 import { mapGenerationSessionRow } from '../services/generationSessions.js';
 import { validateGenerationSessionPayload } from '../services/generationSessionStatus.js';
 import { normalizePublishDateValue } from '../services/extraction/publishDate.js';
+import { formatFunnelStages, normalizeFunnelStages } from '../lib/brandKitFields.js';
 
 const router = Router();
 router.use(authenticate);
@@ -342,7 +343,15 @@ async function fetchVerifiedBrandKit(brandId, userId) {
   const { rows } = await pool.query(
     `SELECT k.voice_adjectives, k.vocabulary, k.restricted_words,
             k.channel_rules_linkedin, k.channel_rules_blog,
-            k.website_summary, k.guideline_text_excerpt
+            k.content_goal, k.publishing_frequency, k.formality_level,
+            k.audience_type, k.buyer_seniority, k.age_range,
+            k.industry_sector, k.industry_target, k.audience_pain_point,
+            k.funnel_stages, k.funnel_stage,
+            k.tone_shift, k.proof_style, k.cta_style, k.emoji_usage,
+            k.campaign_core_why, k.past_content_examples,
+            k.website_url, k.website_urls, k.website_summary,
+            k.guideline_file_url, k.guideline_file_name,
+            k.guideline_storage_path, k.guideline_text_excerpt
      FROM brand_kits k
      JOIN brands b ON b.id = k.brand_id
      WHERE b.id = $1 AND b.workspace_id = $2 AND k.is_active = TRUE
@@ -352,6 +361,8 @@ async function fetchVerifiedBrandKit(brandId, userId) {
 
   if (!rows[0]) return null;
   const row = rows[0];
+  const funnelStages = normalizeFunnelStages(row.funnel_stages || row.funnel_stage);
+
   return {
     voiceAdjectives: row.voice_adjectives || [],
     vocabulary: row.vocabulary || [],
@@ -360,7 +371,29 @@ async function fetchVerifiedBrandKit(brandId, userId) {
       linkedin: row.channel_rules_linkedin || '',
       blog: row.channel_rules_blog || '',
     },
+    contentGoal: row.content_goal || '',
+    publishingFrequency: row.publishing_frequency || '',
+    voiceFormality: row.formality_level ?? null,
+    audienceType: row.audience_type || '',
+    buyerSeniority: row.buyer_seniority || '',
+    ageRange: row.age_range || '',
+    industrySector: row.industry_sector || '',
+    industryTarget: row.industry_target || '',
+    audiencePainPoint: row.audience_pain_point || '',
+    funnelStages,
+    funnelStage: formatFunnelStages(funnelStages) || row.funnel_stage || '',
+    toneShift: row.tone_shift || '',
+    proofStyle: row.proof_style || '',
+    ctaStyle: row.cta_style || '',
+    emojiUsage: row.emoji_usage || '',
+    campaignCoreWhy: row.campaign_core_why || '',
+    pastContentExamples: row.past_content_examples || '',
+    websiteUrl: row.website_url || '',
+    websiteUrls: row.website_urls || [],
     websiteSummary: row.website_summary || '',
+    guidelineFileUrl: row.guideline_file_url || '',
+    guidelineFileName: row.guideline_file_name || '',
+    guidelineStoragePath: row.guideline_storage_path || '',
     guidelineTextExcerpt: row.guideline_text_excerpt || '',
   };
 }

@@ -175,23 +175,23 @@ function getWordTarget(frequency) {
 
 export function buildGenerationUserMessage({ brief, sections }) {
   const kit = brief.kit || {};
-  const wordTarget = getWordTarget(brief.publishingFrequency);
-  const formattedFunnelStages = formatFunnelStages(normalizeFunnelStages(brief.funnelStages || brief.funnelStage), ', ');
+  const wordTarget = getWordTarget(brief.publishingFrequency || kit.publishingFrequency);
+  const formattedFunnelStages = formatFunnelStages(normalizeFunnelStages(brief.funnelStages || brief.funnelStage || kit.funnelStages || kit.funnelStage), ', ');
 
   return `Generate content for ${brief.brandName}.
 
 Campaign: ${brief.campaignName || ''}
 Campaign type: ${brief.campaignType || ''}
-Audience: ${brief.audienceType || brief.audience || ''}
+Audience: ${brief.audienceType || brief.audience || kit.audienceType || ''}
 Audience primary challenge: ${kit.audiencePainPoint || brief.audiencePainPoint || 'Not specified'}
-Tone shift: ${brief.toneShift || 'Keep baseline'}
+Tone shift: ${brief.toneShift || kit.toneShift || 'Keep baseline'}
 Funnel stages: ${formattedFunnelStages || 'Not specified'}
-Content goal: ${brief.contentGoal || ''}
-Proof style: ${brief.proofStyle || 'Match the brand default'}
+Content goal: ${brief.contentGoal || kit.contentGoal || ''}
+Proof style: ${brief.proofStyle || kit.proofStyle || 'Match the brand default'}
 CTA style: ${kit.ctaStyle || brief.ctaStyle || 'Match the brand default'}
 Emoji usage: ${kit.emojiUsage || brief.emojiUsage || 'Match the brand default'}
-Voice formality (1 informal - 5 formal): ${brief.voiceFormality ?? 'Use the brand default'}
-Campaign core why: ${brief.campaignCoreWhy || ''}
+Voice formality (1 informal - 5 formal): ${brief.voiceFormality ?? kit.voiceFormality ?? 'Use the brand default'}
+Campaign core why: ${brief.campaignCoreWhy || kit.campaignCoreWhy || ''}
 Key message (anchor for both formats): "${brief.keyMessage || ''}"
 
 Brand-specific LinkedIn rule: ${kit.channelRules?.linkedin || 'Hook in line 1 · Max 3 hashtags · No em dashes'}

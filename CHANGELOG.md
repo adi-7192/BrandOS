@@ -13,6 +13,8 @@ All notable changes to this project will be documented in this file.
 
 ### 🛠️ Bug Fixes
 - **Google SSO**: Fixed an "Internal Server Error" (500) during Google OAuth callback caused by duplicate unique constraint violations (google_id) when upserting existing users.
+- **Content Generation**: Fixed critical bug where `fetchVerifiedBrandKit()` only fetched 6 of the kit's fields, silently dropping `audiencePainPoint`, `ctaStyle`, `emojiUsage`, `funnelStages`, `toneShift`, `proofStyle`, `voiceFormality`, `channelRules`, and `campaignCoreWhy` on every AI call. The server now fetches and delivers the complete brand kit, including kit-level fallbacks for brief fields.
+- **AI JSON Parsing**: Replaced `stripMarkdownFence` with a robust `extractJson` extractor that handles preambles, postambles, and markdown fences from LLM responses. All AI prompts now enforce escaped newlines and reject markdown wrappers, preventing silent fallback to empty content.
 
 ### 🗄️ Database
 - **Migration 002**: Fixed foreign key cascade issues in the `drafts` table and prepared schema for LinkedIn PII encryption.
