@@ -3,6 +3,7 @@ import pool from '../db/pool.js';
 import { authenticate } from '../middleware/auth.js';
 import { buildCanonicalBrief } from '../services/ai/briefBuilder.js';
 import { generateContent, generatePreviewSuggestions, iterateContent, rewriteSelection } from '../services/ai/generation.js';
+import { testAIConnection, PROVIDER, MODEL } from '../services/ai/client.js';
 import { mapGenerationSessionRow } from '../services/generationSessions.js';
 import { validateGenerationSessionPayload } from '../services/generationSessionStatus.js';
 import { normalizePublishDateValue } from '../services/extraction/publishDate.js';
@@ -10,6 +11,16 @@ import { formatFunnelStages, normalizeFunnelStages } from '../lib/brandKitFields
 
 const router = Router();
 router.use(authenticate);
+
+// GET /api/generate/test-connection — verify the configured AI provider is reachable
+router.get('/test-connection', async (req, res, next) => {
+  try {
+    const response = await testAIConnection();
+    res.json({ ok: true, provider: PROVIDER, model: MODEL, response });
+  } catch (err) {
+    res.status(502).json({ ok: false, provider: PROVIDER, model: MODEL, error: err.message });
+  }
+});
 
 router.get('/sessions', async (req, res, next) => {
   try {

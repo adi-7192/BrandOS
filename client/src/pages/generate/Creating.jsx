@@ -94,9 +94,14 @@ export default function Creating() {
           lastInstruction: '',
         }));
         navigate(`/generate/output${buildSessionQuery(activeSessionId)}`, { state: { output: res.data.output, brief: activeBrief, sessionId: activeSessionId } });
-      } catch {
+      } catch (err) {
         if (interval) clearInterval(interval);
-        setGenerationError('Content generation failed. Please go back to the brief and try again.');
+        const serverMsg = err?.response?.data?.message;
+        setGenerationError(
+          serverMsg
+            ? `Content generation failed: ${serverMsg}`
+            : 'Content generation failed. Please go back to the brief and try again.'
+        );
       }
     };
 
