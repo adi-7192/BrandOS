@@ -280,9 +280,9 @@ export default function S4bAudienceCampaign() {
           </div>
         </section>
 
-        {/* Content goal & cadence */}
+        {/* Content goal and cadence */}
         <section>
-          <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-3">Content goal & cadence</h2>
+          <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-3">Content goal and cadence</h2>
           <div className="flex flex-col gap-4">
 
             <Dropdown

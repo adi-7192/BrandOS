@@ -11,6 +11,9 @@ All notable changes to this project will be documented in this file.
 - **Rate Limiting**: Added `express-rate-limit` protection to critical endpoints: Authentication, AI Generation, and Inbound Webhooks.
 - **Least Privilege Access**: Introduced structured database roles (`brandos_app`) to minimize permissions for application-layer connections.
 
+### 🛠️ Bug Fixes
+- **Google SSO**: Fixed an "Internal Server Error" (500) during Google OAuth callback caused by duplicate unique constraint violations (google_id) when upserting existing users.
+
 ### 🗄️ Database
 - **Migration 002**: Fixed foreign key cascade issues in the `drafts` table and prepared schema for LinkedIn PII encryption.
 - **Migration 003**: Added uniqueness constraints and partial indices for inbound email deduplication.

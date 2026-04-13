@@ -73,7 +73,7 @@ export default function S6ConfidenceTest() {
       setSampleDraft(res.data.samplePost);
       setRegenerateCount((count) => count + 1);
     } catch (err) {
-      setSaveError(err.response?.data?.message || 'Failed to regenerate the sample. Please try editing the kit directly.');
+      setSaveError(err.response?.data?.message || 'Could not regenerate the sample. Please edit the kit directly and try again.');
     } finally {
       setRegenerating(false);
     }
@@ -87,7 +87,7 @@ export default function S6ConfidenceTest() {
       await refreshUser();
       navigate('/onboarding/kit-live');
     } catch (err) {
-      setSaveError(err.response?.data?.message || 'Failed to complete onboarding. Please try again.');
+      setSaveError(err.response?.data?.message || 'Could not complete setup. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -105,7 +105,7 @@ export default function S6ConfidenceTest() {
     <OnboardingShell phase="Phase 2 · build brand kit">
       <KitProgressBar activeStep={5} />
 
-      <h1 className="text-2xl font-bold text-gray-900 mb-2">Confidence test</h1>
+      <h1 className="text-2xl font-bold text-gray-900 mb-1">Confidence test</h1>
       <p className="text-sm text-gray-500 mb-6">Here's a sample post generated from your kit. How does it sound?</p>
 
       {loading ? (
@@ -206,10 +206,10 @@ export default function S6ConfidenceTest() {
               onClick={handleApprove}
               className="flex-1"
             >
-              {saving ? 'Finalising setup…' : 'Approve and continue →'}
+              {saving ? 'Finalizing setup…' : 'Approve and continue →'}
             </Button>
           </div>
-          {saveError && <p className="mt-3 text-sm text-red-500">{saveError}</p>}
+          {saveError && <p className="mt-3 text-sm text-red-600">{saveError}</p>}
         </>
       )}
     </OnboardingShell>

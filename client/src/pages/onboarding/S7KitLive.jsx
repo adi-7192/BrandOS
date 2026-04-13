@@ -102,7 +102,7 @@ export default function S7KitLive() {
   };
 
   return (
-    <OnboardingShell phase="">
+    <OnboardingShell phase="Setup complete">
       <div className="text-center mb-8">
         <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-100 text-3xl">✓</div>
         <h1 className="text-2xl font-bold text-gray-900">{ob.brandName || 'Your brand'}'s kit is live.</h1>

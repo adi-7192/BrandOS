@@ -20,7 +20,7 @@ export default function Unlocked() {
   ];
 
   return (
-    <OnboardingShell phase="">
+    <OnboardingShell phase="Phase 1 complete">
       <div className="text-center mb-8">
         <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-green-100 text-2xl">✓</div>
         <h1 className="text-2xl font-bold text-gray-900">You're in. Platform unlocked.</h1>

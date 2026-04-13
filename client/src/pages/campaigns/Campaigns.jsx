@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AppShell from '../../components/layout/AppShell';
+import Button from '../../components/ui/Button';
 import { useBrand } from '../../context/BrandContext';
 import api from '../../services/api';
 import {
@@ -75,7 +76,7 @@ export default function Campaigns() {
       ) : (
         <div className="animate-dashboard-enter">
           {fetchError && (
-            <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
               Could not load campaigns. Please refresh and try again.
             </div>
           )}
@@ -92,12 +93,12 @@ export default function Campaigns() {
               </p>
             </div>
 
-            <button
+            <Button
+              variant="primary"
               onClick={handleNewCampaign}
-              className="inline-flex items-center justify-center rounded-xl bg-[var(--brand-primary)] px-5 py-3 text-sm font-medium text-white shadow-[0_12px_24px_rgba(37,99,235,0.18)] transition-colors hover:bg-[var(--brand-primary-hover)]"
             >
-              New Campaign
-            </button>
+              New campaign
+            </Button>
           </div>
 
           <section className="mb-6 rounded-[24px] border border-[#e7ebf3] bg-[#fbfcff] px-5 py-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
@@ -288,12 +289,12 @@ function EmptyCampaignState({ hasCampaigns, hasSearch, onClearSearch, onNewCampa
             Clear filters
           </button>
         ) : null}
-        <button
+        <Button
+          variant="primary"
           onClick={onNewCampaign}
-          className="inline-flex items-center justify-center rounded-xl bg-[var(--brand-primary)] px-5 py-3 text-sm font-medium text-white transition-colors hover:bg-[var(--brand-primary-hover)]"
         >
-          New Campaign
-        </button>
+          New campaign
+        </Button>
       </div>
     </div>
   );

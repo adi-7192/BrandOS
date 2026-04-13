@@ -53,7 +53,7 @@ export default function CompleteProfile() {
             {error && <p className="text-sm text-red-500">{error}</p>}
 
             <Button type="submit" variant="primary" disabled={loading} className="mt-2 w-full">
-              {loading ? 'Saving…' : 'Continue'}
+              {loading ? 'Saving…' : 'Continue →'}
             </Button>
           </form>
         </div>

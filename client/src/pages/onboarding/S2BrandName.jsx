@@ -34,7 +34,6 @@ export default function S2BrandName() {
             required
             tooltip="The brand you write content for — not your employer."
           />
-          <p className="mt-1 text-xs text-gray-400">The brand you write content for — not your employer. You can add more brands after setup.</p>
         </div>
         <Dropdown
           label="Primary market"

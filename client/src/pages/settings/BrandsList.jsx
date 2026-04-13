@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AppShell from '../../components/layout/AppShell';
+import Button from '../../components/ui/Button';
 import { useBrand } from '../../context/BrandContext';
 import { buildBrandCardModel } from '../../lib/brand-kits-view';
 
@@ -39,12 +40,12 @@ export default function BrandsList() {
                 Manage tone, audience, guardrails, and channel rules for each brand in your workspace.
               </p>
             </div>
-            <button
+            <Button
+              variant="primary"
               onClick={() => navigate('/onboarding/brand-name')}
-              className="inline-flex items-center justify-center rounded-xl bg-[var(--brand-primary)] px-5 py-3 text-sm font-medium text-white shadow-[0_12px_24px_rgba(37,99,235,0.18)] transition-colors hover:bg-[var(--brand-primary-hover)]"
             >
-              Add Brand
-            </button>
+              Add brand
+            </Button>
           </div>
 
           {cards.length > 0 ? (
@@ -108,12 +109,13 @@ export default function BrandsList() {
               <p className="mx-auto mt-3 max-w-xl text-sm leading-7 text-slate-500">
                 Create your first brand kit to capture tone, audience, and channel rules before content generation starts.
               </p>
-              <button
+              <Button
+                variant="primary"
+                className="mt-6"
                 onClick={() => navigate('/onboarding/brand-name')}
-                className="mt-6 inline-flex items-center justify-center rounded-xl bg-[var(--brand-primary)] px-5 py-3 text-sm font-medium text-white transition-colors hover:bg-[var(--brand-primary-hover)]"
               >
-                Start setup
-              </button>
+                Add brand
+              </Button>
             </div>
           )}
         </div>

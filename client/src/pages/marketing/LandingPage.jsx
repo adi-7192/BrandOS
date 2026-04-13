@@ -482,7 +482,7 @@ export default function LandingPage() {
       <footer className="border-t border-[#e2e8f0] bg-white py-8">
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-4 sm:px-6 md:flex-row lg:px-8">
           <span className="font-brand-heading text-xl font-bold text-slate-900">BrandOS</span>
-          <p className="text-sm text-slate-500">© 2024 BrandOS. All rights reserved.</p>
+          <p className="text-sm text-slate-500">© 2026 BrandOS. All rights reserved.</p>
         </div>
       </footer>
     </div>

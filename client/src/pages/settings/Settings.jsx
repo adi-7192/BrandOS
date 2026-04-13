@@ -84,7 +84,7 @@ export default function Settings() {
       hydrateForms(res.data.settings);
       setSettings(res.data.settings);
     } catch (err) {
-      setError(err.response?.data?.message || 'Unable to load settings right now.');
+      setError(err.response?.data?.message || 'Could not load settings. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -118,7 +118,7 @@ export default function Settings() {
         await refreshUser();
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Unable to save settings right now.');
+      setError(err.response?.data?.message || 'Could not save settings. Please try again.');
     } finally {
       setSaving((current) => ({ ...current, [section]: false }));
     }
@@ -139,7 +139,7 @@ export default function Settings() {
     } catch {
       setAiTest({
         loading: false,
-        result: { ok: false, message: 'Unable to test the AI connection right now.' },
+        result: { ok: false, message: 'Could not test the AI connection. Please try again.' },
       });
     }
   }
@@ -154,7 +154,7 @@ export default function Settings() {
       setLinkedinAction({
         loading: false,
         status: 'error',
-        message: err.response?.data?.message || 'Unable to start the LinkedIn connection right now.',
+        message: err.response?.data?.message || 'Could not start the LinkedIn connection. Please try again.',
       });
     }
   }
@@ -170,7 +170,7 @@ export default function Settings() {
       setLinkedinAction({
         loading: false,
         status: 'error',
-        message: err.response?.data?.message || 'Unable to disconnect LinkedIn right now.',
+        message: err.response?.data?.message || 'Could not disconnect LinkedIn. Please try again.',
       });
     }
   }
@@ -179,7 +179,7 @@ export default function Settings() {
     return (
       <AppShell>
         <div className="flex min-h-[50vh] items-center justify-center text-sm text-[#667085]">
-          Loading your settings...
+          Loading settings…
         </div>
       </AppShell>
     );
@@ -189,8 +189,8 @@ export default function Settings() {
     return (
       <AppShell>
         <div className="rounded-3xl border border-[#e7ecf3] bg-white p-8 shadow-[0_18px_50px_rgba(15,23,42,0.05)]">
-          <h1 className="font-brand-heading text-4xl text-[#111827]">Settings</h1>
-          <p className="mt-3 text-sm text-[#667085]">{error || 'Unable to load settings right now.'}</p>
+          <h1 className="font-sans text-[2.2rem] sm:text-[2.6rem] font-semibold tracking-[-0.035em] text-slate-950">Settings</h1>
+          <p className="mt-3 text-sm text-[#667085]">{error || 'Could not load settings. Please try again.'}</p>
           <Button variant="secondary" className="mt-6" onClick={loadSettings}>Retry</Button>
         </div>
       </AppShell>
@@ -202,7 +202,7 @@ export default function Settings() {
       <div className="mx-auto max-w-6xl">
         <header className="mb-10 flex flex-col gap-4 border-b border-[#eef2f6] pb-8 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <h1 className="font-brand-heading text-4xl text-[#111827]">Settings</h1>
+            <h1 className="font-sans text-[2.2rem] sm:text-[2.6rem] font-semibold tracking-[-0.035em] text-slate-950">Settings</h1>
             <p className="mt-2 max-w-2xl text-sm text-[#667085]">
               Manage your profile, workspace, integrations, content defaults, and sign-in methods.
             </p>
@@ -214,7 +214,7 @@ export default function Settings() {
         </header>
 
         {error && (
-          <div className="mb-6 rounded-2xl border border-[#f3d2d2] bg-[#fff5f5] px-4 py-3 text-sm text-[#a73b3b]">
+          <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
             {error}
           </div>
         )}
