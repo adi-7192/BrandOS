@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "mcp__plugin_code-review-graph_code-review-graph__build_or_update_graph_tool",
-      "Bash(node --test server/src/**/*.test.js client/src/lib/*.test.js)"
+      "Bash(node --test server/src/**/*.test.js client/src/lib/*.test.js)",
+      "mcp__plugin_code-review-graph_code-review-graph__get_minimal_context_tool",
+      "Bash(grep -n \"^  \\);$\" /Users/adi7192/Documents/BrandOS/client/src/pages/dashboard/Dashboard.jsx)"
     ]
   }
 }

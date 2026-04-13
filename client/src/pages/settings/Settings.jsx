@@ -42,7 +42,6 @@ export default function Settings() {
   const [inboxForm, setInboxForm] = useState({ forwardingEnabled: true, preferredInboxView: 'Updates', includeOriginalEmail: true });
   const [generationForm, setGenerationForm] = useState({ defaultContentFormat: 'LinkedIn only', toneStrictness: 'Balanced', preferredOutputLength: 'Standard' });
   const [saving, setSaving] = useState({});
-  const [aiTest, setAiTest] = useState({ loading: false, result: null });
   const [linkedinAction, setLinkedinAction] = useState({ loading: false, status: '', message: '' });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -124,26 +123,6 @@ export default function Settings() {
     }
   }
 
-  async function handleAiTest() {
-    setAiTest({ loading: true, result: null });
-
-    try {
-      const res = await api.post('/settings/test-ai');
-      setAiTest({
-        loading: false,
-        result: {
-          ok: res.data.ok,
-          message: `${res.data.message} ${res.data.latencyMs ? `(${res.data.latencyMs}ms)` : ''}`.trim(),
-        },
-      });
-    } catch {
-      setAiTest({
-        loading: false,
-        result: { ok: false, message: 'Could not test the AI connection. Please try again.' },
-      });
-    }
-  }
-
   async function handleLinkedInConnect() {
     setLinkedinAction({ loading: true, status: '', message: '' });
 
@@ -200,16 +179,12 @@ export default function Settings() {
   return (
     <AppShell>
       <div className="mx-auto max-w-6xl">
-        <header className="mb-10 flex flex-col gap-4 border-b border-[#eef2f6] pb-8 lg:flex-row lg:items-end lg:justify-between">
+        <header className="mb-10 border-b border-[#eef2f6] pb-8">
           <div>
             <h1 className="font-sans text-[2.2rem] sm:text-[2.6rem] font-semibold tracking-[-0.035em] text-slate-950">Settings</h1>
             <p className="mt-2 max-w-2xl text-sm text-[#667085]">
               Manage your profile, workspace, integrations, content defaults, and sign-in methods.
             </p>
-          </div>
-          <div className="flex flex-wrap gap-3">
-            <StatusPill status={viewModel.workspaceStatus} />
-            <StatusPill status={viewModel.accessStatus} />
           </div>
         </header>
 
@@ -219,8 +194,9 @@ export default function Settings() {
           </div>
         )}
 
-        <div className="space-y-6">
+        <div className="space-y-8">
           <SettingsSection
+            step={1}
             title="Profile"
             description="Personal details used across your workspace and account identity."
             aside={<StatusPill status={{ label: 'Editable', tone: 'neutral', meta: 'Saved per user' }} />}
@@ -243,13 +219,14 @@ export default function Settings() {
           </SettingsSection>
 
           <SettingsSection
+            step={2}
             title="Workspace"
             description="Keep the workspace label and setup state aligned with how your team operates."
             aside={<StatusPill status={viewModel.workspaceStatus} />}
           >
             <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
               <Input label="Workspace name" value={workspaceForm.displayName} onChange={(e) => setWorkspaceForm({ displayName: e.target.value })} />
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+              <div className="grid items-stretch gap-3 sm:grid-cols-2 lg:grid-cols-1">
                 <MetricCard label="Brands live" value={String(settings.workspace.brandCount)} />
                 <MetricCard label="Onboarding" value={settings.workspace.onboardingComplete ? 'Complete' : 'In progress'} />
               </div>
@@ -269,11 +246,12 @@ export default function Settings() {
           </SettingsSection>
 
           <SettingsSection
+            step={3}
             title="Integrations"
             description="Connect the systems BrandOS uses to pull campaign context in and push approved content out."
             aside={<StatusPill status={{ label: 'Setup once', tone: 'neutral', meta: 'Reused across workflows' }} />}
           >
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid items-stretch gap-4 md:grid-cols-2">
               <MetricCard label="Inbox intake" value={viewModel.inboxStatus.label} />
               <MetricCard label="LinkedIn publishing" value={viewModel.linkedinStatus.label} />
             </div>
@@ -283,6 +261,7 @@ export default function Settings() {
           </SettingsSection>
 
           <SettingsSection
+            step={4}
             title="Inbox"
             description="Configure how stakeholder threads arrive in BrandOS and how reviewers see the original source material."
             aside={<StatusPill status={viewModel.inboxStatus} />}
@@ -305,6 +284,7 @@ export default function Settings() {
                 <div className="grid gap-4 md:grid-cols-2">
                   <Dropdown
                     label="Default inbox view"
+                    tooltip="Updates shows a flat list of extracted campaign signals. Threads shows the original email conversation grouped by brand label."
                     options={INBOX_VIEW_OPTIONS}
                     value={inboxForm.preferredInboxView}
                     onChange={(e) => setInboxForm((current) => ({ ...current, preferredInboxView: e.target.value }))}
@@ -357,6 +337,7 @@ export default function Settings() {
           </SettingsSection>
 
           <SettingsSection
+            step={5}
             title="Content Preferences"
             description="Apply your default generation posture whenever you start a new content workflow."
             aside={<StatusPill status={{ label: 'User defaults', tone: 'neutral', meta: 'Applied per account' }} />}
@@ -364,18 +345,21 @@ export default function Settings() {
             <div className="grid gap-4 md:grid-cols-3">
               <Dropdown
                 label="Default content format"
+                tooltip="Controls which outputs BrandOS generates per campaign — LinkedIn only, blog only, or both. You can override this per campaign."
                 options={CONTENT_FORMAT_OPTIONS}
                 value={generationForm.defaultContentFormat}
                 onChange={(e) => setGenerationForm((current) => ({ ...current, defaultContentFormat: e.target.value }))}
               />
               <Dropdown
                 label="Tone strictness"
+                tooltip="How closely the AI matches the brand voice kit. Strict = no deviation. Relaxed = flavour over rules. Balanced is right for most teams."
                 options={TONE_STRICTNESS_OPTIONS}
                 value={generationForm.toneStrictness}
                 onChange={(e) => setGenerationForm((current) => ({ ...current, toneStrictness: e.target.value }))}
               />
               <Dropdown
                 label="Output length"
+                tooltip="Sets the target word count range for generated content. Concise suits punchy LinkedIn posts; Detailed suits long-form blog drafts."
                 options={OUTPUT_LENGTH_OPTIONS}
                 value={generationForm.preferredOutputLength}
                 onChange={(e) => setGenerationForm((current) => ({ ...current, preferredOutputLength: e.target.value }))}
@@ -399,6 +383,7 @@ export default function Settings() {
           </SettingsSection>
 
           <SettingsSection
+            step={6}
             title="LinkedIn"
             description="Connect your personal LinkedIn once so BrandOS can publish approved LinkedIn drafts on your behalf. Company-page posting comes later."
             aside={<StatusPill status={viewModel.linkedinStatus} />}
@@ -492,11 +477,12 @@ export default function Settings() {
           </SettingsSection>
 
           <SettingsSection
+            step={7}
             title="Access and sign-in"
             description="Review which sign-in methods are available for your account and which one is already connected."
             aside={<StatusPill status={viewModel.accessStatus} />}
           >
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid items-stretch gap-4 md:grid-cols-3">
               <SecurityCard title="Google sign-in" active={settings.security.googleConnected} detail={settings.security.googleConnected ? 'Connected to this account' : 'Not connected'} />
               <SecurityCard title="Password sign-in" active={settings.security.passwordEnabled} detail={settings.security.passwordEnabled ? 'Email + password enabled' : 'Unavailable for this account'} />
               <SecurityCard title="Enterprise SSO" active={settings.security.ssoEnabled} detail={settings.security.ssoEnabled ? 'Enabled' : 'Not enabled yet'} />
@@ -513,16 +499,21 @@ export default function Settings() {
   );
 }
 
-function SettingsSection({ title, description, aside, children }) {
+function SettingsSection({ step, title, description, aside, children }) {
   return (
     <section className="rounded-[28px] border border-[#e7ecf3] bg-white px-6 py-6 shadow-[0_18px_45px_rgba(15,23,42,0.04)] lg:px-8">
-      <div className="grid gap-6 lg:grid-cols-[220px_minmax(0,1fr)]">
+      <div className="grid gap-6 lg:grid-cols-[260px_minmax(0,1fr)]">
         <div className="lg:pr-4">
+          {step !== undefined && (
+            <p className="mb-2 font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-[#98a2b3]">
+              Step {step}
+            </p>
+          )}
           <div className="flex flex-wrap items-center gap-3">
             <h2 className="text-xl font-semibold text-[#111827]">{title}</h2>
             {aside}
           </div>
-          <p className="mt-2 text-sm leading-6 text-[#667085]">{description}</p>
+          <p className="mt-2 max-w-sm text-sm leading-6 text-[#667085] lg:max-w-none">{description}</p>
         </div>
         <div>{children}</div>
       </div>
@@ -540,7 +531,7 @@ function SectionActions({ children }) {
 
 function MetricCard({ label, value }) {
   return (
-    <div className="rounded-2xl border border-[#e7ecf3] bg-[#fbfcfe] px-4 py-4">
+    <div className="flex h-full flex-col justify-between rounded-2xl border border-[#e7ecf3] bg-[#fbfcfe] px-4 py-4">
       <p className="text-xs font-medium uppercase tracking-[0.16em] text-[#98a2b3]">{label}</p>
       <p className="mt-3 text-lg font-semibold text-[#111827]">{value}</p>
     </div>
@@ -589,7 +580,7 @@ function CheckboxRow({ label, description, checked, onChange }) {
 
 function SecurityCard({ title, active, detail }) {
   return (
-    <div className="rounded-2xl border border-[#e7ecf3] bg-[#fbfcfe] px-4 py-4">
+    <div className="flex h-full flex-col rounded-2xl border border-[#e7ecf3] bg-[#fbfcfe] px-4 py-4">
       <div className="flex items-center justify-between gap-3">
         <p className="text-sm font-medium text-[#111827]">{title}</p>
         <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${active ? 'bg-[#e7f8ef] text-[#178A5B]' : 'bg-[#eef2f6] text-[#667085]'}`}>
